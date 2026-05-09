@@ -1,0 +1,139 @@
+name: Build — Android (Release AAB)
+
+# 仅在 main 或 release/* 分支合并时触发
+# 也支持手动触发（workflow_dispatch）
+on:
+  push:
+    branches: [main, 'release/**']
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (e.g., 1.0.1)'
+        required: false
+        type: string
+        default: ''
+      build_number:
+        description: 'Build number override'
+        required: false
+        type: string
+        default: ''
+
+env:
+  FLUTTER_VERSION: '3.22.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-flutter-${{ env.FLUTTER_VERSION }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-${{ env.FLUTTER_VERSION }}-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Code generation (Drift + json_serializable)
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      # ----------------------------------------
+      # Set version override if provided
+      # ----------------------------------------
+      - name: Override version (if provided)
+        if: github.event.inputs.version_name != ''
+        run: |
+          flutter pub run pubspec_check --version=${{ github.event.inputs.version_name }} || true
+
+      # ----------------------------------------
+      # Build Release AAB (Play Store)
+      # ----------------------------------------
+      - name: Build Android App Bundle (Release, Obfuscated)
+        run: |
+          flutter build appbundle --release \
+            --target-platform android-arm64 \
+            --obfuscate \
+            --split-debug-info=build/debug-info
+        env:
+          # 如果 workflow_dispatch 传入了版本信息，使用传入值；否则使用 pubspec.yaml
+          FLUTTER_BUILD_NAME: ${{ github.event.inputs.version_name || vars.ANDROID_VERSION_NAME || '1.0.0' }}
+          FLUTTER_BUILD_NUMBER: ${{ github.event.inputs.build_number || github.run_number }}
+
+      # ----------------------------------------
+      # Also build APK for internal distribution
+      # ----------------------------------------
+      - name: Build Android APK (Release, Obfuscated)
+        run: |
+          flutter build apk --release \
+            --target-platform android-arm64 \
+            --obfuscate \
+            --split-debug-info=build/debug-info
+        env:
+          FLUTTER_BUILD_NAME: ${{ github.event.inputs.version_name || vars.ANDROID_VERSION_NAME || '1.0.0' }}
+          FLUTTER_BUILD_NUMBER: ${{ github.event.inputs.build_number || github.run_number }}
+
+      # ----------------------------------------
+      # Upload artifacts
+      # ----------------------------------------
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockpilot-android-aab-v${{ github.event.inputs.version_name || vars.ANDROID_VERSION_NAME || '1.0.0' }}-b${{ github.run_number }}
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      - name: Upload debug symbols
+        if: github.event.inputs.version_name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockpilot-android-symbols-v${{ github.event.inputs.version_name }}
+          path: build/debug-info/
+          retention-days: 90
+
+      # ----------------------------------------
+      # Verify build output
+      # ----------------------------------------
+      - name: Verify AAB exists and size
+        run: |
+          SIZE=$(du -h build/app/outputs/bundle/release/app-release.aab | cut -f1)
+          echo "AAB size: $SIZE"
+          echo "SHA256:"
+          shasum -a 256 build/app/outputs/bundle/release/app-release.aab
+
+      # ----------------------------------------
+      # Slack notification (optional)
+      # ----------------------------------------
+      - name: Notify Slack on success
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "${{ job.status == 'success' && '✅' || '❌' }} StockPilot Android Build ${{ job.status == 'success' && '成功' || '失败' }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*StockPilot Android Build*\nVersion: `${{ github.event.inputs.version_name || vars.ANDROID_VERSION_NAME || '1.0.0' }}`+b${{ github.run_number }}\nStatus: `${{ job.status }}`\nCommit: `${{ github.sha }}`\nBranch: `${{ github.ref_name }}`\nWorkflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|查看详情>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

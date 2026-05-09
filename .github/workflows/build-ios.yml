@@ -1,0 +1,165 @@
+name: Build — iOS (Release IPA)
+
+on:
+  push:
+    branches: [main, 'release/**']
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (e.g., 1.0.1)'
+        required: false
+        type: string
+        default: ''
+      build_number:
+        description: 'Build number override'
+        required: false
+        type: string
+        default: ''
+
+env:
+  FLUTTER_VERSION: '3.22.0'
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-flutter-${{ env.FLUTTER_VERSION }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-${{ env.FLUTTER_VERSION }}-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Code generation (Drift + json_serializable)
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      # ----------------------------------------
+      # Code signing setup
+      # ----------------------------------------
+      - name: Configure code signing (macOS keychain)
+        run: |
+          mkdir -p ~/private_keys
+          # 解码 P12 证书（由 Fastlane Match 或手动生成）
+          if [ -n "${{ secrets.IOS_SIGNING_KEY_BASE64 }}" ]; then
+            echo "${{ secrets.IOS_SIGNING_KEY_BASE64 }}" | base64 --decode > ~/private_keys/distribution.p12
+            echo "${{ secrets.IOS_SIGNING_KEY_PASSWORD }}" | keychain add-certificates --sign --keys --p12 ~/private_keys/distribution.p12 --password /dev/stdin
+          else
+            echo "No signing key found — building for simulator only"
+          fi
+
+      # ----------------------------------------
+      # Set Xcode project version override
+      # ----------------------------------------
+      - name: Update iOS version info (if provided)
+        if: github.event.inputs.version_name != ''
+        run: |
+          sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = ${{ github.event.inputs.version_name }};/" ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = ${{ github.event.inputs.build_number || github.run_number }};/" ios/Runner.xcodeproj/project.pbxproj
+
+      # ----------------------------------------
+      # Build iOS for simulator (always available)
+      # ----------------------------------------
+      - name: Build iOS — Simulator
+        run: |
+          flutter build ios --simulator --no-codesign
+        env:
+          FLUTTER_BUILD_NAME: ${{ github.event.inputs.version_name || vars.IOS_VERSION_NAME || '1.0.0' }}
+          FLUTTER_BUILD_NUMBER: ${{ github.event.inputs.build_number || github.run_number }}
+
+      # ----------------------------------------
+      # Build iOS for App Store (if signing key available)
+      # ----------------------------------------
+      - name: Build iOS — App Store (Archive)
+        if: secrets.IOS_SIGNING_KEY_BASE64 != ''
+        run: |
+          flutter build ios --release
+          # Package into xcarchive
+          xcodebuild -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath build/ios/Runner.xcarchive \
+            -derivedDataPath build/ios/derived \
+            archive
+        env:
+          FLUTTER_BUILD_NAME: ${{ github.event.inputs.version_name || vars.IOS_VERSION_NAME || '1.0.0' }}
+          FLUTTER_BUILD_NUMBER: ${{ github.event.inputs.build_number || github.run_number }}
+
+      # ----------------------------------------
+      # Export IPA from xcarchive
+      # ----------------------------------------
+      - name: Export IPA
+        if: secrets.IOS_SIGNING_KEY_BASE64 != ''
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/ios/Runner.xcarchive \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportPath build/ios/ipa
+        env:
+          # Pass signing identity via environment (alternative to keychain)
+          CODE_SIGN_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
+
+      # ----------------------------------------
+      # Upload artifacts
+      # ----------------------------------------
+      - name: Upload simulator build (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockpilot-ios-simulator-v${{ github.event.inputs.version_name || vars.IOS_VERSION_NAME || '1.0.0' }}-b${{ github.run_number }}
+          path: build/ios/iphonesimulator/
+          retention-days: 7
+
+      - name: Upload IPA (if available)
+        if: secrets.IOS_SIGNING_KEY_BASE64 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockpilot-ios-ipa-v${{ github.event.inputs.version_name || vars.IOS_VERSION_NAME || '1.0.0' }}-b${{ github.run_number }}
+          path: build/ios/ipa/Runner.ipa
+          retention-days: 30
+
+      # ----------------------------------------
+      # Verify build output
+      # ----------------------------------------
+      - name: Verify simulator app exists
+        run: |
+          ls -lh build/ios/iphonesimulator/Runner.app
+          echo "SHA256:"
+          shasum -a 256 build/ios/iphonesimulator/Runner.app/Runner || true
+
+      # ----------------------------------------
+      # Slack notification
+      # ----------------------------------------
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "${{ job.status == 'success' && '✅' || '❌' }} StockPilot iOS Build ${{ job.status == 'success' && '成功' || '失败' }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*StockPilot iOS Build*\nVersion: `${{ github.event.inputs.version_name || vars.IOS_VERSION_NAME || '1.0.0' }}`+b${{ github.run_number }}\nStatus: `${{ job.status }}`\nHas IPA: `${{ secrets.IOS_SIGNING_KEY_BASE64 != '' }}`\nCommit: `${{ github.sha }}`\nBranch: `${{ github.ref_name }}`\nWorkflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|查看详情>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

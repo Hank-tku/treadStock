@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>股势 TrendStock - 股票详情</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    background: #F0F1F3; color: #1A1A1A;
+    display: flex; justify-content: center; align-items: flex-start;
+    min-height: 100vh; padding: 20px;
+  }
+  .phone {
+    width: 375px; height: 812px; background: #FFFFFF;
+    border-radius: 40px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 8px #1A1A1A, 0 0 0 10px #333, 0 20px 60px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+  }
+
+  /* Status bar */
+  .status-bar {
+    height: 44px; padding: 12px 24px 0; display: flex;
+    justify-content: space-between; align-items: center;
+    background: #FFFFFF; flex-shrink: 0; position: relative; z-index: 5;
+  }
+  .status-time { font-size: 15px; font-weight: 600; }
+  .status-icons { display: flex; gap: 4px; font-size: 12px; align-items: center; }
+
+  /* Nav bar */
+  .nav-bar {
+    display: flex; align-items: center; padding: 4px 16px 8px; flex-shrink: 0;
+  }
+  .back-btn {
+    display: flex; align-items: center; gap: 4px; font-size: 15px;
+    color: #1A1A1A; cursor: pointer; padding: 4px 0;
+  }
+  .back-icon { font-size: 18px; }
+
+  /* Stock header */
+  .stock-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 0 16px 12px; flex-shrink: 0;
+  }
+  .stock-info {}
+  .stock-name { font-size: 20px; font-weight: 600; color: #1A1A1A; }
+  .stock-meta { font-size: 11px; color: #8C8C8C; margin-top: 2px; }
+  .alert-toggle { display: flex; align-items: center; gap: 6px; padding-top: 4px; }
+  .alert-label { font-size: 11px; color: #8C8C8C; }
+  /* Toggle switch */
+  .toggle {
+    width: 44px; height: 24px; border-radius: 12px; background: #E0E0E0;
+    position: relative; cursor: pointer; transition: background 0.2s;
+  }
+  .toggle.on { background: #1A6AFF; }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 10px; background: #fff;
+    transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* Price section */
+  .price-section { padding: 0 16px 16px; flex-shrink: 0; }
+  .current-price {
+    font-size: 32px; font-weight: 700; color: #1A1A1A;
+    font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+    line-height: 1.2;
+  }
+  .price-change {
+    font-size: 24px; font-weight: 700; margin-top: 2px;
+    font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+    color: #E6432D;
+  }
+  .price-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px;
+    margin-top: 8px; font-size: 12px;
+  }
+  .price-stat { display: flex; justify-content: space-between; }
+  .price-stat-label { color: #8C8C8C; }
+  .price-stat-value {
+    color: #333; font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+    font-weight: 500;
+  }
+
+  /* Score + indicator cards */
+  .indicator-cards {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    padding: 0 16px 16px; flex-shrink: 0;
+  }
+  .indicator-card {
+    background: #F7F8FA; border-radius: 8px; padding: 12px;
+    text-align: center;
+  }
+  .indicator-card-label { font-size: 11px; color: #8C8C8C; margin-bottom: 4px; }
+  .indicator-card-value {
+    font-size: 20px; font-weight: 700; color: #333;
+    font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+  }
+  .indicator-card-sub { font-size: 10px; color: #8C8C8C; margin-top: 2px; }
+  .indicator-card.highlight { background: rgba(230, 67, 45, 0.08); }
+  .indicator-card.highlight .indicator-card-value { color: #E6432D; }
+  .indicator-card.highlight .indicator-card-label { color: #E6432D; }
+  .indicator-card.warn { background: rgba(212, 160, 23, 0.08); }
+  .indicator-card.warn .indicator-card-value { color: #D4A017; }
+  .indicator-card.warn .indicator-card-label { color: #D4A017; }
+
+  /* Section divider */
+  .section-divider { height: 8px; background: #F7F8FA; flex-shrink: 0; }
+
+  /* Company info */
+  .company-section { padding: 16px; flex-shrink: 0; }
+  .section-title { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+  .company-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
+  .company-label { font-size: 13px; color: #8C8C8C; }
+  .company-value {
+    font-size: 13px; color: #333; text-align: right;
+    font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+  }
+
+  /* Daily summary card */
+  .summary-section { padding: 16px; flex-shrink: 0; }
+  .summary-card {
+    background: #F7F8FA; border-radius: 8px; padding: 12px 16px;
+  }
+  .summary-date { font-size: 11px; color: #8C8C8C; margin-bottom: 8px; }
+  .summary-line { font-size: 13px; color: #333; line-height: 1.6; }
+  .summary-conclusion { font-size: 13px; color: #6B6B6B; margin-top: 4px; font-style: italic; }
+
+  /* News section */
+  .news-section { padding: 0 16px 8px; flex-shrink: 0; }
+  .news-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .news-more { font-size: 12px; color: #1A6AFF; cursor: pointer; }
+  .news-list { flex-shrink: 0; }
+  .news-item {
+    padding: 10px 16px; border-bottom: 1px solid #EEEEEE;
+    cursor: pointer;
+  }
+  .news-item:active { background: #F7F8FA; }
+  .news-title {
+    font-size: 15px; font-weight: 400; color: #333; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .news-meta { font-size: 11px; color: #8C8C8C; margin-top: 4px; }
+  .news-source { color: #1A6AFF; }
+
+  /* Scrollable content */
+  .content-scroll { flex: 1; overflow-y: auto; }
+
+  /* Disclaimer */
+  .disclaimer {
+    text-align: center; padding: 12px 16px;
+    font-size: 11px; color: #BDBDBD; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <span class="status-icons">
+      <span>&#9679;&#9679;&#9679;&#9679;</span>
+      <span style="font-size:14px;">&#9211;</span>
+    </span>
+  </div>
+
+  <!-- Content (scrollable) -->
+  <div class="content-scroll">
+
+    <!-- Nav bar -->
+    <div class="nav-bar">
+      <div class="back-btn" onclick="history.back()">
+        <span class="back-icon">&#8249;</span>
+        <span>返回</span>
+      </div>
+    </div>
+
+    <!-- Stock header -->
+    <div class="stock-header">
+      <div class="stock-info">
+        <div class="stock-name">中国平安</div>
+        <div class="stock-meta">601318.SH &nbsp;&bull;&nbsp; 保险</div>
+      </div>
+      <div class="alert-toggle">
+        <span class="alert-label">下跌预警</span>
+        <div class="toggle on" id="alertToggle"></div>
+      </div>
+    </div>
+
+    <!-- Price section -->
+    <div class="price-section">
+      <div class="current-price">¥45.20</div>
+      <div class="price-change">+2.35% &nbsp; +1.05</div>
+      <div class="price-stats">
+        <div class="price-stat">
+          <span class="price-stat-label">今开</span>
+          <span class="price-stat-value">44.80</span>
+        </div>
+        <div class="price-stat">
+          <span class="price-stat-label">最高</span>
+          <span class="price-stat-value">45.80</span>
+        </div>
+        <div class="price-stat">
+          <span class="price-stat-label">昨收</span>
+          <span class="price-stat-value">44.15</span>
+        </div>
+        <div class="price-stat">
+          <span class="price-stat-label">最低</span>
+          <span class="price-stat-value">44.50</span>
+        </div>
+        <div class="price-stat">
+          <span class="price-stat-label">成交量</span>
+          <span class="price-stat-value">125,400手</span>
+        </div>
+        <div class="price-stat">
+          <span class="price-stat-label">换手率</span>
+          <span class="price-stat-value">0.68%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score + indicator cards -->
+    <div class="indicator-cards">
+      <div class="indicator-card highlight">
+        <div class="indicator-card-label">评分</div>
+        <div class="indicator-card-value">8</div>
+        <div class="indicator-card-sub">强烈推荐</div>
+      </div>
+      <div class="indicator-card">
+        <div class="indicator-card-label">MA20</div>
+        <div class="indicator-card-value">¥44.20</div>
+        <div class="indicator-card-sub">价格在上方 2.3%</div>
+      </div>
+      <div class="indicator-card">
+        <div class="indicator-card-label">MA60</div>
+        <div class="indicator-card-value">¥42.10</div>
+        <div class="indicator-card-sub">多头排列</div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Company info -->
+    <div class="company-section">
+      <div class="section-title">公司信息</div>
+      <div class="company-grid">
+        <span class="company-label">行业</span>
+        <span class="company-value" style="text-align:right;font-family:inherit;">保险</span>
+        <span class="company-label">市值</span>
+        <span class="company-value">8,542亿</span>
+        <span class="company-label">市盈率(PE)</span>
+        <span class="company-value">12.8</span>
+        <span class="company-label">市净率(PB)</span>
+        <span class="company-value">1.2</span>
+        <span class="company-label">总股本</span>
+        <span class="company-value">182.8亿</span>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Daily summary -->
+    <div class="summary-section">
+      <div class="section-title">每日跟踪摘要</div>
+      <div class="summary-card">
+        <div class="summary-date">4月10日 收盘</div>
+        <div class="summary-line">收盘价 ¥45.20，涨幅 +2.35%，放量上涨。</div>
+        <div class="summary-line">波段位置：布林带中轨上方，MA20/MA60 多头排列。</div>
+        <div class="summary-conclusion">预计明日继续震荡偏强，支撑位 ¥44.20（MA20），压力位 ¥45.80。</div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- News -->
+    <div class="news-section">
+      <div class="news-header">
+        <div class="section-title" style="margin-bottom:0;">最新新闻</div>
+        <span class="news-more">更多 &#8250;</span>
+      </div>
+    </div>
+    <div class="news-list">
+      <div class="news-item">
+        <div class="news-title">平安银行一季度净利润增长12.3%，资产质量持续改善</div>
+        <div class="news-meta"><span class="news-source">东方财富</span> &nbsp; 3小时前</div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">保险板块午后集体拉升，中国平安涨超2%领涨</div>
+        <div class="news-meta"><span class="news-source">第一财经</span> &nbsp; 5小时前</div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">中国平安：2025年全年归母净利润同比增长15.2%</div>
+        <div class="news-meta"><span class="news-source">财联社</span> &nbsp; 昨天</div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">险资权益投资比例上限提升，头部险企受益明显</div>
+        <div class="news-meta"><span class="news-source">证券时报</span> &nbsp; 昨天</div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">中国平安回购进展：累计回购A股超50亿元</div>
+        <div class="news-meta"><span class="news-source">新浪财经</span> &nbsp; 4月8日</div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">平安好医生与多家三甲医院达成战略合作</div>
+        <div class="news-meta"><span class="news-source">东方财富</span> &nbsp; 4月7日</div>
+      </div>
+    </div>
+
+    <div class="disclaimer">以上分析仅供参考，不构成任何投资建议。投资有风险，入市需谨慎。</div>
+  </div>
+</div>
+
+<script>
+// Toggle alert switch
+document.getElementById('alertToggle').addEventListener('click', function() {
+  this.classList.toggle('on');
+});
+</script>
+
+</body>
+</html>

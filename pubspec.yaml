@@ -1,0 +1,81 @@
+name: stockpilot
+description: "股势 TrendStock - Flutter stock trading decision assistant app"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # HTTP client
+  dio: ^5.7.0
+
+  # Local database (Drift / SQLite)
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.28
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Local KV storage
+  shared_preferences: ^2.3.4
+
+  # Routing
+  go_router: ^14.8.1
+
+  # JSON serialization
+  json_annotation: ^4.9.0
+
+  # Local notifications
+  flutter_local_notifications: ^18.0.1
+
+  # Background tasks
+  workmanager: ^0.5.2
+
+  # URL launcher (news external links)
+  url_launcher: ^6.3.1
+
+  # Connectivity check
+  connectivity_plus: ^6.1.1
+
+  # UUID generator
+  uuid: ^4.5.1
+
+  # Intl (date formatting)
+  intl: ^0.20.2
+
+  # Slidable (swipe actions)
+  flutter_slidable: ^3.1.1
+
+  # Shimmer (skeleton loading)
+  shimmer: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Drift code generation
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.14
+
+  # Riverpod code generation
+  riverpod_generator: ^2.6.3
+
+  # JSON code generation
+  json_serializable: ^6.9.2
+
+  # Mock testing
+  mockito: ^5.4.5
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,91 @@
+name: CI — Quality Gate
+
+on:
+  pull_request:
+    branches: [main, 'release/**']
+  push:
+    branches: [main]
+
+env:
+  FLUTTER_VERSION: '3.22.0'
+
+jobs:
+  # ============================================================
+  # Job 1: 代码质量 & 安全扫描
+  # ============================================================
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-flutter-${{ env.FLUTTER_VERSION }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-${{ env.FLUTTER_VERSION }}-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Drift / json_serializable code generation
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Unit & Widget tests
+        run: flutter test --coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: stockpilot-flutter
+          fail_ci_if_error: false
+
+      - name: Secret scanning (trufflehog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          # only-verified: true  # 禁用，因为 MVP 阶段 .env.example 可能触发误报
+
+  # ============================================================
+  # Job 2: Drift DB migration check（防止新增 migration 导致问题）
+  # ============================================================
+  db-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      - run: flutter pub get
+      - name: Detect new migration files
+        run: |
+          # 检查是否有新增的 migration 文件（防止 drift migration 遗漏）
+          NEW_FILES=$(git diff --name-only origin/${{ github.base_ref || 'main' }}...HEAD -- 'lib/database/migrations/' 2>/dev/null || echo "")
+          if [ -n "$NEW_FILES" ]; then
+            echo "检测到新的 database migration 文件："
+            echo "$NEW_FILES"
+            echo "请确认 migration 已通过评审并在 CI 中执行了测试"
+          else
+            echo "无新增 migration 文件"
+          fi

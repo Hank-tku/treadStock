@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>股势 TrendStock - Design System</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    background: #F0F1F3;
+    color: #1A1A1A;
+    padding: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .subtitle { font-size: 15px; color: #6B6B6B; margin-bottom: 40px; }
+  .section { margin-bottom: 48px; }
+  .section-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; color: #333; }
+
+  /* Color palette */
+  .palette { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch {
+    width: 80px; height: 80px; border-radius: 8px; display: flex;
+    flex-direction: column; align-items: center; justify-content: flex-end;
+    padding: 6px; font-size: 10px; color: #fff; font-weight: 500;
+    position: relative;
+  }
+  .swatch.dark-text { color: #333; }
+  .swatch-label {
+    position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; color: #8C8C8C; white-space: nowrap;
+  }
+  .swatch-row { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+
+  /* Typography scale */
+  .type-row { display: flex; align-items: baseline; gap: 16px; padding: 8px 0; border-bottom: 1px solid #EEEEEE; }
+  .type-label { font-size: 12px; color: #8C8C8C; width: 100px; flex-shrink: 0; }
+  .type-sample { flex: 1; }
+
+  /* Spacing */
+  .spacing-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .spacing-block { background: #1A6AFF; height: 16px; border-radius: 2px; }
+  .spacing-label { font-size: 12px; color: #6B6B6B; width: 60px; }
+
+  /* Screen links */
+  .screens { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+  .screen-card {
+    background: #fff; border-radius: 8px; overflow: hidden;
+    border: 1px solid #EEEEEE; transition: box-shadow 0.2s;
+  }
+  .screen-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .screen-preview {
+    width: 100%; aspect-ratio: 375/812; background: #F7F8FA;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+  }
+  .screen-preview img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .screen-preview .placeholder {
+    color: #BDBDBD; font-size: 13px; text-align: center;
+  }
+  .screen-info { padding: 16px; }
+  .screen-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .screen-info p { font-size: 13px; color: #6B6B6B; margin-bottom: 8px; }
+  .screen-link {
+    display: inline-block; padding: 6px 16px; background: #1A6AFF;
+    color: #fff; border-radius: 6px; text-decoration: none;
+    font-size: 13px; font-weight: 500;
+  }
+  .screen-link:hover { background: #1554D6; }
+
+  /* Components */
+  .component-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .component-box { background: #fff; border: 1px solid #EEEEEE; border-radius: 8px; padding: 16px; }
+  .component-box h4 { font-size: 13px; font-weight: 600; color: #6B6B6B; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Score badges */
+  .score-badges { display: flex; gap: 8px; align-items: center; }
+  .score-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 20px; border-radius: 4px; font-size: 12px;
+    font-weight: 700; font-family: 'DIN Alternate', 'SF Mono', monospace;
+    color: #fff;
+  }
+  .score-high { background: #E6432D; }
+  .score-mid { background: #D4A017; }
+  .score-low { background: #1DB954; }
+  .score-na { background: #EEEEEE; color: #8C8C8C; width: 40px; font-size: 10px; }
+
+  /* Tags */
+  .band-low-tag {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 4px;
+    background: rgba(230, 147, 33, 0.12); color: #E69321;
+    font-size: 11px; font-weight: 500;
+  }
+
+  /* Stock list item */
+  .stock-item {
+    display: flex; align-items: center; padding: 12px 16px;
+    border-bottom: 1px solid #EEEEEE; background: #fff;
+  }
+  .stock-item:active { background: #F7F8FA; }
+  .stock-left { flex: 1; min-width: 0; }
+  .stock-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .stock-name { font-size: 15px; font-weight: 500; color: #1A1A1A; }
+  .stock-code { font-size: 11px; color: #8C8C8C; }
+  .stock-sub { font-size: 11px; color: #6B6B6B; margin-top: 2px; }
+  .stock-right { text-align: right; flex-shrink: 0; margin-left: 12px; }
+  .stock-price {
+    font-size: 16px; font-weight: 600; color: #1A1A1A;
+    font-family: 'DIN Alternate', 'SF Mono', monospace;
+  }
+  .stock-change {
+    font-size: 13px; font-family: 'DIN Alternate', 'SF Mono', monospace;
+    font-weight: 600;
+  }
+  .change-up { color: #E6432D; }
+  .change-down { color: #1DB954; }
+  .change-flat { color: #8C8C8C; }
+
+  /* Pin / Alert icons */
+  .icon-pin { color: #1A6AFF; font-size: 14px; margin-right: 4px; }
+  .icon-alert { color: #E6432D; font-size: 14px; margin-right: 4px; }
+
+  /* Search bar */
+  .search-bar {
+    display: flex; align-items: center; height: 40px; padding: 0 12px;
+    border: 1px solid #E0E0E0; border-radius: 8px; background: #fff;
+  }
+  .search-bar.focused { border-color: #1A6AFF; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .search-icon { color: #BDBDBD; margin-right: 8px; font-size: 16px; }
+  .search-input { border: none; outline: none; flex: 1; font-size: 14px; color: #1A1A1A; font-family: inherit; }
+  .search-input::placeholder { color: #BDBDBD; }
+
+  /* Toast */
+  .toast-demo {
+    display: inline-flex; align-items: center; padding: 10px 16px;
+    background: #333; color: #fff; border-radius: 8px; font-size: 13px;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex; border-top: 1px solid #EEEEEE; background: #fff;
+    height: 48px;
+  }
+  .tab-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; font-size: 11px; color: #8C8C8C; gap: 2px;
+  }
+  .tab-item.active { color: #1A6AFF; }
+  .tab-icon { font-size: 20px; }
+</style>
+</head>
+<body>
+
+<h1>股势 TrendStock</h1>
+<p class="subtitle">Design System v1.0 -- 2026-04-10</p>
+
+<!-- Screens -->
+<div class="section">
+  <h2 class="section-title">Pages</h2>
+  <div class="screens">
+    <div class="screen-card">
+      <div class="screen-preview"><div class="placeholder">推荐列表页</div></div>
+      <div class="screen-info">
+        <h3>推荐列表 (Recommended)</h3>
+        <p>每日波段分析推荐，按短线/中线分组</p>
+        <a href="recommend/desktop.html" class="screen-link">View Design</a>
+      </div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-preview"><div class="placeholder">关注列表页</div></div>
+      <div class="screen-info">
+        <h3>关注列表 (Watchlist)</h3>
+        <p>自选股管理，搜索添加，滑动操作</p>
+        <a href="watchlist/desktop.html" class="screen-link">View Design</a>
+      </div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-preview"><div class="placeholder">股票详情页</div></div>
+      <div class="screen-info">
+        <h3>股票详情 (Stock Detail)</h3>
+        <p>公司信息、评分指标、新闻聚合</p>
+        <a href="detail/desktop.html" class="screen-link">View Design</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Colors -->
+<div class="section">
+  <h2 class="section-title">Color System</h2>
+  <p style="font-size:13px;color:#6B6B6B;margin-bottom:16px;">A-stock standard: Red = Up, Green = Down. Brand blue for primary actions.</p>
+
+  <h3 style="font-size:14px;font-weight:500;margin-bottom:12px;">Semantic Colors</h3>
+  <div class="swatch-row">
+    <div class="swatch" style="background:#E6432D;">UP<span class="swatch-label">Up / High Score</span></div>
+    <div class="swatch" style="background:#1DB954;">DN<span class="swatch-label">Down / Low Score</span></div>
+    <div class="swatch" style="background:#D4A017;">MID<span class="swatch-label">Mid Score</span></div>
+    <div class="swatch" style="background:#1A6AFF;">BR<span class="swatch-label">Brand</span></div>
+    <div class="swatch" style="background:#E69321;">BL<span class="swatch-label">Band Low Tag</span></div>
+    <div class="swatch" style="background:#8C8C8C;">FL<span class="swatch-label">Flat</span></div>
+  </div>
+
+  <h3 style="font-size:14px;font-weight:500;margin-bottom:12px;">Neutral Grays</h3>
+  <div class="swatch-row">
+    <div class="swatch dark-text" style="background:#FAFAFA;">50</div>
+    <div class="swatch dark-text" style="background:#F5F5F5;">100</div>
+    <div class="swatch dark-text" style="background:#EEEEEE;">200</div>
+    <div class="swatch dark-text" style="background:#E0E0E0;">300</div>
+    <div class="swatch dark-text" style="background:#BDBDBD;">400</div>
+    <div class="swatch dark-text" style="background:#8C8C8C;">500</div>
+    <div class="swatch" style="background:#6B6B6B;">600</div>
+    <div class="swatch" style="background:#4A4A4A;">700</div>
+    <div class="swatch" style="background:#333333;">800</div>
+    <div class="swatch" style="background:#1A1A1A;">900</div>
+  </div>
+</div>
+
+<!-- Typography -->
+<div class="section">
+  <h2 class="section-title">Typography</h2>
+  <div class="type-row"><span class="type-label">display-lg</span><span class="type-sample" style="font-size:32px;font-weight:700;font-family:'DIN Alternate','SF Mono',monospace;">¥45.20</span></div>
+  <div class="type-row"><span class="type-label">display</span><span class="type-sample" style="font-size:28px;font-weight:700;font-family:'DIN Alternate','SF Mono',monospace;">¥198.50</span></div>
+  <div class="type-row"><span class="type-label">h1</span><span class="type-sample" style="font-size:20px;font-weight:600;">推荐</span></div>
+  <div class="type-row"><span class="type-label">h2</span><span class="type-sample" style="font-size:17px;font-weight:600;">最新新闻</span></div>
+  <div class="type-row"><span class="type-label">h3</span><span class="type-sample" style="font-size:15px;font-weight:500;">短线波段</span></div>
+  <div class="type-row"><span class="type-label">body-lg</span><span class="type-sample" style="font-size:15px;">中国平安 601318.SH</span></div>
+  <div class="type-row"><span class="type-label">body</span><span class="type-sample" style="font-size:13px;">东方财富 3小时前</span></div>
+  <div class="type-row"><span class="type-label">caption</span><span class="type-sample" style="font-size:11px;color:#8C8C8C;">仅供参考，不构成投资建议</span></div>
+  <div class="type-row"><span class="type-label">number-lg</span><span class="type-sample" style="font-size:24px;font-weight:700;font-family:'DIN Alternate','SF Mono',monospace;color:#E6432D;">+2.35%</span></div>
+  <div class="type-row"><span class="type-label">number</span><span class="type-sample" style="font-size:16px;font-weight:600;font-family:'DIN Alternate','SF Mono',monospace;">8</span></div>
+</div>
+
+<!-- Spacing -->
+<div class="section">
+  <h2 class="section-title">Spacing System (base: 4px)</h2>
+  <div class="spacing-row"><span class="spacing-label">4px</span><div class="spacing-block" style="width:4px;"></div></div>
+  <div class="spacing-row"><span class="spacing-label">8px</span><div class="spacing-block" style="width:8px;"></div></div>
+  <div class="spacing-row"><span class="spacing-label">12px</span><div class="spacing-block" style="width:12px;"></div></div>
+  <div class="spacing-row"><span class="spacing-label">16px</span><div class="spacing-block" style="width:16px;"></div></div>
+  <div class="spacing-row"><span class="spacing-label">24px</span><div class="spacing-block" style="width:24px;"></div></div>
+  <div class="spacing-row"><span class="spacing-label">32px</span><div class="spacing-block" style="width:32px;"></div></div>
+  <div class="spacing-row"><span class="spacing-label">48px</span><div class="spacing-block" style="width:48px;"></div></div>
+  <div class="spacing-row"><span class="spacing-label">64px</span><div class="spacing-block" style="width:64px;"></div></div>
+</div>
+
+<!-- Components -->
+<div class="section">
+  <h2 class="section-title">Core Components</h2>
+  <div class="component-grid">
+
+    <div class="component-box">
+      <h4>Score Badges</h4>
+      <div class="score-badges">
+        <span class="score-badge score-high">8</span>
+        <span class="score-badge score-high">9</span>
+        <span class="score-badge score-mid">5</span>
+        <span class="score-badge score-mid">7</span>
+        <span class="score-badge score-low">2</span>
+        <span class="score-badge score-low">4</span>
+        <span class="score-badge score-na">N/A</span>
+      </div>
+      <p style="font-size:11px;color:#8C8C8C;margin-top:8px;">8-10 Red | 5-7 Amber | 1-4 Green</p>
+    </div>
+
+    <div class="component-box">
+      <h4>Band Low Tag</h4>
+      <span class="band-low-tag">波段低位</span>
+      <p style="font-size:11px;color:#8C8C8C;margin-top:8px;">Orange tag for band-low stocks</p>
+    </div>
+
+    <div class="component-box">
+      <h4>Search Bar</h4>
+      <div class="search-bar">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" class="search-input" placeholder="搜索股票代码或名称">
+      </div>
+    </div>
+
+    <div class="component-box">
+      <h4>Toast</h4>
+      <div class="toast-demo">已添加中国平安到关注列表</div>
+    </div>
+
+    <div class="component-box">
+      <h4>Stock List Item</h4>
+      <div style="border:1px solid #EEEEEE;border-radius:8px;overflow:hidden;">
+        <div class="stock-item">
+          <div class="stock-left">
+            <div class="stock-top">
+              <span class="score-badge score-high">8</span>
+              <span class="band-low-tag">波段低位</span>
+              <span class="stock-name">中国平安</span>
+            </div>
+            <div class="stock-sub">601318.SH</div>
+          </div>
+          <div class="stock-right">
+            <div class="stock-price">¥45.20</div>
+            <div class="stock-change change-up">+2.35%</div>
+          </div>
+        </div>
+        <div class="stock-item">
+          <div class="stock-left">
+            <div class="stock-top">
+              <span class="score-badge score-low">3</span>
+              <span class="stock-name">宁德时代</span>
+            </div>
+            <div class="stock-sub">300750.SZ</div>
+          </div>
+          <div class="stock-right">
+            <div class="stock-price">¥198.50</div>
+            <div class="stock-change change-down">-1.28%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="component-box">
+      <h4>Tab Bar</h4>
+      <div class="tab-bar" style="border-radius:8px;overflow:hidden;">
+        <div class="tab-item active"><span class="tab-icon">&#9733;</span>推荐</div>
+        <div class="tab-item"><span class="tab-icon">&#9829;</span>关注</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>股势 TrendStock - 推荐列表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    background: #F0F1F3;
+    color: #1A1A1A;
+    display: flex; justify-content: center; align-items: flex-start;
+    min-height: 100vh; padding: 20px;
+  }
+  .phone {
+    width: 375px; height: 812px; background: #FFFFFF;
+    border-radius: 40px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 8px #1A1A1A, 0 0 0 10px #333, 0 20px 60px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+  }
+
+  /* Status bar */
+  .status-bar {
+    height: 44px; padding: 12px 24px 0; display: flex;
+    justify-content: space-between; align-items: center;
+    background: #FFFFFF; flex-shrink: 0;
+  }
+  .status-time { font-size: 15px; font-weight: 600; }
+  .status-icons { display: flex; gap: 4px; font-size: 12px; align-items: center; }
+
+  /* Page header */
+  .page-header {
+    padding: 4px 16px 12px; flex-shrink: 0;
+  }
+  .page-title-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .page-title { font-size: 20px; font-weight: 600; color: #1A1A1A; }
+  .page-date { font-size: 11px; color: #8C8C8C; }
+  .page-subtitle { font-size: 13px; color: #8C8C8C; margin-top: 2px; }
+
+  /* Cache banner */
+  .cache-banner {
+    background: #FFF8E1; padding: 8px 16px; display: flex;
+    align-items: center; gap: 8px; flex-shrink: 0;
+    font-size: 12px; color: #8C6B00;
+  }
+  .cache-banner-icon { font-size: 14px; }
+  .cache-banner-close {
+    margin-left: auto; color: #BDBDBD; cursor: pointer;
+    font-size: 14px; padding: 2px;
+  }
+
+  /* Group header */
+  .group-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px 6px; flex-shrink: 0;
+  }
+  .group-name { font-size: 15px; font-weight: 500; color: #333; }
+  .group-count { font-size: 11px; color: #8C8C8C; }
+
+  /* Stock list */
+  .stock-list { flex: 1; overflow-y: auto; }
+  .stock-item {
+    display: flex; align-items: center; padding: 12px 16px;
+    border-bottom: 1px solid #EEEEEE; background: #FFFFFF;
+    cursor: pointer;
+  }
+  .stock-item:active { background: #F7F8FA; }
+  .stock-left { flex: 1; min-width: 0; }
+  .stock-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .stock-name { font-size: 15px; font-weight: 500; color: #1A1A1A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stock-code { font-size: 11px; color: #8C8C8C; flex-shrink: 0; }
+  .stock-sub { font-size: 11px; color: #6B6B6B; margin-top: 2px; }
+  .stock-right { text-align: right; flex-shrink: 0; margin-left: 12px; }
+  .stock-price {
+    font-size: 16px; font-weight: 600; color: #1A1A1A;
+    font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+  }
+  .stock-change {
+    font-size: 13px; font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+    font-weight: 600; margin-top: 1px;
+  }
+  .change-up { color: #E6432D; }
+  .change-down { color: #1DB954; }
+  .change-flat { color: #8C8C8C; }
+
+  /* Score badge */
+  .score-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 20px; border-radius: 4px; font-size: 12px;
+    font-weight: 700; font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+    color: #fff; flex-shrink: 0;
+  }
+  .score-high { background: #E6432D; }
+  .score-mid { background: #D4A017; }
+  .score-low { background: #1DB954; }
+
+  /* Band low tag */
+  .band-low-tag {
+    display: inline-flex; align-items: center;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(230, 147, 33, 0.12); color: #E69321;
+    font-size: 10px; font-weight: 500; flex-shrink: 0;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex; border-top: 1px solid #EEEEEE; background: #FFFFFF;
+    height: 48px; flex-shrink: 0; padding-bottom: 20px;
+  }
+  .tab-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; font-size: 10px; color: #8C8C8C; gap: 2px;
+    cursor: pointer; text-decoration: none;
+  }
+  .tab-item.active { color: #1A6AFF; }
+  .tab-icon { font-size: 20px; }
+
+  /* Disclaimer */
+  .disclaimer {
+    text-align: center; padding: 12px 16px;
+    font-size: 11px; color: #BDBDBD; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <span class="status-icons">
+      <span>&#9679;&#9679;&#9679;&#9679;</span>
+      <span style="font-size:14px;">&#9211;</span>
+    </span>
+  </div>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-title-row">
+      <span class="page-title">推荐</span>
+      <span class="page-date">4月10日</span>
+    </div>
+    <div class="page-subtitle">今日全市场波段分析结果</div>
+  </div>
+
+  <!-- Stock list (scrollable) -->
+  <div class="stock-list">
+
+    <!-- Group: Short-term -->
+    <div class="group-header">
+      <span class="group-name">短线波段</span>
+      <span class="group-count">8只</span>
+    </div>
+
+    <!-- Item 1 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-high">8</span>
+          <span class="band-low-tag">波段低位</span>
+          <span class="stock-name">中国平安</span>
+        </div>
+        <div class="stock-sub">601318.SH &nbsp; 保险</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥45.20</div>
+        <div class="stock-change change-up">+2.35%</div>
+      </div>
+    </div>
+
+    <!-- Item 2 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-high">9</span>
+          <span class="band-low-tag">波段低位</span>
+          <span class="stock-name">贵州茅台</span>
+        </div>
+        <div class="stock-sub">600519.SH &nbsp; 白酒</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥1,688.00</div>
+        <div class="stock-change change-up">+0.86%</div>
+      </div>
+    </div>
+
+    <!-- Item 3 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-mid">6</span>
+          <span class="stock-name">比亚迪</span>
+        </div>
+        <div class="stock-sub">002594.SZ &nbsp; 汽车</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥268.50</div>
+        <div class="stock-change change-down">-0.45%</div>
+      </div>
+    </div>
+
+    <!-- Item 4 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-low">3</span>
+          <span class="stock-name">宁德时代</span>
+        </div>
+        <div class="stock-sub">300750.SZ &nbsp; 电池</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥198.50</div>
+        <div class="stock-change change-down">-1.82%</div>
+      </div>
+    </div>
+
+    <!-- Item 5 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-high">10</span>
+          <span class="band-low-tag">波段低位</span>
+          <span class="stock-name">招商银行</span>
+        </div>
+        <div class="stock-sub">600036.SH &nbsp; 银行</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥35.80</div>
+        <div class="stock-change change-up">+1.12%</div>
+      </div>
+    </div>
+
+    <!-- Item 6 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-mid">7</span>
+          <span class="stock-name">中国中免</span>
+        </div>
+        <div class="stock-sub">601888.SH &nbsp; 旅游</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥82.30</div>
+        <div class="stock-change change-up">+3.15%</div>
+      </div>
+    </div>
+
+    <!-- Item 7 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-mid">5</span>
+          <span class="stock-name">海康威视</span>
+        </div>
+        <div class="stock-sub">002415.SZ &nbsp; 安防</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥32.60</div>
+        <div class="stock-change change-flat">0.00%</div>
+      </div>
+    </div>
+
+    <!-- Item 8 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-low">2</span>
+          <span class="stock-name">隆基绿能</span>
+        </div>
+        <div class="stock-sub">601012.SH &nbsp; 光伏</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥18.90</div>
+        <div class="stock-change change-down">-3.56%</div>
+      </div>
+    </div>
+
+    <!-- Group: Mid-term -->
+    <div class="group-header">
+      <span class="group-name">中线波段</span>
+      <span class="group-count">5只</span>
+    </div>
+
+    <!-- Item 9 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-high">8</span>
+          <span class="stock-name">药明康德</span>
+        </div>
+        <div class="stock-sub">603259.SH &nbsp; 医药</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥52.40</div>
+        <div class="stock-change change-up">+1.95%</div>
+      </div>
+    </div>
+
+    <!-- Item 10 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-mid">7</span>
+          <span class="band-low-tag">波段低位</span>
+          <span class="stock-name">韦尔股份</span>
+        </div>
+        <div class="stock-sub">603501.SH &nbsp; 半导体</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥98.70</div>
+        <div class="stock-change change-down">-0.61%</div>
+      </div>
+    </div>
+
+    <!-- Item 11 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-mid">6</span>
+          <span class="stock-name">三一重工</span>
+        </div>
+        <div class="stock-sub">600031.SH &nbsp; 机械</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥16.85</div>
+        <div class="stock-change change-up">+0.48%</div>
+      </div>
+    </div>
+
+    <!-- Item 12 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-high">9</span>
+          <span class="band-low-tag">波段低位</span>
+          <span class="stock-name">紫金矿业</span>
+        </div>
+        <div class="stock-sub">601899.SH &nbsp; 有色金属</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥15.20</div>
+        <div class="stock-change change-up">+2.70%</div>
+      </div>
+    </div>
+
+    <!-- Item 13 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-mid">5</span>
+          <span class="stock-name">万华化学</span>
+        </div>
+        <div class="stock-sub">600309.SH &nbsp; 化工</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥86.10</div>
+        <div class="stock-change change-down">-0.35%</div>
+      </div>
+    </div>
+
+    <div class="disclaimer">以上分析仅供参考，不构成任何投资建议</div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <a class="tab-item active" href="#">
+      <span class="tab-icon">&#9733;</span>
+      <span>推荐</span>
+    </a>
+    <a class="tab-item" href="../watchlist/desktop.html">
+      <span class="tab-icon">&#9829;</span>
+      <span>关注</span>
+    </a>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>股势 TrendStock - 关注列表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    background: #F0F1F3; color: #1A1A1A;
+    display: flex; justify-content: center; align-items: flex-start;
+    min-height: 100vh; padding: 20px;
+  }
+  .phone {
+    width: 375px; height: 812px; background: #FFFFFF;
+    border-radius: 40px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 8px #1A1A1A, 0 0 0 10px #333, 0 20px 60px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+  }
+
+  /* Status bar */
+  .status-bar {
+    height: 44px; padding: 12px 24px 0; display: flex;
+    justify-content: space-between; align-items: center;
+    background: #FFFFFF; flex-shrink: 0;
+  }
+  .status-time { font-size: 15px; font-weight: 600; }
+  .status-icons { display: flex; gap: 4px; font-size: 12px; align-items: center; }
+
+  /* Page header */
+  .page-header {
+    padding: 4px 16px 12px; flex-shrink: 0;
+  }
+  .page-title { font-size: 20px; font-weight: 600; color: #1A1A1A; }
+
+  /* Search bar */
+  .search-bar {
+    display: flex; align-items: center; height: 40px;
+    padding: 0 12px; margin: 0 16px 8px;
+    border: 1px solid #E0E0E0; border-radius: 8px; background: #fff;
+    flex-shrink: 0;
+  }
+  .search-bar.focused { border-color: #1A6AFF; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .search-icon { color: #BDBDBD; margin-right: 8px; font-size: 14px; }
+  .search-placeholder { font-size: 14px; color: #BDBDBD; flex: 1; }
+
+  /* Search results overlay */
+  .search-results {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: #FFFFFF; z-index: 10; display: flex; flex-direction: column;
+    border-radius: 40px; overflow: hidden;
+  }
+  .search-results-header {
+    padding: 52px 16px 0; flex-shrink: 0;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .search-results-bar {
+    flex: 1; display: flex; align-items: center; height: 40px;
+    padding: 0 12px; border: 1px solid #1A6AFF; border-radius: 8px;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .search-results-input {
+    border: none; outline: none; flex: 1; font-size: 14px; color: #1A1A1A;
+    font-family: inherit; background: transparent;
+  }
+  .search-cancel { font-size: 14px; color: #1A6AFF; cursor: pointer; flex-shrink: 0; padding: 8px 0; }
+  .search-result-list { flex: 1; overflow-y: auto; }
+  .search-result-item {
+    display: flex; align-items: center; padding: 12px 16px;
+    border-bottom: 1px solid #EEEEEE;
+  }
+  .search-result-info { flex: 1; }
+  .search-result-name { font-size: 15px; font-weight: 500; color: #1A1A1A; }
+  .search-result-code { font-size: 11px; color: #8C8C8C; margin-top: 2px; }
+  .add-btn {
+    padding: 6px 12px; background: #1A6AFF; color: #fff;
+    border: none; border-radius: 6px; font-size: 13px;
+    font-family: inherit; cursor: pointer; flex-shrink: 0;
+  }
+  .add-btn:active { background: #1554D6; }
+  .add-btn.added {
+    background: #EEEEEE; color: #8C8C8C; cursor: default;
+  }
+  .no-results {
+    text-align: center; padding: 60px 16px; color: #8C8C8C;
+  }
+  .no-results-text { font-size: 14px; }
+
+  /* Stock list */
+  .stock-list { flex: 1; overflow-y: auto; }
+  .stock-item {
+    display: flex; align-items: center; padding: 12px 16px;
+    border-bottom: 1px solid #EEEEEE; background: #FFFFFF;
+    cursor: pointer; position: relative;
+  }
+  .stock-item:active { background: #F7F8FA; }
+  .stock-left { flex: 1; min-width: 0; }
+  .stock-top { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+  .stock-name { font-size: 15px; font-weight: 500; color: #1A1A1A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stock-code { font-size: 11px; color: #8C8C8C; }
+  .stock-sub { font-size: 11px; color: #6B6B6B; margin-top: 2px; }
+  .stock-expect { font-size: 11px; color: #8C8C8C; margin-top: 2px; }
+  .stock-right { text-align: right; flex-shrink: 0; margin-left: 12px; }
+  .stock-price {
+    font-size: 16px; font-weight: 600; color: #1A1A1A;
+    font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+  }
+  .stock-change {
+    font-size: 13px; font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+    font-weight: 600; margin-top: 1px;
+  }
+  .change-up { color: #E6432D; }
+  .change-down { color: #1DB954; }
+  .change-flat { color: #8C8C8C; }
+
+  /* Score badge */
+  .score-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 20px; border-radius: 4px; font-size: 12px;
+    font-weight: 700; font-family: 'DIN Alternate', 'SF Mono', 'Roboto Mono', monospace;
+    color: #fff; flex-shrink: 0;
+  }
+  .score-high { background: #E6432D; }
+  .score-mid { background: #D4A017; }
+  .score-low { background: #1DB954; }
+
+  /* Pin icon */
+  .pin-icon { color: #1A6AFF; font-size: 13px; flex-shrink: 0; }
+  /* Alert icon */
+  .alert-icon { color: #E6432D; font-size: 13px; flex-shrink: 0; }
+
+  /* Swipe hint */
+  .swipe-actions {
+    position: absolute; top: 0; bottom: 0; display: flex;
+    align-items: center; font-size: 14px; color: #fff;
+    font-weight: 500; padding: 0 16px;
+  }
+  .swipe-delete { right: 0; background: #E6432D; border-radius: 0 0 0 0; }
+  .swipe-pin { left: 0; background: #1A6AFF; }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex; border-top: 1px solid #EEEEEE; background: #FFFFFF;
+    height: 48px; flex-shrink: 0; padding-bottom: 20px;
+  }
+  .tab-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; font-size: 10px; color: #8C8C8C; gap: 2px;
+    cursor: pointer; text-decoration: none;
+  }
+  .tab-item.active { color: #1A6AFF; }
+  .tab-icon { font-size: 20px; }
+
+  /* Disclaimer */
+  .disclaimer {
+    text-align: center; padding: 12px 16px;
+    font-size: 11px; color: #BDBDBD; flex-shrink: 0;
+  }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 48px;
+  }
+  .empty-icon { font-size: 48px; color: #BDBDBD; margin-bottom: 16px; }
+  .empty-title { font-size: 15px; color: #333; font-weight: 500; margin-bottom: 4px; }
+  .empty-subtitle { font-size: 13px; color: #8C8C8C; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <span class="status-icons">
+      <span>&#9679;&#9679;&#9679;&#9679;</span>
+      <span style="font-size:14px;">&#9211;</span>
+    </span>
+  </div>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <span class="page-title">关注</span>
+  </div>
+
+  <!-- Search bar -->
+  <div class="search-bar" id="searchBar">
+    <span class="search-icon">&#128269;</span>
+    <span class="search-placeholder">搜索股票代码或名称</span>
+  </div>
+
+  <!-- Stock list -->
+  <div class="stock-list">
+
+    <!-- Pinned item 1 (with expect range) -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="pin-icon">&#128204;</span>
+          <span class="score-badge score-high">8</span>
+          <span class="stock-name">中国平安</span>
+        </div>
+        <div class="stock-sub">601318.SH</div>
+        <div class="stock-expect">预期波动 ¥43.5 - 46.8</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥45.20</div>
+        <div class="stock-change change-up">+2.35%</div>
+      </div>
+    </div>
+
+    <!-- Pinned item 2 (with alert) -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="pin-icon">&#128204;</span>
+          <span class="alert-icon">&#128276;</span>
+          <span class="score-badge score-low">3</span>
+          <span class="stock-name">宁德时代</span>
+        </div>
+        <div class="stock-sub">300750.SZ</div>
+        <div class="stock-expect">预期波动 ¥193.2 - 203.5</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥198.50</div>
+        <div class="stock-change change-down">-1.82%</div>
+      </div>
+    </div>
+
+    <!-- Normal item 3 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="alert-icon">&#128276;</span>
+          <span class="score-badge score-mid">6</span>
+          <span class="stock-name">比亚迪</span>
+        </div>
+        <div class="stock-sub">002594.SZ</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥268.50</div>
+        <div class="stock-change change-down">-0.45%</div>
+      </div>
+    </div>
+
+    <!-- Normal item 4 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-high">9</span>
+          <span class="stock-name">招商银行</span>
+        </div>
+        <div class="stock-sub">600036.SH</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥35.80</div>
+        <div class="stock-change change-up">+1.12%</div>
+      </div>
+    </div>
+
+    <!-- Normal item 5 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-mid">7</span>
+          <span class="stock-name">贵州茅台</span>
+        </div>
+        <div class="stock-sub">600519.SH</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥1,688.00</div>
+        <div class="stock-change change-up">+0.86%</div>
+      </div>
+    </div>
+
+    <!-- Normal item 6 -->
+    <div class="stock-item">
+      <div class="stock-left">
+        <div class="stock-top">
+          <span class="score-badge score-low">2</span>
+          <span class="stock-name">隆基绿能</span>
+        </div>
+        <div class="stock-sub">601012.SH</div>
+      </div>
+      <div class="stock-right">
+        <div class="stock-price">¥18.90</div>
+        <div class="stock-change change-down">-3.56%</div>
+      </div>
+    </div>
+
+    <div class="disclaimer">以上分析仅供参考，不构成任何投资建议</div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <a class="tab-item" href="../recommend/desktop.html">
+      <span class="tab-icon">&#9733;</span>
+      <span>推荐</span>
+    </a>
+    <a class="tab-item active" href="#">
+      <span class="tab-icon">&#9829;</span>
+      <span>关注</span>
+    </a>
+  </div>
+</div>
+
+<!-- Search results overlay (hidden by default, shown on search tap) -->
+<div class="phone" id="searchOverlay" style="display:none;">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <span class="status-icons">
+      <span>&#9679;&#9679;&#9679;&#9679;</span>
+      <span style="font-size:14px;">&#9211;</span>
+    </span>
+  </div>
+
+  <div class="search-results">
+    <!-- Search header -->
+    <div class="search-results-header">
+      <div class="search-results-bar">
+        <span class="search-icon" style="color:#1A6AFF;">&#128269;</span>
+        <input type="text" class="search-results-input" value="平安" placeholder="搜索股票代码或名称">
+      </div>
+      <span class="search-cancel">取消</span>
+    </div>
+
+    <!-- Results -->
+    <div class="search-result-list">
+      <div class="search-result-item">
+        <div class="search-result-info">
+          <div class="search-result-name">中国平安</div>
+          <div class="search-result-code">601318.SH &nbsp; 保险</div>
+        </div>
+        <button class="add-btn added">已关注</button>
+      </div>
+
+      <div class="search-result-item">
+        <div class="search-result-info">
+          <div class="search-result-name">平安银行</div>
+          <div class="search-result-code">000001.SZ &nbsp; 银行</div>
+        </div>
+        <button class="add-btn">添加关注</button>
+      </div>
+
+      <div class="search-result-item">
+        <div class="search-result-info">
+          <div class="search-result-name">平安好医生</div>
+          <div class="search-result-code">01833.HK &nbsp; 医疗</div>
+        </div>
+        <button class="add-btn">添加关注</button>
+      </div>
+
+      <div class="search-result-item">
+        <div class="search-result-info">
+          <div class="search-result-name">平安产险</div>
+          <div class="search-result-code">02318.HK &nbsp; 保险</div>
+        </div>
+        <button class="add-btn">添加关注</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Empty state overlay (hidden) -->
+<div class="phone" id="emptyOverlay" style="display:none;">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <span class="status-icons">
+      <span>&#9679;&#9679;&#9679;&#9679;</span>
+      <span style="font-size:14px;">&#9211;</span>
+    </span>
+  </div>
+
+  <div class="page-header">
+    <span class="page-title">关注</span>
+  </div>
+
+  <div class="search-bar">
+    <span class="search-icon">&#128269;</span>
+    <span class="search-placeholder">搜索股票代码或名称</span>
+  </div>
+
+  <div class="empty-state">
+    <div class="empty-icon">&#128270;</div>
+    <div class="empty-title">暂无关注的股票</div>
+    <div class="empty-subtitle">搜索添加你感兴趣的股票</div>
+  </div>
+
+  <div class="tab-bar">
+    <a class="tab-item" href="../recommend/desktop.html">
+      <span class="tab-icon">&#9733;</span>
+      <span>推荐</span>
+    </a>
+    <a class="tab-item active" href="#">
+      <span class="tab-icon">&#9829;</span>
+      <span>关注</span>
+    </a>
+  </div>
+</div>
+
+<script>
+// Toggle overlays on click
+const searchBar = document.getElementById('searchBar');
+const searchOverlay = document.getElementById('searchOverlay');
+const emptyOverlay = document.getElementById('emptyOverlay');
+
+searchBar.addEventListener('click', () => {
+  searchOverlay.style.display = searchOverlay.style.display === 'none' ? 'flex' : 'none';
+});
+searchOverlay.style.cursor = 'pointer';
+searchOverlay.addEventListener('click', (e) => {
+  if (e.target.classList.contains('search-cancel')) {
+    searchOverlay.style.display = 'none';
+  }
+});
+</script>
+
+</body>
+</html>
