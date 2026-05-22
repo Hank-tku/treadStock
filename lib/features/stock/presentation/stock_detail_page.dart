@@ -12,6 +12,7 @@ import '../../../shared/widgets/toast_helper.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../stock/domain/stock_models.dart';
 import '../../analysis/domain/analysis_models.dart';
+import '../../strategy/domain/strategy_scoring_service.dart';
 import '../../../shared/providers.dart';
 import '../../watchlist/presentation/watchlist_provider.dart';
 
@@ -21,12 +22,16 @@ class StockDetailPage extends ConsumerStatefulWidget {
   final String code;
   final String name;
   final String market;
+  final String? strategyId;
+  final String? strategyName;
 
   const StockDetailPage({
     super.key,
     required this.code,
     required this.name,
     required this.market,
+    this.strategyId,
+    this.strategyName,
   });
 
   @override
@@ -43,6 +48,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   bool _alertEnabled = false;
   double? _ma20;
   double? _ma60;
+  StrategyScoreResult? _strategyScore;
 
   @override
   void initState() {
@@ -54,8 +60,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
     });
   }
 
-  void _initAlertState() {
+  Future<void> _initAlertState() async {
     final watchlistService = ref.read(watchlistServiceProvider);
+    await watchlistService.init();
     final item = watchlistService.findByCode(widget.code);
     if (item != null && mounted) {
       setState(() => _alertEnabled = item.alertEnabled);
@@ -65,6 +72,8 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   Future<void> _loadData() async {
     final apiService = ref.read(stockApiServiceProvider);
     final engine = ref.read(analysisEngineProvider);
+    final strategyService = ref.read(strategyServiceProvider);
+    final scoringService = ref.read(strategyScoringServiceProvider);
 
     try {
       // Fetch kline data
@@ -74,8 +83,42 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       );
       if (klines.isNotEmpty) {
         setState(() => _klines = klines);
-        final score = engine.calculateScore(klines);
+        await strategyService.init();
+        final strategies = strategyService.getEnabledStrategies();
+        final selectedStrategy = widget.strategyId == null
+            ? null
+            : strategies
+                  .where((strategy) => strategy.id == widget.strategyId)
+                  .firstOrNull;
+        final lastKline = klines.last;
+        final quote = StockQuote(
+          code: widget.code,
+          name: widget.name,
+          market: widget.market,
+          price: lastKline.close,
+          changePct: lastKline.changePct,
+          changeAmt: lastKline.close - lastKline.preClose,
+          openPrice: lastKline.open,
+          highPrice: lastKline.high,
+          lowPrice: lastKline.low,
+          preClose: lastKline.preClose,
+          volume: lastKline.volume,
+          turnover: 0,
+        );
+        final strategyScore = selectedStrategy != null
+            ? scoringService.scoreStock(
+                quote: quote,
+                klines: klines,
+                strategy: selectedStrategy,
+              )
+            : scoringService.bestScore(
+                quote: quote,
+                klines: klines,
+                strategies: strategies,
+              );
+        final score = strategyScore?.score ?? engine.calculateScore(klines);
         setState(() => _score = score);
+        setState(() => _strategyScore = strategyScore);
 
         final closes = klines.map((k) => k.close).toList();
         final ma20List = engine.calculateMA(closes, 20);
@@ -134,12 +177,18 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             _buildHeader(),
 
             // Price section
-            _isLoading ? const DetailSectionSkeleton(height: 120) : _buildPriceSection(),
+            _isLoading
+                ? const DetailSectionSkeleton(height: 120)
+                : _buildPriceSection(),
 
             // Score + indicators section
             _isLoading
                 ? const DetailSectionSkeleton(height: 80)
                 : _buildScoreSection(),
+
+            _isLoading
+                ? const SizedBox.shrink()
+                : _buildStrategyScoreSection(),
 
             // Company info section
             _isLoading
@@ -190,28 +239,25 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 // Alert toggle switch
                 Switch(
                   value: _alertEnabled,
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     setState(() => _alertEnabled = value);
 
                     // Persist alert toggle to watchlist service.
                     final watchlistService = ref.read(watchlistServiceProvider);
+                    await watchlistService.init();
                     final item = watchlistService.findByCode(widget.code);
                     if (item != null) {
-                      watchlistService.toggleAlert(item.id, value);
+                      await watchlistService.toggleAlert(item.id, value);
                       // Also update provider state so other screens see the change.
                       ref.read(watchlistProvider.notifier).reload();
                     }
 
+                    if (!mounted) return;
+
                     if (value) {
-                      ToastHelper.showSuccess(
-                        context,
-                        '已开启${widget.name}下跌预警',
-                      );
+                      ToastHelper.showSuccess(context, '已开启${widget.name}下跌预警');
                     } else {
-                      ToastHelper.showSuccess(
-                        context,
-                        '已关闭${widget.name}下跌预警',
-                      );
+                      ToastHelper.showSuccess(context, '已关闭${widget.name}下跌预警');
                     }
                   },
                 ),
@@ -220,7 +266,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             const SizedBox(height: 4),
             // Stock name + code
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.pagePadding,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -366,6 +414,53 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
     );
   }
 
+  Widget _buildStrategyScoreSection() {
+    final strategyScore = _strategyScore;
+    final routeStrategyName = widget.strategyName;
+    if (strategyScore == null && routeStrategyName == null) {
+      return const SizedBox.shrink();
+    }
+
+    final strategyName = strategyScore?.strategyName ?? routeStrategyName ?? '--';
+    final score = strategyScore?.score.score ?? _score?.score;
+    final reason = strategyScore?.displayReason ?? _score?.reason ?? '数据不足，暂无策略评分';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        12,
+        AppTheme.pagePadding,
+        0,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: StockColors.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
+        children: [
+          ScoreBadge(score: score),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('当前策略：$strategyName', style: AppTextStyles.h3),
+                const SizedBox(height: 3),
+                Text(
+                  '该标的评分：${score?.toString() ?? '--'} · $reason',
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCompanyInfoSection() {
     return Container(
       margin: const EdgeInsets.all(AppTheme.pagePadding),
@@ -392,7 +487,12 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(label, style: AppTextStyles.body.copyWith(color: StockColors.textSecondary)),
+          Text(
+            label,
+            style: AppTextStyles.body.copyWith(
+              color: StockColors.textSecondary,
+            ),
+          ),
           const Spacer(),
           Text(value, style: AppTextStyles.body),
         ],
@@ -429,7 +529,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           else
             Text(
               '数据不足，暂无摘要',
-              style: AppTextStyles.body.copyWith(color: StockColors.textTertiary),
+              style: AppTextStyles.body.copyWith(
+                color: StockColors.textTertiary,
+              ),
             ),
         ],
       ),
@@ -501,7 +603,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
 
   Widget _buildNewsItem(StockNews news) {
     return InkWell(
-      onTap: news.sourceUrl.isNotEmpty ? () => _launchUrl(news.sourceUrl) : null,
+      onTap: news.sourceUrl.isNotEmpty
+          ? () => _launchUrl(news.sourceUrl)
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.pagePadding,
@@ -512,9 +616,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           children: [
             Text(
               news.title,
-              style: AppTextStyles.bodyLg.copyWith(
-                fontWeight: FontWeight.w400,
-              ),
+              style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.w400),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),

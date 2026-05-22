@@ -321,3 +321,74 @@ All colors in widgets reference `StockColors.*` constants. No hardcoded hex valu
 | P2 | F-S09 | BuildContext async gap warnings | 30min |
 | P3 | F-S10 | CacheBanner text color mismatch | 5min |
 | P3 | F-S11 | iOS Info.plist landscape orientation | 5min |
+
+---
+
+## v1 Review Issue Re-verification (2026-05-18)
+
+Re-verification of the 7 open issues from the v1 code review (F-S01, F-S02, F-S04, F-S05, F-S07, F-S08, F-S09).
+
+| Issue | Severity | Status | Summary |
+|-------|----------|--------|---------|
+| F-S01 | HIGH | ✅ 已修复 | AndroidManifest 已添加 `usesCleartextTraffic="false"` |
+| F-S02 | HIGH | ✅ 已修复 | 首次启动风险声明弹窗已实现，SharedPreferences 持久化已接入 |
+| F-S04 | HIGH | ✅ 已修复 | DailyKline.preClose 已改为从前一日 close 计算，错误公式已移除 |
+| F-S05 | MEDIUM | ✅ 已修复 | 自定义 JSON 解析器已替换为 `dart:convert` 的 `json.decode()` |
+| F-S07 | MEDIUM | ✅ 已修复 | watchlistProvider 已改为 `ref.read()` 获取服务依赖 |
+| F-S08 | MEDIUM | ✅ 已修复 | Alert 开关已持久化到 WatchlistService 并触发 provider reload |
+| F-S09 | MEDIUM | ✅ 已修复 | 所有 async gap 后使用 `mounted` 检查 + `this.context` 模式 |
+
+### 详细验证依据
+
+#### F-S01: AndroidManifest `usesCleartextTraffic`
+- **状态**: ✅ 已修复
+- **依据**: `android/app/src/main/AndroidManifest.xml` 第 6 行 `<application>` 标签已包含 `android:usesCleartextTraffic="false"`
+
+#### F-S02: 首次启动风险声明弹窗
+- **状态**: ✅ 已修复
+- **依据**:
+  - `lib/main.dart` 第 17-18 行：启动时从 SharedPreferences 读取 `risk_disclaimer_accepted` 标志
+  - `lib/main.dart` 第 28-109 行：`RiskDisclaimerDialog` 组件已实现，包含投资风险提示文本和"我已阅读并了解"按钮
+  - `lib/app.dart` 第 172-212 行：`_DisclaimerWrapper` 在 `disclaimerAccepted=false` 时通过 `showDialog` 弹出免责声明，设置 `barrierDismissible: false` 和 `PopScope(canPop: false)` 防止绕过
+  - 用户点击确认后写入 `SharedPreferences.setBool('risk_disclaimer_accepted', true)`，并使用 `context.mounted` 检查
+
+#### F-S04: DailyKline.preClose 错误公式
+- **状态**: ✅ 已修复
+- **依据**:
+  - `lib/features/stock/domain/stock_models.dart` 第 100-102 行：`preClose` 已从计算 getter 改为 `final double` 字段，默认值 0
+  - 第 133-150 行：`parseKlines()` 静态方法在解析完成后遍历 klines，将 `klines[i].preClose` 设为 `klines[i-1].close`（前一日收盘价）
+  - 原有的错误启发式公式 `open * (1 - (close - open) / (open + close) * 0.5)` 已完全移除
+
+#### F-S05: 自定义 JSON 解析器
+- **状态**: ✅ 已修复
+- **依据**:
+  - `lib/features/stock/data/stock_api_service.dart` 第 1 行：已导入 `dart:convert`
+  - 第 198-214 行：`fetchStockNews()` 中 JSONP 解析改为使用标准 `json.decode(jsonPart)` + `json.decode(body)` fallback
+  - 原有约 110 行的 `_SimpleJsonParser` / `_JsonDecoder` 类已完全移除
+  - 所有其他 JSON 解析通过 Dio 自动反序列化 + model `fromJson` 工厂方法处理
+
+#### F-S07: ref.watch 应改为 ref.read
+- **状态**: ✅ 已修复
+- **依据**:
+  - `lib/features/watchlist/presentation/watchlist_provider.dart` 第 165-167 行：`watchlistProvider` 的 `StateNotifierProvider` 工厂中对 `watchlistServiceProvider`、`stockApiServiceProvider`、`analysisEngineProvider` 均已改为 `ref.read()`
+  - `lib/shared/providers.dart` 第 28、37 行中 `ref.watch(appDatabaseProvider)` 保留不变，这是在普通 `Provider` 工厂中使用，属于正确用法（确保依赖追踪和 dispose 链）
+
+#### F-S08: Alert 开关未持久化
+- **状态**: ✅ 已修复
+- **依据**:
+  - `lib/features/stock/presentation/stock_detail_page.dart` 第 51-63 行：`_initAlertState()` 在 `initState` 后从 `WatchlistService.findByCode()` 读取持久化的 alert 状态
+  - 第 193-215 行：Switch 的 `onChanged` 回调中：
+    - 第 197 行：`ref.read(watchlistServiceProvider)` 获取服务
+    - 第 200 行：调用 `watchlistService.toggleAlert(item.id, value)` 持久化到数据库
+    - 第 202 行：调用 `ref.read(watchlistProvider.notifier).reload()` 刷新 provider 状态
+  - 原有的仅 `setState(() => _alertEnabled = value)` 已扩展为完整持久化流程
+
+#### F-S09: BuildContext 异步间隙
+- **状态**: ✅ 已修复
+- **依据**:
+  - `lib/features/watchlist/presentation/watchlist_tab.dart` 所有 async gap 后的 BuildContext 使用已修正：
+    - 第 241 行：`if (!mounted) return;` + 第 244、248 行使用 `this.context`（State 的 context）
+    - 第 340 行：`if (!mounted) return;` + 第 342 行使用 `this.context`
+    - 第 362 行：`if (!mounted) return;` + 第 364 行使用 `this.context`
+  - 原有问题：使用 build 方法参数中的 `context` 局部变量，在 async gap 后可能失效。现改为 `mounted` 检查 + `this.context`（State.context），这是 Dart 推荐的安全模式
+  - `lib/features/stock/presentation/stock_detail_page.dart` 中的 Switch onChanged 回调内 context 使用无 async gap（toggleAlert 未被 await），不构成风险

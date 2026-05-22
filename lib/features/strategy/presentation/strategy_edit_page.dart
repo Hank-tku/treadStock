@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -11,8 +12,9 @@ import 'strategy_provider.dart';
 /// Strategy create/edit form page.
 class StrategyEditPage extends ConsumerStatefulWidget {
   final String? strategyId; // null = create new
+  final StrategySuggestion? suggestion; // optional suggestion to prefill
 
-  const StrategyEditPage({super.key, this.strategyId});
+  const StrategyEditPage({super.key, this.strategyId, this.suggestion});
 
   @override
   ConsumerState<StrategyEditPage> createState() => _StrategyEditPageState();
@@ -20,6 +22,7 @@ class StrategyEditPage extends ConsumerStatefulWidget {
 
 class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
   late StrategyFormData _form;
+  final TextEditingController _jsonImportController = TextEditingController();
   bool _isSaving = false;
   bool _isEdit = false;
   String? _selectedTemplateId;
@@ -39,6 +42,42 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
           : StrategyFormData();
     } else {
       _form = StrategyFormData();
+    }
+
+    // Apply suggestion if provided
+    _applySuggestion(widget.suggestion);
+  }
+
+  @override
+  void dispose() {
+    _jsonImportController.dispose();
+    super.dispose();
+  }
+
+  /// Apply a suggestion's parameter override to the form.
+  void _applySuggestion(StrategySuggestion? suggestion) {
+    if (suggestion == null || suggestion.parameterKey == null) return;
+    final key = suggestion.parameterKey!;
+    final value = suggestion.suggestedValue;
+    switch (key) {
+      case 'maShortPeriod':
+        if (value is int) _form.maShortPeriod = value;
+      case 'maLongPeriod':
+        if (value is int) _form.maLongPeriod = value;
+      case 'bollPeriod':
+        if (value is int) _form.bollPeriod = value;
+      case 'bollStdDev':
+        if (value is double) _form.bollStdDev = value;
+      case 'weightMA':
+        if (value is double) _form.weightMA = value;
+      case 'weightBoll':
+        if (value is double) _form.weightBoll = value;
+      case 'weightVol':
+        if (value is double) _form.weightVol = value;
+      case 'weightTrend':
+        if (value is double) _form.weightTrend = value;
+      case 'recommendThreshold':
+        if (value is int) _form.recommendThreshold = value;
     }
   }
 
@@ -79,6 +118,8 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         padding: const EdgeInsets.all(AppTheme.pagePadding),
         children: [
           if (!_isEdit) ...[
+            _buildAiAssistSection(),
+            const SizedBox(height: 24),
             _buildApiTemplateSection(),
             const SizedBox(height: 24),
           ],
@@ -203,6 +244,52 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
     );
   }
 
+  Widget _buildAiAssistSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSection('AI 生成辅助'),
+        Text(
+          '复制规则到任意大模型生成策略 JSON，再粘贴回来导入。App 不会调用模型或上传数据。',
+          style: AppTextStyles.caption.copyWith(
+            color: StockColors.textTertiary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _copyGenerationRules,
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('复制生成规则'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _importJsonStrategy,
+                icon: const Icon(Icons.input, size: 18),
+                label: const Text('粘贴导入'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _jsonImportController,
+          minLines: 3,
+          maxLines: 6,
+          decoration: const InputDecoration(
+            hintText: '粘贴外部大模型生成的策略 JSON',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.all(12),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTemplateCard(ApiStrategyTemplate template) {
     final isSelected = _selectedTemplateId == template.id;
     return Container(
@@ -292,6 +379,31 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
       _selectedTemplateId = template.id;
     });
     ToastHelper.showSuccess(context, '已生成${template.name}策略草稿');
+  }
+
+  Future<void> _copyGenerationRules() async {
+    await Clipboard.setData(
+      const ClipboardData(text: StrategyImportHelper.generationPrompt),
+    );
+    if (!mounted) return;
+    ToastHelper.showSuccess(context, '已复制生成规则');
+  }
+
+  void _importJsonStrategy() {
+    try {
+      final imported = StrategyImportHelper.fromJsonText(
+        _jsonImportController.text.trim(),
+      );
+      setState(() {
+        _form = imported;
+        _selectedTemplateId = null;
+      });
+      ToastHelper.showSuccess(context, '已导入策略草稿，请确认后保存');
+    } on FormatException catch (e) {
+      ToastHelper.showError(context, e.message);
+    } catch (_) {
+      ToastHelper.showError(context, 'JSON 格式不正确');
+    }
   }
 
   Widget _buildTextField({

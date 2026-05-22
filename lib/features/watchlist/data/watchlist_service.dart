@@ -6,13 +6,15 @@ import '../../strategy/data/database.dart';
 /// Local watchlist management service backed by Drift (SQLite).
 class WatchlistService {
   final AppDatabase _db;
+  final bool seedDefaults;
   final _uuid = const Uuid();
   Future<void>? _initFuture;
 
   /// Cache for domain watchlist items (includes real-time data not persisted).
   final List<WatchlistItem> _cache = [];
 
-  WatchlistService({AppDatabase? db}) : _db = db ?? AppDatabase();
+  WatchlistService({AppDatabase? db, this.seedDefaults = true})
+    : _db = db ?? AppDatabase();
 
   /// Initialize: load all items from DB into cache.
   Future<void> init() async {
@@ -21,8 +23,39 @@ class WatchlistService {
 
   Future<void> _init() async {
     final rows = await _db.select(_db.watchlistItems).get();
+    if (rows.isEmpty && seedDefaults) {
+      await _ensureDefaultWatchlist();
+    }
+    final refreshedRows = await _db.select(_db.watchlistItems).get();
     _cache.clear();
-    _cache.addAll(rows.map(_rowToDomain));
+    _cache.addAll(refreshedRows.map(_rowToDomain));
+  }
+
+  Future<void> _ensureDefaultWatchlist() async {
+    final now = DateTime.now();
+    final seeds = [
+      (code: '601318', name: '中国平安', market: 'SH', pinned: true, order: 3),
+      (code: '000001', name: '平安银行', market: 'SZ', pinned: true, order: 2),
+      (code: '600519', name: '贵州茅台', market: 'SH', pinned: false, order: 0),
+    ];
+
+    for (final seed in seeds) {
+      await _db
+          .into(_db.watchlistItems)
+          .insert(
+            WatchlistItemsCompanion.insert(
+              id: _uuid.v4(),
+              stockCode: seed.code,
+              stockName: seed.name,
+              market: Value(seed.market),
+              isPinned: Value(seed.pinned),
+              sortOrder: Value(seed.order),
+              alertEnabled: const Value(true),
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+    }
   }
 
   /// Returns sorted watchlist items from cache.

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 // Domain models for the strategy management feature.
 
 /// A trading strategy with configurable analysis parameters.
@@ -236,6 +238,51 @@ class StrategyReview {
   });
 }
 
+/// Metadata describing which period was used to generate a review.
+class ReviewPeriodInfo {
+  final DateTime requestedStart;
+  final DateTime requestedEnd;
+  final DateTime dataStart;
+  final DateTime dataEnd;
+  final int evaluatedCount;
+  final String sourceNote;
+
+  const ReviewPeriodInfo({
+    required this.requestedStart,
+    required this.requestedEnd,
+    required this.dataStart,
+    required this.dataEnd,
+    required this.evaluatedCount,
+    required this.sourceNote,
+  });
+
+  bool get usedFallback =>
+      dataStart.year != requestedStart.year ||
+      dataStart.month != requestedStart.month ||
+      dataStart.day != requestedStart.day ||
+      dataEnd.year != requestedEnd.year ||
+      dataEnd.month != requestedEnd.month ||
+      dataEnd.day != requestedEnd.day;
+
+  String get requestedLabel =>
+      '${_formatDate(requestedStart)} 至 ${_formatDate(requestedEnd)}';
+
+  String get dataLabel => '${_formatDate(dataStart)} 至 ${_formatDate(dataEnd)}';
+
+  static String _formatDate(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class ReviewChecklistResult {
+  final List<ChecklistItem> items;
+  final ReviewPeriodInfo period;
+
+  const ReviewChecklistResult({required this.items, required this.period});
+}
+
 /// A single item in the review checklist.
 class ChecklistItem {
   final String title;
@@ -364,6 +411,102 @@ class ApiStrategyTemplates {
       ),
     ),
   ];
+}
+
+/// Helpers for copying external-AI instructions and importing generated JSON.
+class StrategyImportHelper {
+  StrategyImportHelper._();
+
+  static const generationPrompt = '''
+你是股势 TrendStock 的策略配置助手。请根据用户的自然语言想法，生成一个严格 JSON 对象，不要输出 Markdown。
+
+当前 App 是纯客户端，不接大模型、不接后端。可用数据只有：
+- 实时行情：最新价、涨跌幅、成交量、换手率、开盘价、最高价、最低价、昨收价
+- 日 K 线：open、close、high、low、volume、amount、changePct
+- 技术指标：MA 短期/长期、布林带、成交量评分、趋势评分
+
+JSON schema：
+{
+  "name": "1-20 字符策略名",
+  "description": "最多 100 字符策略说明",
+  "maShortPeriod": 5-60 的整数,
+  "maLongPeriod": 20-120 的整数,
+  "bollPeriod": 10-40 的整数,
+  "bollStdDev": 1.0-3.0 的数字,
+  "weightMA": 0.0-1.0,
+  "weightBoll": 0.0-1.0,
+  "weightVol": 0.0-1.0,
+  "weightTrend": 0.0-1.0,
+  "recommendThreshold": 1-10 的整数,
+  "notes": "可选，说明映射依据，不参与评分"
+}
+
+约束：
+- 四个权重之和必须等于 1.0。
+- 不要输出买入、卖出、保证收益等投资建议。
+- 如果用户提到行业/概念，例如芯片股，只能写入 name、description 或 notes；当前版本不支持真实行业筛选。
+- 如果用户提到排行前十，只能在 notes 中说明“按观察分排序取前十”，不作为策略参数。
+
+示例用户想法：“三十天低谷，排行前十的芯片股”
+推荐映射：偏低位修复，可提高布林带权重，适度降低 MA 长期周期；芯片股作为描述关键词保留。
+''';
+
+  static StrategyFormData fromJsonText(String text) {
+    final decoded = jsonDecode(text);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('策略 JSON 必须是对象');
+    }
+    return fromJson(decoded);
+  }
+
+  static StrategyFormData fromJson(Map<String, dynamic> json) {
+    final form = StrategyFormData(
+      name: _string(json, 'name'),
+      description: _string(json, 'description', required: false),
+      maShortPeriod: _int(json, 'maShortPeriod'),
+      maLongPeriod: _int(json, 'maLongPeriod'),
+      bollPeriod: _int(json, 'bollPeriod'),
+      bollStdDev: _double(json, 'bollStdDev'),
+      weightMA: _double(json, 'weightMA'),
+      weightBoll: _double(json, 'weightBoll'),
+      weightVol: _double(json, 'weightVol'),
+      weightTrend: _double(json, 'weightTrend'),
+      recommendThreshold: _int(json, 'recommendThreshold'),
+    );
+
+    final error = form.validate();
+    if (error != null) {
+      throw FormatException(error);
+    }
+    return form;
+  }
+
+  static String _string(
+    Map<String, dynamic> json,
+    String key, {
+    bool required = true,
+  }) {
+    final value = json[key];
+    if (value == null) {
+      if (!required) return '';
+      throw FormatException('缺少字段 $key');
+    }
+    if (value is! String) throw FormatException('字段 $key 必须是文本');
+    return value.trim();
+  }
+
+  static int _int(Map<String, dynamic> json, String key) {
+    final value = json[key];
+    if (value is int) return value;
+    if (value is num) return value.round();
+    throw FormatException('字段 $key 必须是数字');
+  }
+
+  static double _double(Map<String, dynamic> json, String key) {
+    final value = json[key];
+    if (value is num) return value.toDouble();
+    throw FormatException('字段 $key 必须是数字');
+  }
 }
 
 /// Strategy form data for create/edit operations.

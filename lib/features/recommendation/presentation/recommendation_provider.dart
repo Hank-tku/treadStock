@@ -51,13 +51,13 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
   final AnalysisEngine _analysisEngine;
 
   RecommendationNotifier(this._apiService, this._analysisEngine)
-      : super(const RecommendationState());
+    : super(const RecommendationState());
 
   Future<void> loadRecommendations() async {
     state = state.copyWith(isLoading: true, hasError: false);
     try {
-      // Fetch all market quotes
-      final quotes = await _apiService.fetchAllMarketQuotes();
+      // Fetch only the candidate pool needed for recommendation scoring.
+      final quotes = await _apiService.fetchRecommendationCandidates();
       if (quotes.isEmpty) {
         state = state.copyWith(
           isLoading: false,
@@ -77,8 +77,9 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
       );
 
       // Sort by score descending
-      scoredStocks.sort((a, b) =>
-          (b.score?.score ?? 0).compareTo(a.score?.score ?? 0));
+      scoredStocks.sort(
+        (a, b) => (b.score?.score ?? 0).compareTo(a.score?.score ?? 0),
+      );
 
       final shortTerm = scoredStocks
           .where((r) => r.category == 'short_term')
@@ -116,9 +117,7 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
         i,
         (i + concurrency).clamp(0, stocks.length),
       );
-      final batchResults = await Future.wait(
-        batch.map((q) => _scoreOne(q)),
-      );
+      final batchResults = await Future.wait(batch.map((q) => _scoreOne(q)));
       for (final r in batchResults) {
         if (r != null) results.add(r);
       }
@@ -163,7 +162,7 @@ class RecommendationNotifier extends StateNotifier<RecommendationState> {
 /// Provider for recommendation state.
 final recommendationProvider =
     StateNotifierProvider<RecommendationNotifier, RecommendationState>((ref) {
-  final apiService = ref.read(stockApiServiceProvider);
-  final analysisEngine = ref.read(analysisEngineProvider);
-  return RecommendationNotifier(apiService, analysisEngine);
-});
+      final apiService = ref.read(stockApiServiceProvider);
+      final analysisEngine = ref.read(analysisEngineProvider);
+      return RecommendationNotifier(apiService, analysisEngine);
+    });

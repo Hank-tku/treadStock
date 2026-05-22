@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:isolate';
+import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/strategy_models.dart';
@@ -27,13 +29,38 @@ class StrategyService {
   }
 
   /// Reload all strategies from DB into cache with stats.
+  /// Uses batch DB fetch + single Isolate call to avoid blocking UI.
   Future<void> reloadCache() async {
     final rows = await _db.select(_db.strategies).get();
-    final strategies = <Strategy>[];
-    for (final row in rows) {
-      final stats = await _computeStats(row.id);
-      strategies.add(_rowToDomain(row, stats: stats));
+    if (rows.isEmpty) {
+      _cache = [];
+      return;
     }
+
+    // Batch fetch all hit records in one query (main thread)
+    final allHitRecords = await _db.select(_db.strategyHitRecords).get();
+    final now = DateTime.now();
+
+    // Prepare serializable input for each strategy
+    final inputs = <List<dynamic>>[];
+    for (final row in rows) {
+      final records =
+          allHitRecords.where((r) => r.strategyId == row.id).toList();
+      inputs.add([
+        records.map((r) => r.actualChange5d).toList(),
+        records.map((r) => r.isHit).toList(),
+        records.length,
+        now.difference(row.createdAt).inDays,
+      ]);
+    }
+
+    // Compute all stats in a single Isolate call (off main thread)
+    final allStats = await _runBatchStatsInIsolate(inputs);
+
+    final strategies = List<Strategy>.generate(rows.length, (i) {
+      return _rowToDomain(rows[i], stats: allStats[i]);
+    });
+
     // Sort: enabled first, then by hit rate descending
     strategies.sort((a, b) {
       if (a.isEnabled != b.isEnabled) return a.isEnabled ? -1 : 1;
@@ -155,6 +182,16 @@ class StrategyService {
     final now = DateTime.now();
 
     for (final rec in recommendations) {
+      final existing =
+          await (_db.select(_db.strategyHitRecords)..where(
+                (t) =>
+                    t.strategyId.equals(strategyId) &
+                    t.stockCode.equals(rec.code) &
+                    t.recommendDate.equals(today),
+              ))
+              .getSingleOrNull();
+      if (existing != null) continue;
+
       final id = _uuid.v4();
       await _db
           .into(_db.strategyHitRecords)
@@ -266,6 +303,17 @@ class StrategyService {
 
   /// Compute statistics for a strategy from hit records.
   Future<StrategyStats> _computeStats(String strategyId) async {
+    final allRecords = await (_db.select(
+      _db.strategyHitRecords,
+    )..where((t) => t.strategyId.equals(strategyId))).get();
+
+    return _computeStatsForRows(strategyId, allRecords);
+  }
+
+  Future<StrategyStats> _computeStatsForRows(
+    String strategyId,
+    List<StrategyHitRecordRow> records,
+  ) async {
     final strategy = await (_db.select(
       _db.strategies,
     )..where((t) => t.id.equals(strategyId))).getSingleOrNull();
@@ -273,55 +321,95 @@ class StrategyService {
       return const StrategyStats();
     }
 
-    final allRecords = await (_db.select(
-      _db.strategyHitRecords,
-    )..where((t) => t.strategyId.equals(strategyId))).get();
+    // Prepare serializable data on main thread, then compute in Isolate
+    final actualChanges = records.map((r) => r.actualChange5d).toList();
+    final isHitFlags = records.map((r) => r.isHit).toList();
+    final totalRecords = records.length;
+    final tradingDaysRun =
+        DateTime.now().difference(strategy.createdAt).inDays;
 
-    final evaluated = allRecords
-        .where((r) => r.actualChange5d != null)
-        .toList();
-    final hitCount = evaluated.where((r) => r.isHit == true).length;
+    return Isolate.run(
+      () => computeStatsPure(actualChanges, isHitFlags, totalRecords, tradingDaysRun),
+    );
+  }
 
-    double? maxGain;
-    double? maxLoss;
-    double avgChange = 0.0;
-    double healthScore = 0.0;
+  Future<_ReviewRecordSelection> _selectReviewRecords(
+    String strategyId, {
+    DateTime? now,
+  }) async {
+    final end = now ?? DateTime.now();
+    final requestedStart = end.subtract(const Duration(days: 30));
+    final evaluatedRows =
+        await (_db.select(_db.strategyHitRecords)..where(
+              (t) => t.strategyId.equals(strategyId) & t.isHit.isNotNull(),
+            ))
+            .get();
 
-    if (evaluated.isNotEmpty) {
-      final changes = evaluated.map((r) => r.actualChange5d!).toList();
-      maxGain = changes.reduce((a, b) => a > b ? a : b);
-      maxLoss = changes.reduce((a, b) => a < b ? a : b);
-      avgChange = changes.reduce((a, b) => a + b) / changes.length;
+    final currentRows = evaluatedRows.where((row) {
+      final date = DateTime.tryParse(row.recommendDate);
+      return date != null &&
+          !date.isBefore(requestedStart) &&
+          !date.isAfter(end);
+    }).toList();
 
-      final hitRate = hitCount / evaluated.length;
-
-      // Health score = hit_rate_score*0.5 + avg_change_score*0.3 + stability_score*0.2
-      final hitRateScore = (hitRate * 10).clamp(0.0, 10.0);
-      final avgChangeScore = ((avgChange + 10) / 2).clamp(0.0, 10.0);
-      // Stability: lower standard deviation = higher score
-      final mean = avgChange;
-      final variance =
-          changes.map((c) => (c - mean) * (c - mean)).reduce((a, b) => a + b) /
-          changes.length;
-      final stdDev = _sqrt(variance);
-      final stabilityScore = (10 - stdDev).clamp(0.0, 10.0);
-
-      healthScore =
-          hitRateScore * 0.5 + avgChangeScore * 0.3 + stabilityScore * 0.2;
+    if (currentRows.isNotEmpty) {
+      return _ReviewRecordSelection(
+        records: currentRows,
+        period: ReviewPeriodInfo(
+          requestedStart: requestedStart,
+          requestedEnd: end,
+          dataStart: requestedStart,
+          dataEnd: end,
+          evaluatedCount: currentRows.length,
+          sourceNote: '使用近30日已回填记录',
+        ),
+      );
     }
 
-    final tradingDaysRun = DateTime.now().difference(strategy.createdAt).inDays;
+    final datedRows =
+        evaluatedRows
+            .map(
+              (row) => (row: row, date: DateTime.tryParse(row.recommendDate)),
+            )
+            .where((item) => item.date != null)
+            .toList()
+          ..sort((a, b) => b.date!.compareTo(a.date!));
 
-    return StrategyStats(
-      hitRate: evaluated.isEmpty ? 0.0 : hitCount / evaluated.length,
-      maxGain: maxGain,
-      maxLoss: maxLoss,
-      avgChange: avgChange,
-      totalRecommendations: allRecords.length,
-      hitCount: hitCount,
-      evaluatedCount: evaluated.length,
-      healthScore: healthScore,
-      tradingDaysRun: tradingDaysRun,
+    if (datedRows.isEmpty) {
+      return _ReviewRecordSelection(
+        records: const [],
+        period: ReviewPeriodInfo(
+          requestedStart: requestedStart,
+          requestedEnd: end,
+          dataStart: requestedStart,
+          dataEnd: end,
+          evaluatedCount: 0,
+          sourceNote: '近30日暂无已回填记录',
+        ),
+      );
+    }
+
+    final fallbackEnd = datedRows.first.date!;
+    final fallbackStart = fallbackEnd.subtract(const Duration(days: 30));
+    final fallbackRows = datedRows
+        .where(
+          (item) =>
+              !item.date!.isBefore(fallbackStart) &&
+              !item.date!.isAfter(fallbackEnd),
+        )
+        .map((item) => item.row)
+        .toList();
+
+    return _ReviewRecordSelection(
+      records: fallbackRows,
+      period: ReviewPeriodInfo(
+        requestedStart: requestedStart,
+        requestedEnd: end,
+        dataStart: fallbackStart,
+        dataEnd: fallbackEnd,
+        evaluatedCount: fallbackRows.length,
+        sourceNote: '近30日无已回填记录，改用上一可用周期',
+      ),
     );
   }
 
@@ -341,37 +429,27 @@ class StrategyService {
     final now = DateTime.now();
     final id = _uuid.v4();
 
-    // Compute 30-day metrics
-    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
-    final recentRecords =
-        await (_db.select(_db.strategyHitRecords)..where(
-              (t) => t.strategyId.equals(strategyId) & t.isHit.isNotNull(),
-            ))
-            .get();
+    final reviewData = await _selectReviewRecords(strategyId, now: now);
+    final reviewRecords = reviewData.records;
 
-    final last30Records = recentRecords.where((r) {
-      final recDate = DateTime.tryParse(r.recommendDate);
-      return recDate != null && recDate.isAfter(thirtyDaysAgo);
-    }).toList();
-
-    final hitRate30d = last30Records.isEmpty
+    final hitRate30d = reviewRecords.isEmpty
         ? 0.0
-        : last30Records.where((r) => r.isHit == true).length /
-              last30Records.length;
-    final avgChange30d = last30Records.isEmpty
+        : reviewRecords.where((r) => r.isHit == true).length /
+              reviewRecords.length;
+    final avgChange30d = reviewRecords.isEmpty
         ? 0.0
-        : last30Records
+        : reviewRecords
                   .map((r) => r.actualChange5d ?? 0.0)
                   .reduce((a, b) => a + b) /
-              last30Records.length;
-    final maxLoss30d = last30Records.isEmpty
+              reviewRecords.length;
+    final maxLoss30d = reviewRecords.isEmpty
         ? null
-        : last30Records
+        : reviewRecords
               .map((r) => r.actualChange5d ?? 0.0)
               .reduce((a, b) => a < b ? a : b);
 
     // Determine hit rate trend (compare first half vs second half)
-    final sorted = List.of(last30Records)
+    final sorted = List.of(reviewRecords)
       ..sort((a, b) => a.recommendDate.compareTo(b.recommendDate));
     String hitRateTrend = 'flat';
     if (sorted.length >= 10) {
@@ -389,12 +467,12 @@ class StrategyService {
     }
 
     // Average daily count
-    final uniqueDates = last30Records
+    final uniqueDates = reviewRecords
         .map((r) => r.recommendDate)
         .toSet()
         .length;
     final avgDailyCount30d = uniqueDates > 0
-        ? (last30Records.length / uniqueDates).round()
+        ? (reviewRecords.length / uniqueDates).round()
         : 0;
 
     // Health score
@@ -471,7 +549,16 @@ class StrategyService {
 
   /// Generate a checklist for strategy review based on recent data.
   Future<List<ChecklistItem>> generateChecklist(String strategyId) async {
-    final stats = await _computeStats(strategyId);
+    final result = await generateChecklistResult(strategyId);
+    return result.items;
+  }
+
+  /// Generate a checklist and the exact period used for the review.
+  Future<ReviewChecklistResult> generateChecklistResult(
+    String strategyId,
+  ) async {
+    final reviewData = await _selectReviewRecords(strategyId);
+    final stats = await _computeStatsForRows(strategyId, reviewData.records);
     final items = <ChecklistItem>[];
 
     // 1. Hit rate > 50%?
@@ -483,8 +570,8 @@ class StrategyService {
             ? CheckResult.warning
             : (hitRatePct > 50 ? CheckResult.pass : CheckResult.fail),
         detail: stats.evaluatedCount == 0
-            ? '无评估数据'
-            : '命中率 ${hitRatePct.toStringAsFixed(1)}%',
+            ? '${reviewData.period.sourceNote}，无评估数据'
+            : '命中率 ${hitRatePct.toStringAsFixed(1)}%，样本 ${stats.evaluatedCount} 条',
       ),
     );
 
@@ -496,7 +583,7 @@ class StrategyService {
             ? CheckResult.warning
             : (stats.avgChange > 0 ? CheckResult.pass : CheckResult.fail),
         detail: stats.evaluatedCount == 0
-            ? '无评估数据'
+            ? '${reviewData.period.sourceNote}，无评估数据'
             : '平均差 ${stats.avgChangeDisplay}',
       ),
     );
@@ -509,7 +596,7 @@ class StrategyService {
             ? CheckResult.warning
             : (stats.maxLoss! > -10 ? CheckResult.pass : CheckResult.fail),
         detail: stats.maxLoss == null
-            ? '无评估数据'
+            ? '${reviewData.period.sourceNote}，无评估数据'
             : '极限跌幅 ${stats.maxLoss!.toStringAsFixed(1)}%',
       ),
     );
@@ -541,7 +628,7 @@ class StrategyService {
       ),
     );
 
-    return items;
+    return ReviewChecklistResult(items: items, period: reviewData.period);
   }
 
   /// Generate iteration suggestions based on strategy stats.
@@ -684,15 +771,94 @@ class StrategyService {
     );
   }
 
-  /// Simple square root via Newton's method to avoid dart:math import.
-  static double _sqrt(double value) {
-    if (value <= 0) return 0.0;
-    double x = value;
-    double y = (x + 1) / 2;
-    while (y < x) {
-      x = y;
-      y = (x + value / x) / 2;
-    }
-    return x;
+  // ── Isolate Helpers ──────────────────────────────────────────
+
+  /// Run batch stats computation in a background Isolate.
+  Future<List<StrategyStats>> _runBatchStatsInIsolate(
+    List<List<dynamic>> inputs,
+  ) async {
+    return await Isolate.run(() => computeAllStatsPure(inputs));
   }
+
+}
+
+class _ReviewRecordSelection {
+  final List<StrategyHitRecordRow> records;
+  final ReviewPeriodInfo period;
+
+  const _ReviewRecordSelection({required this.records, required this.period});
+}
+
+// ── Isolate Entry Points (top-level for Isolate.run) ─────────────
+
+/// Pure stats computation for a single strategy.
+/// No DB/HTTP access — only serializable input → StrategyStats output.
+StrategyStats computeStatsPure(
+  List<double?> actualChanges,
+  List<bool?> isHitFlags,
+  int totalRecords,
+  int tradingDaysRun,
+) {
+  final evaluatedChanges = <double>[];
+  int hitCount = 0;
+  for (int i = 0; i < actualChanges.length; i++) {
+    final change = actualChanges[i];
+    if (change != null) {
+      evaluatedChanges.add(change);
+      if (isHitFlags[i] == true) hitCount++;
+    }
+  }
+
+  double? maxGain;
+  double? maxLoss;
+  double avgChange = 0.0;
+  double healthScore = 0.0;
+
+  if (evaluatedChanges.isNotEmpty) {
+    maxGain = evaluatedChanges.reduce((a, b) => a > b ? a : b);
+    maxLoss = evaluatedChanges.reduce((a, b) => a < b ? a : b);
+    avgChange =
+        evaluatedChanges.reduce((a, b) => a + b) / evaluatedChanges.length;
+
+    final hitRate = hitCount / evaluatedChanges.length;
+
+    // Health score = hit_rate_score*0.5 + avg_change_score*0.3 + stability_score*0.2
+    final hitRateScore = (hitRate * 10).clamp(0.0, 10.0);
+    final avgChangeScore = ((avgChange + 10) / 2).clamp(0.0, 10.0);
+    // Stability: lower standard deviation = higher score
+    final mean = avgChange;
+    final variance = evaluatedChanges
+            .map((c) => (c - mean) * (c - mean))
+            .reduce((a, b) => a + b) /
+        evaluatedChanges.length;
+    final stdDev = sqrt(variance);
+    final stabilityScore = (10 - stdDev).clamp(0.0, 10.0);
+
+    healthScore =
+        hitRateScore * 0.5 + avgChangeScore * 0.3 + stabilityScore * 0.2;
+  }
+
+  return StrategyStats(
+    hitRate: evaluatedChanges.isEmpty ? 0.0 : hitCount / evaluatedChanges.length,
+    maxGain: maxGain,
+    maxLoss: maxLoss,
+    avgChange: avgChange,
+    totalRecommendations: totalRecords,
+    hitCount: hitCount,
+    evaluatedCount: evaluatedChanges.length,
+    healthScore: healthScore,
+    tradingDaysRun: tradingDaysRun,
+  );
+}
+
+/// Pure batch stats computation for multiple strategies.
+/// Input: list of [actualChanges, isHitFlags, totalRecords, tradingDaysRun].
+List<StrategyStats> computeAllStatsPure(List<List<dynamic>> inputs) {
+  return inputs.map((input) {
+    final actualChanges = (input[0] as List).cast<double?>();
+    final isHitFlags = (input[1] as List).cast<bool?>();
+    final totalRecords = input[2] as int;
+    final tradingDaysRun = input[3] as int;
+    return computeStatsPure(actualChanges, isHitFlags, totalRecords, tradingDaysRun);
+  }).toList();
 }

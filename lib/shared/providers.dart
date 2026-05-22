@@ -3,6 +3,7 @@ import '../features/stock/data/stock_api_service.dart';
 import '../features/analysis/domain/analysis_engine.dart';
 import '../features/strategy/data/database.dart';
 import '../features/strategy/data/strategy_service.dart';
+import '../features/strategy/domain/strategy_scoring_service.dart';
 import '../features/watchlist/data/watchlist_service.dart';
 
 /// Provider for the stock API service (singleton).
@@ -38,6 +39,12 @@ final strategyServiceProvider = Provider<StrategyService>((ref) {
   final service = StrategyService(db: db);
   service.init();
   return service;
+});
+
+/// Provider for reusable strategy scoring across recommendation/watchlist.
+final strategyScoringServiceProvider = Provider<StrategyScoringService>((ref) {
+  final analysisEngine = ref.watch(analysisEngineProvider);
+  return StrategyScoringService(analysisEngine);
 });
 
 /// Connectivity state provider.

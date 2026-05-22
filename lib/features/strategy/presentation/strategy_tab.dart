@@ -65,9 +65,15 @@ class _StrategyTabState extends ConsumerState<StrategyTab> {
         AppTheme.pagePadding,
         8,
       ),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Text('策略', style: AppTextStyles.h1),
+      child: Row(
+        children: [
+          const Expanded(child: Text('策略', style: AppTextStyles.h1)),
+          TextButton.icon(
+            onPressed: () => context.push('/strategy/knowledge'),
+            icon: const Icon(Icons.school_outlined, size: 18),
+            label: const Text('关于策略'),
+          ),
+        ],
       ),
     );
   }

@@ -18,7 +18,7 @@ void main() {
 
   setUp(() async {
     db = createTestDb();
-    service = WatchlistService(db: db);
+    service = WatchlistService(db: db, seedDefaults: false);
     await service.init();
   });
 
@@ -284,10 +284,23 @@ void main() {
       await service.addToWatchlist('000001', '平安银行', 'SZ');
 
       // 创建新 service 实例共享同一个 DB
-      final service2 = WatchlistService(db: db);
+      final service2 = WatchlistService(db: db, seedDefaults: false);
       await service2.init();
 
       expect(service2.getWatchlist(), hasLength(2));
+    });
+  });
+
+  group('default seeds', () {
+    test('fresh app init seeds a non-empty starter watchlist', () async {
+      final seededService = WatchlistService(db: db);
+      await seededService.init();
+
+      final list = seededService.getWatchlist();
+      expect(list, isNotEmpty);
+      expect(list.map((item) => item.stockCode), contains('601318'));
+      expect(list.map((item) => item.stockCode), contains('000001'));
+      expect(list.first.isPinned, isTrue);
     });
   });
 }

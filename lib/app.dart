@@ -9,6 +9,8 @@ import 'features/stock/presentation/stock_detail_page.dart';
 import 'features/strategy/presentation/strategy_tab.dart';
 import 'features/strategy/presentation/strategy_detail_page.dart';
 import 'features/strategy/presentation/strategy_edit_page.dart';
+import 'features/strategy/presentation/strategy_knowledge_page.dart';
+import 'features/strategy/domain/strategy_models.dart';
 import 'main.dart' show RiskDisclaimerDialog;
 
 /// Root router configuration.
@@ -31,8 +33,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/recommend',
-                builder: (context, state) =>
-                    const RecommendationTab(),
+                builder: (context, state) => const RecommendationTab(),
               ),
             ],
           ),
@@ -63,6 +64,8 @@ class AppRouter {
             code: state.pathParameters['code'] ?? '',
             name: extra?['name'] as String? ?? '',
             market: extra?['market'] as String? ?? 'SH',
+            strategyId: extra?['strategyId'] as String?,
+            strategyName: extra?['strategyName'] as String?,
           );
         },
       ),
@@ -81,11 +84,18 @@ class AppRouter {
         builder: (context, state) => const StrategyEditPage(),
       ),
       GoRoute(
+        path: '/strategy/knowledge',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const StrategyKnowledgePage(),
+      ),
+      GoRoute(
         path: '/strategy/:id/edit',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
           return StrategyEditPage(
             strategyId: state.pathParameters['id'],
+            suggestion: extra?['suggestion'] as StrategySuggestion?,
           );
         },
       ),
@@ -132,10 +142,7 @@ class _MainScaffold extends StatelessWidget {
 class StockPilotApp extends ConsumerStatefulWidget {
   final bool disclaimerAccepted;
 
-  const StockPilotApp({
-    super.key,
-    required this.disclaimerAccepted,
-  });
+  const StockPilotApp({super.key, required this.disclaimerAccepted});
 
   @override
   ConsumerState<StockPilotApp> createState() => _StockPilotAppState();
@@ -154,10 +161,7 @@ class _StockPilotAppState extends ConsumerState<StockPilotApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('zh', 'CN'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
       locale: const Locale('zh', 'CN'),
       builder: (context, child) {
         return _DisclaimerWrapper(

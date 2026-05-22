@@ -18,6 +18,9 @@ class StockListItem extends StatelessWidget {
   final bool isPinned;
   final bool isAlertTriggered;
   final String? expectedRange;
+  final String? strategyName;
+  final String? scoreReason;
+  final String? riskText;
   final VoidCallback? onTap;
 
   const StockListItem({
@@ -32,6 +35,9 @@ class StockListItem extends StatelessWidget {
     this.isPinned = false,
     this.isAlertTriggered = false,
     this.expectedRange,
+    this.strategyName,
+    this.scoreReason,
+    this.riskText,
     this.onTap,
   });
 
@@ -74,8 +80,10 @@ class StockListItem extends StatelessWidget {
                         padding: const EdgeInsets.only(right: 6),
                         child: ScoreBadge(score: score),
                       )
-                    : const SizedBox(width: 34, height: 20), // placeholder alignment
-
+                    : const SizedBox(
+                        width: 34,
+                        height: 20,
+                      ), // placeholder alignment
                 // Band low tag
                 if (isBandLow)
                   Padding(
@@ -144,14 +152,58 @@ class StockListItem extends StatelessWidget {
                   price > 0
                       ? '$changePrefix${changePct.toStringAsFixed(2)}%'
                       : '--',
-                  style: AppTextStyles.number.copyWith(
-                    color: priceColor,
-                  ),
+                  style: AppTextStyles.number.copyWith(color: priceColor),
                 ),
               ],
             ),
+            if (strategyName != null ||
+                scoreReason != null ||
+                riskText != null) ...[
+              const SizedBox(height: 6),
+              _StrategySummaryLine(
+                strategyName: strategyName,
+                scoreReason: scoreReason,
+                riskText: riskText,
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StrategySummaryLine extends StatelessWidget {
+  final String? strategyName;
+  final String? scoreReason;
+  final String? riskText;
+
+  const _StrategySummaryLine({
+    this.strategyName,
+    this.scoreReason,
+    this.riskText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = [
+      ?strategyName == null ? null : '策略 $strategyName',
+      ?scoreReason,
+      ?riskText,
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: StockColors.bgSecondary,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        parts.join(' · '),
+        style: AppTextStyles.caption.copyWith(color: StockColors.textSecondary),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

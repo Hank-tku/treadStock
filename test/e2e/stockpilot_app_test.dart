@@ -3,6 +3,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 import 'package:drift/native.dart';
 import 'package:stockpilot/app.dart';
 import 'package:stockpilot/features/strategy/data/database.dart';
@@ -13,6 +14,28 @@ import 'package:stockpilot/shared/providers.dart';
 class FakeStockApiService extends StockApiService {
   @override
   Future<List<StockQuote>> fetchAllMarketQuotes() async => [];
+
+  @override
+  Future<List<StockQuote>> fetchRecommendationCandidates({
+    int limit = 50,
+  }) async => [];
+
+  @override
+  Future<List<StockSearchResult>> searchStock(String keyword) async {
+    if (keyword.contains('双环') || keyword.contains('002472')) {
+      return [
+        const StockSearchResult(code: '002472', name: '双环传动', market: 'SZ'),
+      ];
+    }
+    return [];
+  }
+
+  @override
+  Future<List<DailyKline>> fetchStockKline(
+    String code, {
+    String market = 'SH',
+    int days = 120,
+  }) async => [];
 }
 
 List<Override> testOverrides() {
@@ -37,7 +60,7 @@ void main() {
           child: const StockPilotApp(disclaimerAccepted: true),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 3));
 
       // Bottom nav 应该有 2 个 tab（每个 tab 有 active + inactive 两个 Text widget）
       expect(find.text('推荐'), findsWidgets);
@@ -53,7 +76,7 @@ void main() {
           child: const StockPilotApp(disclaimerAccepted: true),
         ),
       );
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      await tester.pump(const Duration(seconds: 3));
 
       // App should render without crash - bottom nav tabs present
       expect(find.text('推荐'), findsWidgets);
@@ -69,11 +92,11 @@ void main() {
           child: const StockPilotApp(disclaimerAccepted: true),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 3));
 
       // Tap watchlist tab
       await tester.tap(find.text('关注').first);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
 
       // Should still render without crash
       expect(find.text('关注'), findsWidgets);
@@ -88,15 +111,48 @@ void main() {
           child: const StockPilotApp(disclaimerAccepted: true),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 3));
 
       // Navigate to watchlist
       await tester.tap(find.text('关注').first);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
 
       // Empty watchlist should show guidance (empty state or add button)
       // Verify the tab is displayed at minimum
       expect(find.text('关注'), findsWidgets);
+    });
+
+    testWidgets('T-F002-8: Search result add button updates watchlist', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: testOverrides(),
+          child: const StockPilotApp(disclaimerAccepted: true),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 3));
+
+      await tester.tap(find.text('关注').first);
+      await tester.pump(const Duration(seconds: 2));
+
+      await tester.enterText(find.byType(TextField), '双环传动');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(find.text('双环传动'), findsWidgets);
+      expect(find.text('选择'), findsOneWidget);
+
+      await tester.tap(find.text('选择'));
+      await tester.pump();
+      expect(find.text('关注所选'), findsOneWidget);
+
+      await tester.tap(find.text('关注所选'));
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(find.text('双环传动'), findsOneWidget);
+      expect(find.textContaining('002472'), findsWidgets);
+      expect(find.text('暂无关注的股票'), findsNothing);
     });
   });
 }

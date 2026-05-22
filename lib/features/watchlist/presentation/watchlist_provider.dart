@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../stock/domain/stock_models.dart';
 import '../../analysis/domain/analysis_engine.dart';
 import '../../analysis/domain/analysis_models.dart';
 import '../../stock/data/stock_api_service.dart';
+import '../../stock/domain/stock_models.dart';
+import '../../strategy/data/strategy_service.dart';
+import '../../strategy/domain/strategy_scoring_service.dart';
 import '../../watchlist/data/watchlist_service.dart';
 import '../../../shared/providers.dart';
 
@@ -15,6 +17,7 @@ class WatchlistState {
   final String? addingCode;
   final bool hasSearchError;
   final String? searchError;
+  final Map<String, StrategyScoreResult> bestStrategies;
 
   const WatchlistState({
     this.items = const [],
@@ -24,6 +27,7 @@ class WatchlistState {
     this.addingCode,
     this.hasSearchError = false,
     this.searchError,
+    this.bestStrategies = const {},
   });
 
   bool get isEmpty => items.isEmpty;
@@ -36,6 +40,7 @@ class WatchlistState {
     String? addingCode,
     bool? hasSearchError,
     String? searchError,
+    Map<String, StrategyScoreResult>? bestStrategies,
   }) {
     return WatchlistState(
       items: items ?? this.items,
@@ -45,6 +50,7 @@ class WatchlistState {
       addingCode: addingCode,
       hasSearchError: hasSearchError ?? this.hasSearchError,
       searchError: searchError,
+      bestStrategies: bestStrategies ?? this.bestStrategies,
     );
   }
 }
@@ -53,16 +59,29 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
   final WatchlistService _watchlistService;
   final StockApiService _apiService;
   final AnalysisEngine _analysisEngine;
+  final StrategyService _strategyService;
+  final StrategyScoringService _scoringService;
 
   WatchlistNotifier(
     this._watchlistService,
     this._apiService,
     this._analysisEngine,
-  ) : super(WatchlistState(items: _watchlistService.getWatchlist()));
+    this._strategyService,
+    this._scoringService,
+  ) : super(const WatchlistState()) {
+    Future.microtask(initialize);
+  }
+
+  /// Load persisted watchlist items into state.
+  Future<void> initialize() async {
+    await _watchlistService.init();
+    if (!mounted) return;
+    reload();
+  }
 
   /// Reload watchlist from service.
   void reload() {
-    state = WatchlistState(items: _watchlistService.getWatchlist());
+    state = state.copyWith(items: _watchlistService.getWatchlist());
   }
 
   /// Search stocks by keyword.
@@ -79,10 +98,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
     state = state.copyWith(isSearching: true, hasSearchError: false);
     try {
       final results = await _apiService.searchStock(keyword);
-      state = state.copyWith(
-        searchResults: results,
-        isSearching: false,
-      );
+      state = state.copyWith(searchResults: results, isSearching: false);
     } catch (_) {
       state = state.copyWith(
         isSearching: false,
@@ -100,6 +116,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
   ) async {
     state = state.copyWith(isAdding: true, addingCode: stockCode);
     try {
+      await _watchlistService.init();
       await _watchlistService.addToWatchlist(stockCode, stockName, market);
       reload();
       // Fetch initial data for the new stock
@@ -114,18 +131,21 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
 
   /// Remove stock from watchlist.
   Future<void> removeFromWatchlist(String id) async {
+    await _watchlistService.init();
     await _watchlistService.removeFromWatchlist(id);
     reload();
   }
 
   /// Toggle pin status.
   Future<void> togglePin(String id, bool isPinned) async {
+    await _watchlistService.init();
     await _watchlistService.togglePin(id, isPinned);
     reload();
   }
 
   /// Toggle alert status.
   Future<void> toggleAlert(String id, bool enabled) async {
+    await _watchlistService.init();
     await _watchlistService.toggleAlert(id, enabled);
     reload();
   }
@@ -140,10 +160,43 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
     try {
       final klines = await _apiService.fetchStockKline(code, market: market);
       if (klines.isNotEmpty) {
-        final score = _analysisEngine.calculateScore(klines);
         final lastKline = klines.last;
-        _watchlistService.updateQuote(code, lastKline.close, lastKline.changePct);
+        await _strategyService.init();
+        final strategies = _strategyService.getEnabledStrategies();
+        final quote = StockQuote(
+          code: code,
+          name: _watchlistService.findByCode(code)?.stockName ?? code,
+          market: market,
+          price: lastKline.close,
+          changePct: lastKline.changePct,
+          changeAmt: lastKline.close - lastKline.preClose,
+          openPrice: lastKline.open,
+          highPrice: lastKline.high,
+          lowPrice: lastKline.low,
+          preClose: lastKline.preClose,
+          volume: lastKline.volume,
+          turnover: 0,
+        );
+        final bestStrategy = _scoringService.bestScore(
+          quote: quote,
+          klines: klines,
+          strategies: strategies,
+        );
+        final score =
+            bestStrategy?.score ?? _analysisEngine.calculateScore(klines);
+        _watchlistService.updateQuote(
+          code,
+          lastKline.close,
+          lastKline.changePct,
+        );
         _watchlistService.updateScore(code, score);
+        if (bestStrategy != null && mounted) {
+          final updated = Map<String, StrategyScoreResult>.from(
+            state.bestStrategies,
+          );
+          updated[code] = bestStrategy;
+          state = state.copyWith(bestStrategies: updated);
+        }
       }
     } catch (_) {
       // Silent fail for background data fetch
@@ -152,6 +205,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
 
   /// Refresh all watchlist stock data.
   Future<void> refreshAll() async {
+    await _watchlistService.init();
     for (final item in _watchlistService.getWatchlist()) {
       await _fetchStockData(item.stockCode, item.market);
     }
@@ -162,8 +216,16 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
 /// Provider for watchlist state.
 final watchlistProvider =
     StateNotifierProvider<WatchlistNotifier, WatchlistState>((ref) {
-  final watchlistService = ref.read(watchlistServiceProvider);
-  final apiService = ref.read(stockApiServiceProvider);
-  final analysisEngine = ref.read(analysisEngineProvider);
-  return WatchlistNotifier(watchlistService, apiService, analysisEngine);
-});
+      final watchlistService = ref.read(watchlistServiceProvider);
+      final apiService = ref.read(stockApiServiceProvider);
+      final analysisEngine = ref.read(analysisEngineProvider);
+      final strategyService = ref.read(strategyServiceProvider);
+      final scoringService = ref.read(strategyScoringServiceProvider);
+      return WatchlistNotifier(
+        watchlistService,
+        apiService,
+        analysisEngine,
+        strategyService,
+        scoringService,
+      );
+    });

@@ -26,12 +26,16 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounceTimer;
   bool _isSearchFocused = false;
+  String? _selectedSearchCode;
 
   @override
   void initState() {
     super.initState();
     _searchFocusNode.addListener(() {
       setState(() => _isSearchFocused = _searchFocusNode.hasFocus);
+    });
+    Future.microtask(() {
+      ref.read(watchlistProvider.notifier).initialize();
     });
   }
 
@@ -44,25 +48,47 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
   }
 
   void _onSearchChanged(String value) {
+    if (_selectedSearchCode != null) {
+      setState(() => _selectedSearchCode = null);
+    }
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(
-      const Duration(milliseconds: 300),
-      () {
-        ref.read(watchlistProvider.notifier).searchStock(value);
-      },
-    );
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      ref.read(watchlistProvider.notifier).searchStock(value);
+    });
   }
 
   void _clearSearch() {
     _searchController.clear();
+    _selectedSearchCode = null;
     ref.read(watchlistProvider.notifier).searchStock('');
     _searchFocusNode.unfocus();
+  }
+
+  Future<void> _handleAddSearchResult(
+    WatchlistNotifier notifier,
+    String code,
+    String name,
+    String market,
+  ) async {
+    final success = await notifier.addToWatchlist(code, name, market);
+    if (!mounted) return;
+    if (success) {
+      ToastHelper.showSuccess(context, '已添加$name到关注列表');
+      _clearSearch();
+    } else {
+      ToastHelper.showError(context, '添加失败，请重试');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(watchlistProvider);
     final notifier = ref.read(watchlistProvider.notifier);
+    final showSearchPanel =
+        _isSearchFocused ||
+        _searchController.text.isNotEmpty ||
+        state.isSearching ||
+        state.hasSearchError;
 
     return Scaffold(
       backgroundColor: StockColors.bgPrimary,
@@ -85,16 +111,11 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
           // Search bar
           _buildSearchBar(state, notifier),
 
-          // Search results (overlay)
-          if (_isSearchFocused &&
-              (state.searchResults.isNotEmpty ||
-                  state.isSearching ||
-                  state.hasSearchError))
-            _buildSearchResults(state, notifier),
-
           // Watchlist
           Expanded(
-            child: state.isEmpty
+            child: showSearchPanel
+                ? _buildSearchResults(state, notifier)
+                : state.isEmpty
                 ? _buildEmptyState()
                 : _buildWatchList(state, notifier),
           ),
@@ -121,7 +142,13 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
                   width: 1,
                 ),
                 boxShadow: _isSearchFocused
-                    ? [const BoxShadow(color: StockColors.shadow, blurRadius: 2, offset: Offset(0, 1))]
+                    ? [
+                        const BoxShadow(
+                          color: StockColors.shadow,
+                          blurRadius: 2,
+                          offset: Offset(0, 1),
+                        ),
+                      ]
                     : null,
               ),
               child: TextField(
@@ -169,10 +196,9 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
 
   Widget _buildSearchResults(WatchlistState state, WatchlistNotifier notifier) {
     if (state.isSearching) {
-      return Container(
-        height: 200,
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
-        child: const Center(
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
+        child: Center(
           child: CircularProgressIndicator(
             strokeWidth: 2,
             color: StockColors.brand,
@@ -181,9 +207,16 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
       );
     }
 
+    if (_searchController.text.isEmpty && !state.hasSearchError) {
+      return EmptyState(
+        icon: Icons.search,
+        title: '搜索股票',
+        subtitle: '输入股票代码或名称添加关注',
+      );
+    }
+
     if (state.hasSearchError) {
       return Container(
-        height: 200,
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
         alignment: Alignment.center,
         child: Text(
@@ -194,9 +227,8 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
     }
 
     final results = state.searchResults;
-    if (results.isEmpty && _searchController.text.isNotEmpty) {
+    if (results.isEmpty) {
       return Container(
-        height: 200,
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
         alignment: Alignment.center,
         child: const Text(
@@ -206,101 +238,120 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
       );
     }
 
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 400),
-      decoration: const BoxDecoration(
-        color: StockColors.bgPrimary,
-        border: Border(
-          top: BorderSide(color: StockColors.border, width: 1),
-        ),
+    return ListView.separated(
+      itemCount: results.length + 1,
+      separatorBuilder: (context, index) => const Divider(
+        height: 1,
+        color: StockColors.border,
+        indent: AppTheme.pagePadding,
+        endIndent: AppTheme.pagePadding,
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: results.length,
-        separatorBuilder: (context, index) => const Divider(
-          height: 1,
-          color: StockColors.border,
-          indent: AppTheme.pagePadding,
-          endIndent: AppTheme.pagePadding,
-        ),
-        itemBuilder: (context, index) {
-          final result = results[index];
-          final isWatched = notifier.isWatched(result.code);
-          final isAdding =
-              state.isAdding && state.addingCode == result.code;
-
-          return InkWell(
-            onTap: isWatched || isAdding
-                ? null
-                : () async {
-                    final success = await notifier.addToWatchlist(
-                      result.code,
-                      result.name,
-                      result.market,
-                    );
-                    if (!mounted) return;
-                    if (success) {
-                      ToastHelper.showSuccess(
-                        this.context,
-                        '已添加${result.name}到关注列表',
-                      );
-                    } else {
-                      ToastHelper.showError(this.context, '添加失败，请重试');
-                    }
-                  },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.pagePadding,
-                vertical: 10,
-              ),
-              child: Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        result.name,
-                        style: AppTextStyles.bodyLg,
-                      ),
-                      Text(
-                        '${result.code} ${result.market}',
-                        style: AppTextStyles.caption,
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  if (isAdding)
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: StockColors.brand,
-                      ),
-                    )
-                  else if (isWatched)
-                    const Text(
-                      '已关注',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: StockColors.gray400,
-                      ),
-                    )
-                  else
-                    const Text(
-                      '添加关注',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: StockColors.brand,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.pagePadding,
+              4,
+              AppTheme.pagePadding,
+              8,
+            ),
+            child: Text(
+              '选择一只股票后添加关注',
+              style: AppTextStyles.caption.copyWith(
+                color: StockColors.textTertiary,
               ),
             ),
           );
-        },
-      ),
+        }
+
+        final result = results[index - 1];
+        final isWatched = notifier.isWatched(result.code);
+        final isAdding = state.isAdding && state.addingCode == result.code;
+        final isSelected = _selectedSearchCode == result.code;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.pagePadding,
+            vertical: 10,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: isWatched || isAdding
+                      ? null
+                      : () => setState(() => _selectedSearchCode = result.code),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? StockColors.brand.withValues(alpha: 0.08)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          size: 18,
+                          color: isSelected
+                              ? StockColors.brand
+                              : StockColors.gray400,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(result.name, style: AppTextStyles.bodyLg),
+                              Text(
+                                '${result.code} ${result.market}',
+                                style: AppTextStyles.caption,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (isAdding)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: StockColors.brand,
+                  ),
+                )
+              else if (isWatched)
+                const Text(
+                  '已关注',
+                  style: TextStyle(fontSize: 14, color: StockColors.gray400),
+                )
+              else
+                TextButton(
+                  onPressed: isSelected
+                      ? () => _handleAddSearchResult(
+                          notifier,
+                          result.code,
+                          result.name,
+                          result.market,
+                        )
+                      : () => setState(() => _selectedSearchCode = result.code),
+                  child: Text(isSelected ? '关注所选' : '选择'),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -321,14 +372,12 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
         itemBuilder: (context, index) {
           if (index == state.items.length) {
             return const Column(
-              children: [
-                DisclaimerLabel(),
-                SizedBox(height: 64),
-              ],
+              children: [DisclaimerLabel(), SizedBox(height: 64)],
             );
           }
 
           final item = state.items[index];
+          final bestStrategy = state.bestStrategies[item.stockCode];
           return Slidable(
             key: ValueKey(item.id),
             startActionPane: ActionPane(
@@ -381,15 +430,18 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
               isBandLow: item.currentScore?.isBandLow ?? false,
               isPinned: item.isPinned,
               isAlertTriggered: item.isAlertTriggered ?? false,
-              expectedRange: item.isPinned
-                  ? _formatRange(item)
-                  : null,
+              expectedRange: item.isPinned ? _formatRange(item) : null,
+              strategyName: bestStrategy?.strategyName,
+              scoreReason: bestStrategy?.displayReason,
+              riskText: bestStrategy == null ? null : '仅供参考',
               onTap: () => context.push(
                 '/stock/${item.stockCode}',
                 extra: {
                   'code': item.stockCode,
                   'name': item.stockName,
                   'market': item.market,
+                  'strategyId': bestStrategy?.strategyId,
+                  'strategyName': bestStrategy?.strategyName,
                 },
               ),
             ),
