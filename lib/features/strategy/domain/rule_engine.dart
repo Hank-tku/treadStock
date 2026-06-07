@@ -78,6 +78,26 @@ class RuleEngine {
       }
     }
 
+    // Bollinger Bands position
+    final boll = IndicatorCalculator.calculateBollingerBands(closes);
+    if (boll != null) {
+      current['boll_position'] = IndicatorCalculator.calculateBollPosition(
+        closes.last,
+        boll.upper,
+        boll.lower,
+      );
+    }
+
+    // MA alignment
+    current['ma_alignment'] = IndicatorCalculator.calculateMAAlignment(closes);
+
+    // Volume-price divergence
+    current['vol_price_divergence'] =
+        IndicatorCalculator.calculateVolumePriceDivergence(klines);
+
+    // Volume ratio
+    current['vol_ratio'] = IndicatorCalculator.calculateVolumeRatio(klines);
+
     // Evaluate a single rule
     bool evalRule(SignalRule rule) {
       final val = current[rule.indicator];

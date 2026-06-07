@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:stockpilot/features/stock/domain/stock_models.dart';
 
 /// Result container for MACD calculation.
@@ -184,5 +185,135 @@ class IndicatorCalculator {
     }
 
     return KDJResult(kValues: kValues, dValues: dValues, jValues: jValues);
+  }
+
+  /// Calculate Bollinger Band relative position of [price].
+  /// Returns 0.0 when price is at [lower], 1.0 when at [upper].
+  static double calculateBollPosition(double price, double upper, double lower) {
+    if (upper == lower) return 0.5;
+    return ((price - lower) / (upper - lower)).clamp(0.0, 1.0);
+  }
+
+  /// Compute a single Simple Moving Average value for the last [period] items.
+  static double? _sma(List<double> values, int period) {
+    if (values.length < period) return null;
+    var sum = 0.0;
+    for (var i = values.length - period; i < values.length; i++) {
+      sum += values[i];
+    }
+    return sum / period;
+  }
+
+  /// Calculate Bollinger Bands (upper, middle, lower) for the latest data point.
+  /// Returns a record (upper, middle, lower) or null if insufficient data.
+  static ({double upper, double middle, double lower})? calculateBollingerBands(
+    List<double> closes, {
+    int period = 20,
+    double stdDev = 2.0,
+  }) {
+    if (closes.length < period) return null;
+
+    // Calculate SMA for the last `period` closes
+    var sum = 0.0;
+    for (var i = closes.length - period; i < closes.length; i++) {
+      sum += closes[i];
+    }
+    final middle = sum / period;
+
+    var variance = 0.0;
+    for (var i = closes.length - period; i < closes.length; i++) {
+      variance += pow(closes[i] - middle, 2);
+    }
+    final sd = sqrt(variance / period);
+    return (upper: middle + stdDev * sd, middle: middle, lower: middle - stdDev * sd);
+  }
+
+  /// Calculate MA alignment score (0.0–10.0).
+  /// 10.0 = perfect bullish alignment (MA5 > MA10 > MA20 > MA60).
+  /// Each satisfied adjacent pair adds 2.5.
+  /// Returns 5.0 if data is insufficient for any MA.
+  static double calculateMAAlignment(
+    List<double> closes, {
+    List<int> periods = const [5, 10, 20, 60],
+  }) {
+    // Compute the MA for each period
+    final mas = <double>[];
+    for (final p in periods) {
+      final ma = _sma(closes, p);
+      if (ma == null) return 5.0; // insufficient data
+      mas.add(ma);
+    }
+
+    // Check adjacent pairs: mas[0] > mas[1] > mas[2] > mas[3]
+    var score = 0.0;
+    final pairs = periods.length - 1; // 3 pairs
+    final scorePerPair = 10.0 / pairs;
+    for (var i = 0; i < pairs; i++) {
+      if (mas[i] > mas[i + 1]) {
+        score += scorePerPair;
+      }
+    }
+    return score;
+  }
+
+  /// Detect volume-price divergence over [lookback] days.
+  /// Returns 1 if divergence detected, 0 otherwise.
+  /// - Price up + volume down (>=3 days each) = top divergence (顶背离)
+  /// - Price down + volume up (>=3 days each) = bottom divergence (底背离)
+  static double calculateVolumePriceDivergence(
+    List<DailyKline> klines, {
+    int lookback = 5,
+  }) {
+    if (klines.length < lookback + 1) return 0;
+
+    final recent = klines.sublist(klines.length - lookback);
+
+    // Count price-up days and volume-down days
+    int priceUpDays = 0;
+    int priceDownDays = 0;
+    int volUpDays = 0;
+    int volDownDays = 0;
+
+    for (var i = 0; i < recent.length; i++) {
+      if (i == 0) {
+        // Use close vs open for the first day comparison (no prior day in window)
+        // Skip first day for trend counting; we need day-over-day changes
+        continue;
+      }
+      if (recent[i].close > recent[i - 1].close) {
+        priceUpDays++;
+      } else if (recent[i].close < recent[i - 1].close) {
+        priceDownDays++;
+      }
+      if (recent[i].volume > recent[i - 1].volume) {
+        volUpDays++;
+      } else if (recent[i].volume < recent[i - 1].volume) {
+        volDownDays++;
+      }
+    }
+
+    // Top divergence: price rising but volume shrinking
+    if (priceUpDays >= 3 && volDownDays >= 3) return 1;
+    // Bottom divergence: price falling but volume expanding
+    if (priceDownDays >= 3 && volUpDays >= 3) return 1;
+
+    return 0;
+  }
+
+  /// Calculate volume ratio (量比): current day volume / avg of previous [avgDays] days.
+  static double calculateVolumeRatio(List<DailyKline> klines, {int avgDays = 5}) {
+    if (klines.length < avgDays + 1) return 1.0;
+    final currentVol = klines.last.volume;
+    if (currentVol <= 0) return 1.0;
+
+    var avgVol = 0.0;
+    final count = min(avgDays, klines.length - 1);
+    for (var i = klines.length - count - 1; i < klines.length - 1; i++) {
+      avgVol += klines[i].volume;
+    }
+    avgVol /= count;
+    if (avgVol <= 0) return 1.0;
+
+    return currentVol / avgVol;
   }
 }

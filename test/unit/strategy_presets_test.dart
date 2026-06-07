@@ -38,13 +38,13 @@ void main() {
       expect(s.exitRules!.first.value, 80);
     });
 
-    test('all() returns exactly 3 presets', () {
+    test('all() returns exactly 6 presets', () {
       var counter = 100;
       final presets = StrategyPresets.all(
         idGenerator: () => 'p-${++counter}',
         now: now,
       );
-      expect(presets.length, 3);
+      expect(presets.length, 6);
       expect(presets.every((s) => s.isRuleBased), isTrue);
     });
   });

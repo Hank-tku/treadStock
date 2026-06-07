@@ -68,7 +68,7 @@ List<DailyKline> _steadyKlines(int count, {double price = 50.0}) {
 
 void main() {
   group('RuleEngine', () {
-    test('empty klines → entry not triggered, indicatorValues empty', () {
+    test('empty klines → entry not triggered, RSI/MACD/KDJ absent', () {
       final result = RuleEngine.evaluate(
         klines: [],
         entryRules: [SignalRule(indicator: 'rsi', condition: 'lt', value: 30)],
@@ -76,7 +76,15 @@ void main() {
 
       expect(result.entryTriggered, isFalse);
       expect(result.exitTriggered, isFalse);
-      expect(result.indicatorValues, isEmpty);
+      // RSI/MACD/KDJ/Boll require sufficient data so should be absent
+      expect(result.indicatorValues.containsKey('rsi'), isFalse);
+      expect(result.indicatorValues.containsKey('macd'), isFalse);
+      expect(result.indicatorValues.containsKey('k'), isFalse);
+      expect(result.indicatorValues.containsKey('boll_position'), isFalse);
+      // ma_alignment, vol_price_divergence, vol_ratio have defaults
+      expect(result.indicatorValues['ma_alignment'], 5.0);
+      expect(result.indicatorValues['vol_price_divergence'], 0.0);
+      expect(result.indicatorValues['vol_ratio'], 1.0);
       expect(result.prevIndicatorValues, isEmpty);
       expect(result.entryResults, [false]);
     });

@@ -99,6 +99,102 @@ class StrategyPresets {
     );
   }
 
+  /// 布林带下轨反弹 — 价格触及布林带下沿且RSI超卖时入场，回到上轨附近出场
+  static Strategy bollBandBounce({
+    required String id,
+    required DateTime now,
+  }) {
+    return Strategy(
+      id: id,
+      name: '布林带下轨反弹',
+      description: '当价格触及布林带下轨且RSI处于超卖区时捕捉反弹机会',
+      maShortPeriod: 20,
+      maLongPeriod: 60,
+      bollPeriod: 20,
+      bollStdDev: 2.0,
+      weightMA: 0.25,
+      weightBoll: 0.25,
+      weightVol: 0.25,
+      weightTrend: 0.25,
+      recommendThreshold: 7,
+      isEnabled: true,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+      entryRules: [
+        SignalRule(indicator: 'boll_position', condition: 'lt', value: 0.15),
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 35),
+      ],
+      exitRules: [
+        SignalRule(indicator: 'boll_position', condition: 'gt', value: 0.7),
+      ],
+    );
+  }
+
+  /// 均线多头排列 — 短期均线在长期均线之上且量能放大时入场，多头结构破坏时出场
+  static Strategy maBullAlignment({
+    required String id,
+    required DateTime now,
+  }) {
+    return Strategy(
+      id: id,
+      name: '均线多头排列',
+      description: '当均线呈现完美多头排列且量能放大时捕捉趋势延续机会',
+      maShortPeriod: 20,
+      maLongPeriod: 60,
+      bollPeriod: 20,
+      bollStdDev: 2.0,
+      weightMA: 0.25,
+      weightBoll: 0.25,
+      weightVol: 0.25,
+      weightTrend: 0.25,
+      recommendThreshold: 7,
+      isEnabled: true,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+      entryRules: [
+        SignalRule(indicator: 'ma_alignment', condition: 'gt', value: 7),
+        SignalRule(indicator: 'vol_ratio', condition: 'gt', value: 1.2),
+      ],
+      exitRules: [
+        SignalRule(indicator: 'ma_alignment', condition: 'lt', value: 4),
+      ],
+    );
+  }
+
+  /// 量价背离抄底 — 量价出现底背离信号且RSI处于低位时入场，RSI回升后出场
+  static Strategy volPriceDivergenceBottom({
+    required String id,
+    required DateTime now,
+  }) {
+    return Strategy(
+      id: id,
+      name: '量价背离抄底',
+      description: '当量价出现底背离信号且RSI处于低位时，捕捉底部反转机会',
+      maShortPeriod: 20,
+      maLongPeriod: 60,
+      bollPeriod: 20,
+      bollStdDev: 2.0,
+      weightMA: 0.25,
+      weightBoll: 0.25,
+      weightVol: 0.25,
+      weightTrend: 0.25,
+      recommendThreshold: 7,
+      isEnabled: true,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+      entryRules: [
+        SignalRule(indicator: 'vol_price_divergence', condition: 'gt', value: 0.5),
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 40),
+      ],
+      exitRules: [
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 65),
+      ],
+    );
+  }
+
   /// Get all preset templates.
   static List<Strategy> all({
     required String Function() idGenerator,
@@ -108,6 +204,9 @@ class StrategyPresets {
       rsiOversoldBounce(id: idGenerator(), now: now),
       macdGoldenCross(id: idGenerator(), now: now),
       kdjLowGoldenCross(id: idGenerator(), now: now),
+      bollBandBounce(id: idGenerator(), now: now),
+      maBullAlignment(id: idGenerator(), now: now),
+      volPriceDivergenceBottom(id: idGenerator(), now: now),
     ];
   }
 }

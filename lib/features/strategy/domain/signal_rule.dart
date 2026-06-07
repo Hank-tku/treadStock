@@ -1,6 +1,6 @@
 /// A declarative rule that evaluates a technical indicator against a condition.
 class SignalRule {
-  final String indicator; // 'rsi', 'macd', 'macd_signal', 'macd_hist', 'k', 'd', 'j', 'ma_score', 'boll_score', 'vol_score', 'trend_score', 'boll_position'
+  final String indicator; // 'rsi', 'macd', 'macd_signal', 'macd_hist', 'k', 'd', 'j', 'boll_position', 'ma_alignment', 'vol_price_divergence', 'vol_ratio'
   final String condition; // 'lt', 'gt', 'in_range', 'cross_up', 'cross_down'
   final double value;
   final double? value2; // for 'in_range' upper bound
