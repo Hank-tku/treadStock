@@ -196,6 +196,22 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                       minHeight: 44,
                     ),
                   ),
+                if (strategy != null)
+                  IconButton(
+                    onPressed: () => context.push(
+                      '/strategy/${widget.strategyId}/backtest',
+                      extra: {'strategyName': strategy.name},
+                    ),
+                    icon: const Icon(
+                      Icons.query_stats_outlined,
+                      size: 20,
+                      color: StockColors.brand,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                  ),
               ],
             ),
             Padding(

@@ -10,6 +10,7 @@ import 'features/strategy/presentation/strategy_tab.dart';
 import 'features/strategy/presentation/strategy_detail_page.dart';
 import 'features/strategy/presentation/strategy_edit_page.dart';
 import 'features/strategy/presentation/strategy_knowledge_page.dart';
+import 'features/strategy/presentation/backtest_config_page.dart';
 import 'features/strategy/domain/strategy_models.dart';
 import 'main.dart' show RiskDisclaimerDialog;
 
@@ -96,6 +97,17 @@ class AppRouter {
         builder: (context, state) {
           return StrategyDetailPage(
             strategyId: state.pathParameters['id'] ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/strategy/:id/backtest',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return BacktestConfigPage(
+            strategyId: state.pathParameters['id'] ?? '',
+            strategyName: extra?['strategyName'] as String? ?? '',
           );
         },
       ),
