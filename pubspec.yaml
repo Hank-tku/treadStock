@@ -39,7 +39,7 @@ dependencies:
   flutter_local_notifications: ^18.0.1
 
   # Background tasks
-  workmanager: ^0.5.2
+
 
   # URL launcher (news external links)
   url_launcher: ^6.3.1
