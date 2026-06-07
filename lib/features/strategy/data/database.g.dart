@@ -712,6 +712,28 @@ class $StrategiesTable extends Strategies
     requiredDuringInsert: false,
     defaultValue: const Constant(7),
   );
+  static const VerificationMeta _entryRulesJsonMeta = const VerificationMeta(
+    'entryRulesJson',
+  );
+  @override
+  late final GeneratedColumn<String> entryRulesJson = GeneratedColumn<String>(
+    'entry_rules_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exitRulesJsonMeta = const VerificationMeta(
+    'exitRulesJson',
+  );
+  @override
+  late final GeneratedColumn<String> exitRulesJson = GeneratedColumn<String>(
+    'exit_rules_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isEnabledMeta = const VerificationMeta(
     'isEnabled',
   );
@@ -789,6 +811,8 @@ class $StrategiesTable extends Strategies
     weightVol,
     weightTrend,
     recommendThreshold,
+    entryRulesJson,
+    exitRulesJson,
     isEnabled,
     isDefault,
     createdAt,
@@ -898,6 +922,24 @@ class $StrategiesTable extends Strategies
         ),
       );
     }
+    if (data.containsKey('entry_rules_json')) {
+      context.handle(
+        _entryRulesJsonMeta,
+        entryRulesJson.isAcceptableOrUnknown(
+          data['entry_rules_json']!,
+          _entryRulesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('exit_rules_json')) {
+      context.handle(
+        _exitRulesJsonMeta,
+        exitRulesJson.isAcceptableOrUnknown(
+          data['exit_rules_json']!,
+          _exitRulesJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_enabled')) {
       context.handle(
         _isEnabledMeta,
@@ -992,6 +1034,14 @@ class $StrategiesTable extends Strategies
         DriftSqlType.int,
         data['${effectivePrefix}recommend_threshold'],
       )!,
+      entryRulesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entry_rules_json'],
+      ),
+      exitRulesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exit_rules_json'],
+      ),
       isEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_enabled'],
@@ -1034,6 +1084,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
   final double weightVol;
   final double weightTrend;
   final int recommendThreshold;
+  final String? entryRulesJson;
+  final String? exitRulesJson;
   final bool isEnabled;
   final bool isDefault;
   final DateTime createdAt;
@@ -1052,6 +1104,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     required this.weightVol,
     required this.weightTrend,
     required this.recommendThreshold,
+    this.entryRulesJson,
+    this.exitRulesJson,
     required this.isEnabled,
     required this.isDefault,
     required this.createdAt,
@@ -1073,6 +1127,12 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     map['weight_vol'] = Variable<double>(weightVol);
     map['weight_trend'] = Variable<double>(weightTrend);
     map['recommend_threshold'] = Variable<int>(recommendThreshold);
+    if (!nullToAbsent || entryRulesJson != null) {
+      map['entry_rules_json'] = Variable<String>(entryRulesJson);
+    }
+    if (!nullToAbsent || exitRulesJson != null) {
+      map['exit_rules_json'] = Variable<String>(exitRulesJson);
+    }
     map['is_enabled'] = Variable<bool>(isEnabled);
     map['is_default'] = Variable<bool>(isDefault);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -1097,6 +1157,12 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       weightVol: Value(weightVol),
       weightTrend: Value(weightTrend),
       recommendThreshold: Value(recommendThreshold),
+      entryRulesJson: entryRulesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(entryRulesJson),
+      exitRulesJson: exitRulesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exitRulesJson),
       isEnabled: Value(isEnabled),
       isDefault: Value(isDefault),
       createdAt: Value(createdAt),
@@ -1125,6 +1191,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       weightVol: serializer.fromJson<double>(json['weightVol']),
       weightTrend: serializer.fromJson<double>(json['weightTrend']),
       recommendThreshold: serializer.fromJson<int>(json['recommendThreshold']),
+      entryRulesJson: serializer.fromJson<String?>(json['entryRulesJson']),
+      exitRulesJson: serializer.fromJson<String?>(json['exitRulesJson']),
       isEnabled: serializer.fromJson<bool>(json['isEnabled']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -1148,6 +1216,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       'weightVol': serializer.toJson<double>(weightVol),
       'weightTrend': serializer.toJson<double>(weightTrend),
       'recommendThreshold': serializer.toJson<int>(recommendThreshold),
+      'entryRulesJson': serializer.toJson<String?>(entryRulesJson),
+      'exitRulesJson': serializer.toJson<String?>(exitRulesJson),
       'isEnabled': serializer.toJson<bool>(isEnabled),
       'isDefault': serializer.toJson<bool>(isDefault),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -1169,6 +1239,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     double? weightVol,
     double? weightTrend,
     int? recommendThreshold,
+    Value<String?> entryRulesJson = const Value.absent(),
+    Value<String?> exitRulesJson = const Value.absent(),
     bool? isEnabled,
     bool? isDefault,
     DateTime? createdAt,
@@ -1187,6 +1259,12 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     weightVol: weightVol ?? this.weightVol,
     weightTrend: weightTrend ?? this.weightTrend,
     recommendThreshold: recommendThreshold ?? this.recommendThreshold,
+    entryRulesJson: entryRulesJson.present
+        ? entryRulesJson.value
+        : this.entryRulesJson,
+    exitRulesJson: exitRulesJson.present
+        ? exitRulesJson.value
+        : this.exitRulesJson,
     isEnabled: isEnabled ?? this.isEnabled,
     isDefault: isDefault ?? this.isDefault,
     createdAt: createdAt ?? this.createdAt,
@@ -1223,6 +1301,12 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       recommendThreshold: data.recommendThreshold.present
           ? data.recommendThreshold.value
           : this.recommendThreshold,
+      entryRulesJson: data.entryRulesJson.present
+          ? data.entryRulesJson.value
+          : this.entryRulesJson,
+      exitRulesJson: data.exitRulesJson.present
+          ? data.exitRulesJson.value
+          : this.exitRulesJson,
       isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -1248,6 +1332,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
           ..write('weightVol: $weightVol, ')
           ..write('weightTrend: $weightTrend, ')
           ..write('recommendThreshold: $recommendThreshold, ')
+          ..write('entryRulesJson: $entryRulesJson, ')
+          ..write('exitRulesJson: $exitRulesJson, ')
           ..write('isEnabled: $isEnabled, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -1271,6 +1357,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     weightVol,
     weightTrend,
     recommendThreshold,
+    entryRulesJson,
+    exitRulesJson,
     isEnabled,
     isDefault,
     createdAt,
@@ -1293,6 +1381,8 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
           other.weightVol == this.weightVol &&
           other.weightTrend == this.weightTrend &&
           other.recommendThreshold == this.recommendThreshold &&
+          other.entryRulesJson == this.entryRulesJson &&
+          other.exitRulesJson == this.exitRulesJson &&
           other.isEnabled == this.isEnabled &&
           other.isDefault == this.isDefault &&
           other.createdAt == this.createdAt &&
@@ -1313,6 +1403,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
   final Value<double> weightVol;
   final Value<double> weightTrend;
   final Value<int> recommendThreshold;
+  final Value<String?> entryRulesJson;
+  final Value<String?> exitRulesJson;
   final Value<bool> isEnabled;
   final Value<bool> isDefault;
   final Value<DateTime> createdAt;
@@ -1332,6 +1424,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     this.weightVol = const Value.absent(),
     this.weightTrend = const Value.absent(),
     this.recommendThreshold = const Value.absent(),
+    this.entryRulesJson = const Value.absent(),
+    this.exitRulesJson = const Value.absent(),
     this.isEnabled = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1352,6 +1446,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     this.weightVol = const Value.absent(),
     this.weightTrend = const Value.absent(),
     this.recommendThreshold = const Value.absent(),
+    this.entryRulesJson = const Value.absent(),
+    this.exitRulesJson = const Value.absent(),
     this.isEnabled = const Value.absent(),
     this.isDefault = const Value.absent(),
     required DateTime createdAt,
@@ -1375,6 +1471,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     Expression<double>? weightVol,
     Expression<double>? weightTrend,
     Expression<int>? recommendThreshold,
+    Expression<String>? entryRulesJson,
+    Expression<String>? exitRulesJson,
     Expression<bool>? isEnabled,
     Expression<bool>? isDefault,
     Expression<DateTime>? createdAt,
@@ -1395,6 +1493,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
       if (weightVol != null) 'weight_vol': weightVol,
       if (weightTrend != null) 'weight_trend': weightTrend,
       if (recommendThreshold != null) 'recommend_threshold': recommendThreshold,
+      if (entryRulesJson != null) 'entry_rules_json': entryRulesJson,
+      if (exitRulesJson != null) 'exit_rules_json': exitRulesJson,
       if (isEnabled != null) 'is_enabled': isEnabled,
       if (isDefault != null) 'is_default': isDefault,
       if (createdAt != null) 'created_at': createdAt,
@@ -1417,6 +1517,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     Value<double>? weightVol,
     Value<double>? weightTrend,
     Value<int>? recommendThreshold,
+    Value<String?>? entryRulesJson,
+    Value<String?>? exitRulesJson,
     Value<bool>? isEnabled,
     Value<bool>? isDefault,
     Value<DateTime>? createdAt,
@@ -1437,6 +1539,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
       weightVol: weightVol ?? this.weightVol,
       weightTrend: weightTrend ?? this.weightTrend,
       recommendThreshold: recommendThreshold ?? this.recommendThreshold,
+      entryRulesJson: entryRulesJson ?? this.entryRulesJson,
+      exitRulesJson: exitRulesJson ?? this.exitRulesJson,
       isEnabled: isEnabled ?? this.isEnabled,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
@@ -1485,6 +1589,12 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     if (recommendThreshold.present) {
       map['recommend_threshold'] = Variable<int>(recommendThreshold.value);
     }
+    if (entryRulesJson.present) {
+      map['entry_rules_json'] = Variable<String>(entryRulesJson.value);
+    }
+    if (exitRulesJson.present) {
+      map['exit_rules_json'] = Variable<String>(exitRulesJson.value);
+    }
     if (isEnabled.present) {
       map['is_enabled'] = Variable<bool>(isEnabled.value);
     }
@@ -1521,6 +1631,8 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
           ..write('weightVol: $weightVol, ')
           ..write('weightTrend: $weightTrend, ')
           ..write('recommendThreshold: $recommendThreshold, ')
+          ..write('entryRulesJson: $entryRulesJson, ')
+          ..write('exitRulesJson: $exitRulesJson, ')
           ..write('isEnabled: $isEnabled, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -3222,6 +3334,8 @@ typedef $$StrategiesTableCreateCompanionBuilder =
       Value<double> weightVol,
       Value<double> weightTrend,
       Value<int> recommendThreshold,
+      Value<String?> entryRulesJson,
+      Value<String?> exitRulesJson,
       Value<bool> isEnabled,
       Value<bool> isDefault,
       required DateTime createdAt,
@@ -3243,6 +3357,8 @@ typedef $$StrategiesTableUpdateCompanionBuilder =
       Value<double> weightVol,
       Value<double> weightTrend,
       Value<int> recommendThreshold,
+      Value<String?> entryRulesJson,
+      Value<String?> exitRulesJson,
       Value<bool> isEnabled,
       Value<bool> isDefault,
       Value<DateTime> createdAt,
@@ -3317,6 +3433,16 @@ class $$StrategiesTableFilterComposer
 
   ColumnFilters<int> get recommendThreshold => $composableBuilder(
     column: $table.recommendThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entryRulesJson => $composableBuilder(
+    column: $table.entryRulesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exitRulesJson => $composableBuilder(
+    column: $table.exitRulesJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3415,6 +3541,16 @@ class $$StrategiesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get entryRulesJson => $composableBuilder(
+    column: $table.entryRulesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exitRulesJson => $composableBuilder(
+    column: $table.exitRulesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isEnabled => $composableBuilder(
     column: $table.isEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -3502,6 +3638,16 @@ class $$StrategiesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get entryRulesJson => $composableBuilder(
+    column: $table.entryRulesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get exitRulesJson => $composableBuilder(
+    column: $table.exitRulesJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isEnabled =>
       $composableBuilder(column: $table.isEnabled, builder: (column) => column);
 
@@ -3563,6 +3709,8 @@ class $$StrategiesTableTableManager
                 Value<double> weightVol = const Value.absent(),
                 Value<double> weightTrend = const Value.absent(),
                 Value<int> recommendThreshold = const Value.absent(),
+                Value<String?> entryRulesJson = const Value.absent(),
+                Value<String?> exitRulesJson = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -3582,6 +3730,8 @@ class $$StrategiesTableTableManager
                 weightVol: weightVol,
                 weightTrend: weightTrend,
                 recommendThreshold: recommendThreshold,
+                entryRulesJson: entryRulesJson,
+                exitRulesJson: exitRulesJson,
                 isEnabled: isEnabled,
                 isDefault: isDefault,
                 createdAt: createdAt,
@@ -3603,6 +3753,8 @@ class $$StrategiesTableTableManager
                 Value<double> weightVol = const Value.absent(),
                 Value<double> weightTrend = const Value.absent(),
                 Value<int> recommendThreshold = const Value.absent(),
+                Value<String?> entryRulesJson = const Value.absent(),
+                Value<String?> exitRulesJson = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 required DateTime createdAt,
@@ -3622,6 +3774,8 @@ class $$StrategiesTableTableManager
                 weightVol: weightVol,
                 weightTrend: weightTrend,
                 recommendThreshold: recommendThreshold,
+                entryRulesJson: entryRulesJson,
+                exitRulesJson: exitRulesJson,
                 isEnabled: isEnabled,
                 isDefault: isDefault,
                 createdAt: createdAt,

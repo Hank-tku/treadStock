@@ -20,6 +20,10 @@ class Strategies extends Table {
   IntColumn get recommendThreshold =>
       integer().withDefault(const Constant(7))();
 
+  // Signal rules (JSON)
+  TextColumn get entryRulesJson => text().nullable()();
+  TextColumn get exitRulesJson => text().nullable()();
+
   // Status
   BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();

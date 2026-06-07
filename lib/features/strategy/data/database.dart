@@ -28,7 +28,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -44,6 +44,15 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(strategyReviews);
             await _createIndexes();
             await _ensureDefaultStrategy();
+          }
+          if (from < 3) {
+            // v2 -> v3: add signal rules JSON columns to strategies
+            await customStatement(
+              'ALTER TABLE strategies ADD COLUMN entry_rules_json TEXT',
+            );
+            await customStatement(
+              'ALTER TABLE strategies ADD COLUMN exit_rules_json TEXT',
+            );
           }
         },
       );
