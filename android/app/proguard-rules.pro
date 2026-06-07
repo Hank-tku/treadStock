@@ -41,6 +41,11 @@
 }
 
 # =============================================
+# Keep Play Core (referenced by flutter_local_notifications / deferred components)
+# =============================================
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
+
 # Obfuscate generic signatures
 # =============================================
 -keepattributes Signature
