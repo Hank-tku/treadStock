@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/stock/data/stock_api_service.dart';
+import '../features/stock/data/kline_cache.dart';
+import '../features/stock/data/cached_stock_api_service.dart';
 import '../features/analysis/domain/analysis_engine.dart';
 import '../features/strategy/data/database.dart';
 import '../features/strategy/data/strategy_service.dart';
@@ -52,3 +54,18 @@ final connectivityProvider = StateProvider<bool>((ref) => true);
 
 /// Active tab index provider.
 final activeTabIndexProvider = StateProvider<int>((ref) => 0);
+
+/// Provider for the K-line cache database (singleton).
+final klineCacheProvider = Provider<KlineCacheDatabase>((ref) {
+  final db = KlineCacheDatabase();
+  ref.onDispose(db.close);
+  return db;
+});
+
+/// Provider for the cached stock API service (singleton).
+/// Wraps StockApiService with a K-line local cache layer.
+final cachedStockApiServiceProvider = Provider<CachedStockApiService>((ref) {
+  final api = ref.watch(stockApiServiceProvider);
+  final cache = ref.watch(klineCacheProvider);
+  return CachedStockApiService(api: api, cache: cache);
+});
