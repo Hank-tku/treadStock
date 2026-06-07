@@ -681,6 +681,15 @@ class StrategyFormData {
   double weightTrend;
   int recommendThreshold;
 
+  /// Whether the strategy uses signal rules instead of weighted scoring.
+  bool isRuleBased;
+
+  /// Entry signal rules (used when isRuleBased is true).
+  List<SignalRule> entryRules;
+
+  /// Exit signal rules (used when isRuleBased is true).
+  List<SignalRule> exitRules;
+
   StrategyFormData({
     this.name = '',
     this.description = '',
@@ -693,7 +702,11 @@ class StrategyFormData {
     this.weightVol = 0.20,
     this.weightTrend = 0.20,
     this.recommendThreshold = 7,
-  });
+    this.isRuleBased = false,
+    List<SignalRule>? entryRules,
+    List<SignalRule>? exitRules,
+  })  : entryRules = entryRules ?? [],
+        exitRules = exitRules ?? [];
 
   /// Create from an existing Strategy (for editing).
   factory StrategyFormData.fromStrategy(Strategy strategy) {
@@ -709,6 +722,9 @@ class StrategyFormData {
       weightVol: strategy.weightVol,
       weightTrend: strategy.weightTrend,
       recommendThreshold: strategy.recommendThreshold,
+      isRuleBased: strategy.isRuleBased,
+      entryRules: strategy.entryRules?.toList(),
+      exitRules: strategy.exitRules?.toList(),
     );
   }
 
@@ -726,6 +742,9 @@ class StrategyFormData {
       weightVol: form.weightVol,
       weightTrend: form.weightTrend,
       recommendThreshold: form.recommendThreshold,
+      isRuleBased: form.isRuleBased,
+      entryRules: form.entryRules.toList(),
+      exitRules: form.exitRules.toList(),
     );
   }
 

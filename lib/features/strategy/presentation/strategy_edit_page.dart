@@ -6,8 +6,32 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/toast_helper.dart';
+import '../domain/signal_rule.dart';
 import '../domain/strategy_models.dart';
 import 'strategy_provider.dart';
+import 'widgets/signal_rule_edit_sheet.dart';
+
+const _indicatorLabels = {
+  'rsi': 'RSI',
+  'macd': 'MACD',
+  'macd_signal': 'MACD 信号线',
+  'macd_hist': 'MACD 柱状图',
+  'k': 'K 值',
+  'd': 'D 值',
+  'j': 'J 值',
+  'boll_position': '布林带位置',
+  'ma_alignment': '均线排列度',
+  'vol_price_divergence': '量价背离',
+  'vol_ratio': '量比',
+};
+
+const _conditionLabels = {
+  'gt': '大于',
+  'lt': '小于',
+  'in_range': '区间内',
+  'cross_up': '上穿',
+  'cross_down': '下穿',
+};
 
 /// Strategy create/edit form page.
 class StrategyEditPage extends ConsumerStatefulWidget {
@@ -274,7 +298,117 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
           max: 10,
           onChanged: (v) => setState(() => _form.recommendThreshold = v),
         ),
+        const SizedBox(height: 24),
+        _buildSection('信号规则'),
+        Text(
+          '开启后，策略将使用信号规则替代加权评分模式进行判断。',
+          style: AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
+        ),
+        const SizedBox(height: 12),
+        SwitchListTile(
+          title: const Text('启用信号规则模式'),
+          value: _form.isRuleBased,
+          activeThumbColor: StockColors.brand,
+          contentPadding: EdgeInsets.zero,
+          onChanged: (v) => setState(() => _form.isRuleBased = v),
+        ),
+        if (_form.isRuleBased) ...[
+          const SizedBox(height: 12),
+          _buildRulesSection(
+            '入场规则',
+            _form.entryRules,
+            (rules) => setState(() => _form.entryRules = rules),
+          ),
+          const SizedBox(height: 16),
+          _buildRulesSection(
+            '出场规则',
+            _form.exitRules,
+            (rules) => setState(() => _form.exitRules = rules),
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildRulesSection(
+    String title,
+    List<SignalRule> rules,
+    ValueChanged<List<SignalRule>> onChanged,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(title, style: AppTextStyles.h3),
+            const Spacer(),
+            Text(
+              '${rules.length} 条规则',
+              style:
+                  AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (rules.isEmpty)
+          Text(
+            '暂无规则，点击下方添加',
+            style:
+                AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
+          )
+        else
+          ...rules.asMap().entries.map(
+                (entry) => _buildRuleCard(entry.key, entry.value, rules, onChanged),
+              ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final rule = await SignalRuleEditSheet.show(context);
+            if (rule != null) onChanged([...rules, rule]);
+          },
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('添加规则'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRuleCard(
+    int index,
+    SignalRule rule,
+    List<SignalRule> rules,
+    ValueChanged<List<SignalRule>> onChanged,
+  ) {
+    final indLabel = _indicatorLabels[rule.indicator] ?? rule.indicator;
+    final condLabel = _conditionLabels[rule.condition] ?? rule.condition;
+    String valueText = rule.value.toStringAsFixed(1);
+    if (rule.condition == 'in_range' && rule.value2 != null) {
+      valueText =
+          '${rule.value.toStringAsFixed(1)} ~ ${rule.value2!.toStringAsFixed(1)}';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: StockColors.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text('$indLabel $condLabel $valueText', style: AppTextStyles.body),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline,
+                size: 18, color: StockColors.textTertiary),
+            onPressed: () {
+              final newRules = List<SignalRule>.from(rules)..removeAt(index);
+              onChanged(newRules);
+            },
+          ),
+        ],
+      ),
     );
   }
 
