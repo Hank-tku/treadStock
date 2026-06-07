@@ -1,7 +1,7 @@
 name: stockpilot
 description: "股势 TrendStock - Flutter stock trading decision assistant app"
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.1.0+1
 
 environment:
   sdk: ^3.11.3
