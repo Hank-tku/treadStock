@@ -52,3 +52,24 @@ class SignalRule {
     value2: json['value2'] != null ? (json['value2'] as num).toDouble() : null,
   );
 }
+
+/// A group of rules with AND logic within the group.
+/// Multiple groups are combined with OR logic.
+class RuleGroup {
+  final List<SignalRule> rules;
+
+  const RuleGroup({required this.rules});
+
+  bool get isEmpty => rules.isEmpty;
+  bool get isNotEmpty => rules.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'rules': rules.map((r) => r.toJson()).toList(),
+  };
+
+  factory RuleGroup.fromJson(Map<String, dynamic> json) => RuleGroup(
+    rules: (json['rules'] as List)
+        .map((r) => SignalRule.fromJson(r as Map<String, dynamic>))
+        .toList(),
+  );
+}

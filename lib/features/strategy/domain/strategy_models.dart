@@ -34,6 +34,10 @@ class Strategy {
   final List<SignalRule>? entryRules;
   final List<SignalRule>? exitRules;
 
+  // Optional rule groups: OR of ANDs (supersedes flat rules when non-null)
+  final List<RuleGroup>? entryGroups;
+  final List<RuleGroup>? exitGroups;
+
   // Computed stats (populated from DB queries, not persisted)
   final StrategyStats? stats;
 
@@ -57,6 +61,8 @@ class Strategy {
     this.lastReviewAt,
     this.entryRules,
     this.exitRules,
+    this.entryGroups,
+    this.exitGroups,
     this.stats,
   });
 
@@ -70,7 +76,9 @@ class Strategy {
   double get weightSum => weightMA + weightBoll + weightVol + weightTrend;
 
   /// Whether this strategy uses the new rule-based signal system.
-  bool get isRuleBased => entryRules != null && entryRules!.isNotEmpty;
+  bool get isRuleBased =>
+      (entryRules != null && entryRules!.isNotEmpty) ||
+      (entryGroups != null && entryGroups!.isNotEmpty);
 
   /// Check if review is needed (30+ days since last review).
   bool get needsReview {
@@ -99,6 +107,8 @@ class Strategy {
     DateTime? lastReviewAt,
     List<SignalRule>? entryRules,
     List<SignalRule>? exitRules,
+    List<RuleGroup>? entryGroups,
+    List<RuleGroup>? exitGroups,
     StrategyStats? stats,
   }) {
     return Strategy(
@@ -121,6 +131,8 @@ class Strategy {
       lastReviewAt: lastReviewAt ?? this.lastReviewAt,
       entryRules: entryRules ?? this.entryRules,
       exitRules: exitRules ?? this.exitRules,
+      entryGroups: entryGroups ?? this.entryGroups,
+      exitGroups: exitGroups ?? this.exitGroups,
       stats: stats ?? this.stats,
     );
   }
@@ -148,6 +160,8 @@ class Strategy {
     if (lastReviewAt != null) data['lastReviewAt'] = lastReviewAt!.toIso8601String();
     if (entryRules != null) data['entryRules'] = entryRules!.map((r) => r.toJson()).toList();
     if (exitRules != null) data['exitRules'] = exitRules!.map((r) => r.toJson()).toList();
+    if (entryGroups != null) data['entryGroups'] = entryGroups!.map((g) => g.toJson()).toList();
+    if (exitGroups != null) data['exitGroups'] = exitGroups!.map((g) => g.toJson()).toList();
     return data;
   }
 
@@ -178,6 +192,12 @@ class Strategy {
           : null,
       exitRules: json['exitRules'] != null
           ? (json['exitRules'] as List).map((e) => SignalRule.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
+      entryGroups: json['entryGroups'] != null
+          ? (json['entryGroups'] as List).map((e) => RuleGroup.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
+      exitGroups: json['exitGroups'] != null
+          ? (json['exitGroups'] as List).map((e) => RuleGroup.fromJson(e as Map<String, dynamic>)).toList()
           : null,
     );
   }
@@ -690,6 +710,12 @@ class StrategyFormData {
   /// Exit signal rules (used when isRuleBased is true).
   List<SignalRule> exitRules;
 
+  /// Entry rule groups (OR of ANDs).
+  List<RuleGroup> entryGroups;
+
+  /// Exit rule groups (OR of ANDs).
+  List<RuleGroup> exitGroups;
+
   StrategyFormData({
     this.name = '',
     this.description = '',
@@ -705,8 +731,12 @@ class StrategyFormData {
     this.isRuleBased = false,
     List<SignalRule>? entryRules,
     List<SignalRule>? exitRules,
+    List<RuleGroup>? entryGroups,
+    List<RuleGroup>? exitGroups,
   })  : entryRules = entryRules ?? [],
-        exitRules = exitRules ?? [];
+        exitRules = exitRules ?? [],
+        entryGroups = entryGroups ?? [],
+        exitGroups = exitGroups ?? [];
 
   /// Create from an existing Strategy (for editing).
   factory StrategyFormData.fromStrategy(Strategy strategy) {
@@ -725,6 +755,8 @@ class StrategyFormData {
       isRuleBased: strategy.isRuleBased,
       entryRules: strategy.entryRules?.toList(),
       exitRules: strategy.exitRules?.toList(),
+      entryGroups: strategy.entryGroups?.toList(),
+      exitGroups: strategy.exitGroups?.toList(),
     );
   }
 
@@ -745,6 +777,8 @@ class StrategyFormData {
       isRuleBased: form.isRuleBased,
       entryRules: form.entryRules.toList(),
       exitRules: form.exitRules.toList(),
+      entryGroups: form.entryGroups.toList(),
+      exitGroups: form.exitGroups.toList(),
     );
   }
 

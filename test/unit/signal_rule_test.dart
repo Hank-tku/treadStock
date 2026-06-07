@@ -51,4 +51,29 @@ void main() {
       expect(restored.value, rule.value);
     });
   });
+
+  group('RuleGroup', () {
+    test('toJson/fromJson roundtrip', () {
+      final group = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 30),
+        SignalRule(indicator: 'macd', condition: 'gt', value: 0),
+      ]);
+      final json = group.toJson();
+      final restored = RuleGroup.fromJson(json);
+      expect(restored.rules.length, 2);
+      expect(restored.rules[0].indicator, 'rsi');
+      expect(restored.rules[1].indicator, 'macd');
+    });
+
+    test('isEmpty/isNotEmpty', () {
+      final empty = RuleGroup(rules: []);
+      final nonEmpty = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 50),
+      ]);
+      expect(empty.isEmpty, isTrue);
+      expect(empty.isNotEmpty, isFalse);
+      expect(nonEmpty.isEmpty, isFalse);
+      expect(nonEmpty.isNotEmpty, isTrue);
+    });
+  });
 }

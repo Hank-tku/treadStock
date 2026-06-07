@@ -21,10 +21,19 @@ class RuleEvaluationResult {
 }
 
 class RuleEngine {
+  /// Evaluate entry/exit rules against the latest kline data.
+  ///
+  /// Supports both flat rule lists (legacy AND/OR) and grouped rules.
+  /// - Flat entry rules: all must pass (AND)
+  /// - Grouped entry rules: any group must fully pass (OR of ANDs)
+  /// - Flat exit rules: any must pass (OR)
+  /// - Grouped exit rules: any group must fully pass (OR of ANDs)
   static RuleEvaluationResult evaluate({
     required List<DailyKline> klines,
     required List<SignalRule> entryRules,
     List<SignalRule> exitRules = const [],
+    List<RuleGroup>? entryGroups,
+    List<RuleGroup>? exitGroups,
     int rsiPeriod = 14,
     int macdFast = 12,
     int macdSlow = 26,
@@ -113,9 +122,31 @@ class RuleEngine {
     final entryResults = entryRules.map(evalRule).toList();
     final exitResults = exitRules.map(evalRule).toList();
 
+    // Evaluate rule groups (OR of ANDs)
+    bool entryFromGroups = false;
+    bool exitFromGroups = false;
+
+    if (entryGroups != null && entryGroups.isNotEmpty) {
+      entryFromGroups = entryGroups.any(
+        (group) => group.rules.isNotEmpty && group.rules.every(evalRule),
+      );
+    }
+    if (exitGroups != null && exitGroups.isNotEmpty) {
+      exitFromGroups = exitGroups.any(
+        (group) => group.rules.isNotEmpty && group.rules.every(evalRule),
+      );
+    }
+
+    final entryTriggered = entryResults.isNotEmpty
+        ? entryResults.every((r) => r) || entryFromGroups
+        : entryFromGroups;
+    final exitTriggered = exitResults.isNotEmpty
+        ? exitResults.any((r) => r) || exitFromGroups
+        : exitFromGroups;
+
     return RuleEvaluationResult(
-      entryTriggered: entryResults.isNotEmpty && entryResults.every((r) => r),
-      exitTriggered: exitResults.isNotEmpty && exitResults.any((r) => r),
+      entryTriggered: entryTriggered,
+      exitTriggered: exitTriggered,
       entryResults: entryResults,
       exitResults: exitResults,
       indicatorValues: current,

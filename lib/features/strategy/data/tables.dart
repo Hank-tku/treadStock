@@ -24,6 +24,10 @@ class Strategies extends Table {
   TextColumn get entryRulesJson => text().nullable()();
   TextColumn get exitRulesJson => text().nullable()();
 
+  // Rule groups (JSON) — OR-of-ANDs condition groups
+  TextColumn get entryGroupsJson => text().nullable()();
+  TextColumn get exitGroupsJson => text().nullable()();
+
   // Status
   BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();

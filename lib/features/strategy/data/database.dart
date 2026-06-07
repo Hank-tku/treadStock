@@ -28,7 +28,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -52,6 +52,15 @@ class AppDatabase extends _$AppDatabase {
             );
             await customStatement(
               'ALTER TABLE strategies ADD COLUMN exit_rules_json TEXT',
+            );
+          }
+          if (from < 4) {
+            // v3 -> v4: add rule groups JSON columns
+            await customStatement(
+              'ALTER TABLE strategies ADD COLUMN entry_groups_json TEXT',
+            );
+            await customStatement(
+              'ALTER TABLE strategies ADD COLUMN exit_groups_json TEXT',
             );
           }
         },

@@ -174,4 +174,106 @@ void main() {
       }
     });
   });
+
+  group('RuleEngine with RuleGroups (OR-of-ANDs)', () {
+    test('single group with all rules passing → entry triggered', () {
+      final klines = _decliningKlines(40, startPrice: 50.0, drop: 1.0);
+      final group = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 30),
+        SignalRule(indicator: 'macd', condition: 'lt', value: 0),
+      ]);
+
+      final result = RuleEngine.evaluate(
+        klines: klines,
+        entryRules: [],
+        entryGroups: [group],
+      );
+
+      expect(result.entryTriggered, isTrue);
+    });
+
+    test('single group with one rule failing → entry NOT triggered', () {
+      final klines = _decliningKlines(40, startPrice: 50.0, drop: 1.0);
+      final group = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 30),
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 70), // will fail
+      ]);
+
+      final result = RuleEngine.evaluate(
+        klines: klines,
+        entryRules: [],
+        entryGroups: [group],
+      );
+
+      expect(result.entryTriggered, isFalse);
+    });
+
+    test('multiple groups — OR logic, second group passes', () {
+      final klines = _decliningKlines(40, startPrice: 50.0, drop: 1.0);
+      final group1 = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 70), // fails
+      ]);
+      final group2 = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 30), // passes
+      ]);
+
+      final result = RuleEngine.evaluate(
+        klines: klines,
+        entryRules: [],
+        entryGroups: [group1, group2],
+      );
+
+      expect(result.entryTriggered, isTrue, reason: 'OR of ANDs: group2 passes');
+    });
+
+    test('flat rules AND groups combined — either can trigger', () {
+      final klines = _decliningKlines(40, startPrice: 50.0, drop: 1.0);
+
+      // Flat rules fail (conflicting)
+      final flatRules = [
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 70),
+      ];
+      // But group passes
+      final group = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 30),
+      ]);
+
+      final result = RuleEngine.evaluate(
+        klines: klines,
+        entryRules: flatRules,
+        entryGroups: [group],
+      );
+
+      expect(result.entryTriggered, isTrue, reason: 'flat rules fail but group passes → triggered');
+    });
+
+    test('exit groups work the same as entry groups', () {
+      // Declining klines: RSI very low, so RSI > 70 should NOT trigger exit
+      final klines = _decliningKlines(40, startPrice: 50.0, drop: 1.0);
+      final group = RuleGroup(rules: [
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 70),
+      ]);
+
+      final result = RuleEngine.evaluate(
+        klines: klines,
+        entryRules: [],
+        exitGroups: [group],
+      );
+
+      expect(result.exitTriggered, isFalse);
+    });
+
+    test('empty group does not trigger', () {
+      final klines = _decliningKlines(40, startPrice: 50.0, drop: 1.0);
+      final emptyGroup = RuleGroup(rules: []);
+
+      final result = RuleEngine.evaluate(
+        klines: klines,
+        entryRules: [],
+        entryGroups: [emptyGroup],
+      );
+
+      expect(result.entryTriggered, isFalse, reason: 'empty group should not trigger');
+    });
+  });
 }

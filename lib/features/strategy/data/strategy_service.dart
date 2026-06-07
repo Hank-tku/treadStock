@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/strategy_models.dart';
+import '../domain/signal_rule.dart';
 import 'database.dart';
 
 /// Service layer for strategy CRUD, hit records, and reviews.
@@ -94,6 +95,20 @@ class StrategyService {
     final now = DateTime.now();
     final id = _uuid.v4();
 
+    // Serialize rules and groups to JSON
+    final Value<String?> entryRulesVal = form.entryRules.isNotEmpty
+        ? Value(jsonEncode(form.entryRules.map((r) => r.toJson()).toList()))
+        : const Value.absent();
+    final Value<String?> exitRulesVal = form.exitRules.isNotEmpty
+        ? Value(jsonEncode(form.exitRules.map((r) => r.toJson()).toList()))
+        : const Value.absent();
+    final Value<String?> entryGroupsVal = form.entryGroups.isNotEmpty
+        ? Value(jsonEncode(form.entryGroups.map((g) => g.toJson()).toList()))
+        : const Value.absent();
+    final Value<String?> exitGroupsVal = form.exitGroups.isNotEmpty
+        ? Value(jsonEncode(form.exitGroups.map((g) => g.toJson()).toList()))
+        : const Value.absent();
+
     await _db
         .into(_db.strategies)
         .insert(
@@ -110,6 +125,10 @@ class StrategyService {
             weightVol: Value(form.weightVol),
             weightTrend: Value(form.weightTrend),
             recommendThreshold: Value(form.recommendThreshold),
+            entryRulesJson: entryRulesVal,
+            exitRulesJson: exitRulesVal,
+            entryGroupsJson: entryGroupsVal,
+            exitGroupsJson: exitGroupsVal,
             isEnabled: const Value(true),
             isDefault: const Value(false),
             createdAt: now,
@@ -124,6 +143,21 @@ class StrategyService {
   /// Update an existing strategy.
   Future<Strategy> updateStrategy(String id, StrategyFormData form) async {
     final now = DateTime.now();
+
+    // Serialize rules and groups to JSON
+    final Value<String?> entryRulesVal = form.entryRules.isNotEmpty
+        ? Value(jsonEncode(form.entryRules.map((r) => r.toJson()).toList()))
+        : const Value.absent();
+    final Value<String?> exitRulesVal = form.exitRules.isNotEmpty
+        ? Value(jsonEncode(form.exitRules.map((r) => r.toJson()).toList()))
+        : const Value.absent();
+    final Value<String?> entryGroupsVal = form.entryGroups.isNotEmpty
+        ? Value(jsonEncode(form.entryGroups.map((g) => g.toJson()).toList()))
+        : const Value.absent();
+    final Value<String?> exitGroupsVal = form.exitGroups.isNotEmpty
+        ? Value(jsonEncode(form.exitGroups.map((g) => g.toJson()).toList()))
+        : const Value.absent();
+
     await (_db.update(_db.strategies)..where((t) => t.id.equals(id))).write(
       StrategiesCompanion(
         name: Value(form.name.trim()),
@@ -137,6 +171,10 @@ class StrategyService {
         weightVol: Value(form.weightVol),
         weightTrend: Value(form.weightTrend),
         recommendThreshold: Value(form.recommendThreshold),
+        entryRulesJson: entryRulesVal,
+        exitRulesJson: exitRulesVal,
+        entryGroupsJson: entryGroupsVal,
+        exitGroupsJson: exitGroupsVal,
         updatedAt: Value(now),
       ),
     );
@@ -698,6 +736,38 @@ class StrategyService {
   // ── Row Mappers ─────────────────────────────────────────────
 
   Strategy _rowToDomain(StrategyRow row, {StrategyStats? stats}) {
+    // Parse entry/exit rules from JSON
+    List<SignalRule>? entryRules;
+    List<SignalRule>? exitRules;
+    if (row.entryRulesJson != null) {
+      try {
+        final list = jsonDecode(row.entryRulesJson!) as List;
+        entryRules = list.map((e) => SignalRule.fromJson(e as Map<String, dynamic>)).toList();
+      } catch (_) {}
+    }
+    if (row.exitRulesJson != null) {
+      try {
+        final list = jsonDecode(row.exitRulesJson!) as List;
+        exitRules = list.map((e) => SignalRule.fromJson(e as Map<String, dynamic>)).toList();
+      } catch (_) {}
+    }
+
+    // Parse entry/exit rule groups from JSON
+    List<RuleGroup>? entryGroups;
+    List<RuleGroup>? exitGroups;
+    if (row.entryGroupsJson != null) {
+      try {
+        final list = jsonDecode(row.entryGroupsJson!) as List;
+        entryGroups = list.map((e) => RuleGroup.fromJson(e as Map<String, dynamic>)).toList();
+      } catch (_) {}
+    }
+    if (row.exitGroupsJson != null) {
+      try {
+        final list = jsonDecode(row.exitGroupsJson!) as List;
+        exitGroups = list.map((e) => RuleGroup.fromJson(e as Map<String, dynamic>)).toList();
+      } catch (_) {}
+    }
+
     return Strategy(
       id: row.id,
       name: row.name,
@@ -711,6 +781,10 @@ class StrategyService {
       weightVol: row.weightVol,
       weightTrend: row.weightTrend,
       recommendThreshold: row.recommendThreshold,
+      entryRules: entryRules,
+      exitRules: exitRules,
+      entryGroups: entryGroups,
+      exitGroups: exitGroups,
       isEnabled: row.isEnabled,
       isDefault: row.isDefault,
       createdAt: row.createdAt,

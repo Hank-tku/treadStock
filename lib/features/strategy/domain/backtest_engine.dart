@@ -92,6 +92,7 @@ class BacktestEngine {
             klines: subKlines,
             entryRules: const [],
             exitRules: strategy.exitRules!,
+            exitGroups: strategy.exitGroups,
           );
           if (result.exitTriggered) {
             exitReason = ExitReason.signalExit;
@@ -147,11 +148,12 @@ class BacktestEngine {
         bool shouldEnter = false;
 
         if (strategy.isRuleBased) {
-          // Rule-based: all entry rules must pass
+          // Rule-based: all entry rules must pass (flat OR groups)
           final subKlines = klines.sublist(0, i + 1);
           final result = RuleEngine.evaluate(
             klines: subKlines,
-            entryRules: strategy.entryRules!,
+            entryRules: strategy.entryRules ?? [],
+            entryGroups: strategy.entryGroups,
             exitRules: const [],
           );
           shouldEnter = result.entryTriggered;
