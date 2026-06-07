@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stockpilot/features/analysis/domain/indicator_calculator.dart';
+import 'package:stockpilot/features/stock/domain/stock_models.dart';
 
 void main() {
   group('IndicatorCalculator.calculateRSI', () {
@@ -80,6 +81,63 @@ void main() {
       final result = IndicatorCalculator.calculateMACD(closes);
       expect(result.signalLine.length, lessThanOrEqualTo(result.macdLine.length));
       expect(result.histogram.length, equals(result.signalLine.length));
+    });
+  });
+
+  group('IndicatorCalculator.calculateKDJ', () {
+    test('returns empty result when klines length < period', () {
+      final klines = List.generate(5, (i) => DailyKline(
+        date: DateTime(2026, 1, i + 1), open: 100, close: 101, high: 102, low: 99,
+        volume: 100000, amount: 10000000, preClose: 100,
+      ));
+      final result = IndicatorCalculator.calculateKDJ(klines, period: 9);
+      expect(result.kValues, isEmpty);
+      expect(result.dValues, isEmpty);
+      expect(result.jValues, isEmpty);
+    });
+
+    test('K and D values between 0-100 for normal data', () {
+      final klines = List.generate(30, (i) => DailyKline(
+        date: DateTime(2026, 1, i + 1),
+        open: 100 + i * 0.5,
+        close: 101 + i * 0.5,
+        high: 102 + i * 0.5,
+        low: 99 + i * 0.5,
+        volume: 100000, amount: 10000000, preClose: 100 + (i > 0 ? (i-1) * 0.5 : 0),
+      ));
+      final result = IndicatorCalculator.calculateKDJ(klines, period: 9);
+      for (var i = 0; i < result.kValues.length; i++) {
+        expect(result.kValues[i], greaterThanOrEqualTo(0));
+        expect(result.kValues[i], lessThanOrEqualTo(100));
+        expect(result.dValues[i], greaterThanOrEqualTo(0));
+        expect(result.dValues[i], lessThanOrEqualTo(100));
+      }
+    });
+
+    test('J value can exceed 0-100 range', () {
+      // Strong uptrend should push J above 100
+      final klines = List.generate(30, (i) => DailyKline(
+        date: DateTime(2026, 1, i + 1),
+        open: 100 + i * 3.0,
+        close: 102 + i * 3.0,
+        high: 103 + i * 3.0,
+        low: 99 + i * 3.0,
+        volume: 100000, amount: 10000000, preClose: 100 + (i > 0 ? (i-1) * 3.0 : 0),
+      ));
+      final result = IndicatorCalculator.calculateKDJ(klines, period: 9);
+      expect(result.jValues.any((j) => j > 100), isTrue);
+    });
+
+    test('output length = klines.length - period + 1', () {
+      final klines = List.generate(20, (i) => DailyKline(
+        date: DateTime(2026, 1, i + 1),
+        open: 100.0, close: 100.0 + i, high: 101.0 + i, low: 99.0,
+        volume: 100000, amount: 10000000, preClose: i > 0 ? 99.0 + i : 100.0,
+      ));
+      final result = IndicatorCalculator.calculateKDJ(klines, period: 9);
+      expect(result.kValues.length, 12); // 20 - 9 + 1
+      expect(result.dValues.length, 12);
+      expect(result.jValues.length, 12);
     });
   });
 }

@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:stockpilot/features/stock/domain/stock_models.dart';
+
 /// Result container for MACD calculation.
 class MACDResult {
   final List<double> macdLine;
@@ -9,6 +11,18 @@ class MACDResult {
     required this.macdLine,
     required this.signalLine,
     required this.histogram,
+  });
+}
+
+/// Result container for KDJ calculation.
+class KDJResult {
+  final List<double> kValues;
+  final List<double> dValues;
+  final List<double> jValues;
+  const KDJResult({
+    required this.kValues,
+    required this.dValues,
+    required this.jValues,
   });
 }
 
@@ -121,5 +135,56 @@ class IndicatorCalculator {
     }
 
     return MACDResult(macdLine: macdLine, signalLine: signalLine, histogram: histogram);
+  }
+
+  /// Calculate KDJ (Stochastic Oscillator).
+  /// Returns K, D, J values. Output length = klines.length - period + 1.
+  static KDJResult calculateKDJ(
+    List<DailyKline> klines, {
+    int period = 9,
+    int kSmooth = 3,
+    int dSmooth = 3,
+  }) {
+    if (klines.length < period) {
+      return const KDJResult(kValues: [], dValues: [], jValues: []);
+    }
+
+    final kValues = <double>[];
+    final dValues = <double>[];
+    final jValues = <double>[];
+
+    double prevK = 50.0;
+    double prevD = 50.0;
+
+    for (var i = period - 1; i < klines.length; i++) {
+      // Find highest high and lowest low in the period window
+      double highN = klines[i - period + 1].high;
+      double lowN = klines[i - period + 1].low;
+      for (var j = i - period + 2; j <= i; j++) {
+        if (klines[j].high > highN) highN = klines[j].high;
+        if (klines[j].low < lowN) lowN = klines[j].low;
+      }
+
+      // RSV
+      final rsv = highN == lowN ? 50.0 : (klines[i].close - lowN) / (highN - lowN) * 100;
+
+      // K = smoothed RSV
+      final k = (kSmooth - 1) / kSmooth * prevK + 1 / kSmooth * rsv;
+
+      // D = smoothed K
+      final d = (dSmooth - 1) / dSmooth * prevD + 1 / dSmooth * k;
+
+      // J = 3K - 2D
+      final j = 3 * k - 2 * d;
+
+      kValues.add(k);
+      dValues.add(d);
+      jValues.add(j);
+
+      prevK = k;
+      prevD = d;
+    }
+
+    return KDJResult(kValues: kValues, dValues: dValues, jValues: jValues);
   }
 }
