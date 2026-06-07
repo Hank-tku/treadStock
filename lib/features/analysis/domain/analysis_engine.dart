@@ -3,6 +3,8 @@ import '../../stock/domain/stock_models.dart';
 import 'analysis_models.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../strategy/domain/strategy_models.dart';
+import '../../strategy/domain/rule_engine.dart';
+import '../../strategy/domain/signal_rule.dart';
 
 /// Pure Dart analysis engine for stock technical analysis.
 /// Calculates MA, Bollinger Bands, scores, and generates summaries.
@@ -294,6 +296,10 @@ class AnalysisEngine {
 
   /// Calculate score using a Strategy object.
   StockScore calculateScoreForStrategy(List<DailyKline> klines, Strategy strategy) {
+    if (strategy.isRuleBased) {
+      return _evaluateWithRules(klines, strategy);
+    }
+    // Existing weighted logic (unchanged)
     return calculateScoreWithParams(
       klines,
       maShortPeriod: strategy.maShortPeriod,
@@ -304,6 +310,60 @@ class AnalysisEngine {
       weightBoll: strategy.weightBoll,
       weightVol: strategy.weightVol,
       weightTrend: strategy.weightTrend,
+    );
+  }
+
+  StockScore _evaluateWithRules(List<DailyKline> klines, Strategy strategy) {
+    final result = RuleEngine.evaluate(
+      klines: klines,
+      entryRules: strategy.entryRules!,
+      exitRules: strategy.exitRules ?? [],
+    );
+
+    // Map rule evaluation to StockScore:
+    // - entryTriggered → high score (9)
+    // - partial matches → medium score based on percentage of rules passing
+    // - exitTriggered → low score (2)
+    int score;
+    String reason;
+
+    if (result.entryTriggered && !result.exitTriggered) {
+      score = 9;
+      reason = '信号触发：所有入场条件满足';
+    } else if (result.exitTriggered) {
+      score = 2;
+      reason = '信号触发：出场条件已满足';
+    } else {
+      // Calculate how many entry rules passed
+      final passCount = result.entryResults.where((r) => r).length;
+      final total = result.entryResults.length;
+      final ratio = total > 0 ? passCount / total : 0.0;
+      score = (ratio * 8 + 1).round().clamp(1, 10);
+      if (ratio >= 0.8) {
+        reason = '大部分信号接近触发';
+      } else if (ratio >= 0.5) {
+        reason = '部分信号满足，继续观察';
+      } else {
+        reason = '信号未触发，等待时机';
+      }
+    }
+
+    // Build indicator detail string for reason
+    final indStr = result.indicatorValues.entries
+        .map((e) => '${e.key}: ${e.value.toStringAsFixed(1)}')
+        .join(', ');
+    if (indStr.isNotEmpty) {
+      reason = '$reason\n$indStr';
+    }
+
+    return StockScore(
+      score: score,
+      maScore: result.indicatorValues.containsKey('macd') ? (result.entryTriggered ? 9.0 : 5.0) : 0,
+      bollScore: result.indicatorValues.containsKey('rsi') ? (result.entryTriggered ? 9.0 : 5.0) : 0,
+      volScore: 0,
+      trendScore: 0,
+      isBandLow: result.entryTriggered,
+      reason: reason,
     );
   }
 

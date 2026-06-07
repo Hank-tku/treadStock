@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stockpilot/features/stock/domain/stock_models.dart';
 import 'package:stockpilot/features/analysis/domain/analysis_engine.dart';
 import 'package:stockpilot/features/analysis/domain/analysis_models.dart';
+import 'package:stockpilot/features/strategy/domain/strategy_models.dart';
+import 'package:stockpilot/features/strategy/domain/signal_rule.dart';
 
 // ---------------------------------------------------------------------------
 // Test data helpers
@@ -663,6 +665,77 @@ void main() {
       );
       expect(summary.supportPrice, 9.0);
       expect(summary.resistancePrice, 12.0);
+    });
+  });
+
+  // =========================================================================
+  // AnalysisEngine rule-based strategy integration
+  // =========================================================================
+  group('AnalysisEngine rule-based strategy', () {
+    test('rule-based strategy triggers high score when all entry rules pass', () {
+      // Create data that makes RSI very low (declining prices)
+      final klines = <DailyKline>[];
+      var price = 100.0;
+      for (var i = 0; i < 60; i++) {
+        price *= 0.97; // 3% drop daily — RSI should be very low
+        klines.add(DailyKline(
+          date: DateTime(2026, 1, 1).add(Duration(days: i)),
+          open: price * 1.01,
+          close: price,
+          high: price * 1.02,
+          low: price * 0.99,
+          volume: 100000,
+          amount: 5000000000,
+          preClose: i > 0 ? klines[i - 1].close : price * 1.03,
+        ));
+      }
+
+      final strategy = Strategy(
+        id: 'test', name: 'RSI Oversold', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+        entryRules: [SignalRule(indicator: 'rsi', condition: 'lt', value: 30)],
+      );
+
+      final engine = AnalysisEngine();
+      final score = engine.calculateScoreForStrategy(klines, strategy);
+      // With strongly declining prices, RSI should be < 30, triggering entry
+      expect(score.score, greaterThanOrEqualTo(7));
+    });
+
+    test('non-rule-based strategy still uses weighted scoring (backward compat)', () {
+      final klines = generateKlines(days: 60);
+      final strategy = Strategy(
+        id: 'test', name: 'Weighted', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+      );
+
+      final engine = AnalysisEngine();
+      final score = engine.calculateScoreForStrategy(klines, strategy);
+      // Should work exactly like before — no rules, just weighted scoring
+      expect(score.score, greaterThanOrEqualTo(1));
+      expect(score.score, lessThanOrEqualTo(10));
+    });
+
+    test('rule-based strategy returns indicator values in reason', () {
+      final klines = generateKlines(days: 60);
+      final strategy = Strategy(
+        id: 'test', name: 'RSI Test', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+        entryRules: [SignalRule(indicator: 'rsi', condition: 'gt', value: 50)],
+      );
+
+      final engine = AnalysisEngine();
+      final score = engine.calculateScoreForStrategy(klines, strategy);
+      expect(score.reason, contains('rsi'));
     });
   });
 }
