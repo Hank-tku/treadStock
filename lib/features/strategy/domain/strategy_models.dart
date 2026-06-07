@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'signal_rule.dart';
+
 // Domain models for the strategy management feature.
 
 /// A trading strategy with configurable analysis parameters.
@@ -28,6 +30,10 @@ class Strategy {
   final DateTime updatedAt;
   final DateTime? lastReviewAt;
 
+  // Optional signal rules for rule-based strategies
+  final List<SignalRule>? entryRules;
+  final List<SignalRule>? exitRules;
+
   // Computed stats (populated from DB queries, not persisted)
   final StrategyStats? stats;
 
@@ -49,6 +55,8 @@ class Strategy {
     required this.createdAt,
     required this.updatedAt,
     this.lastReviewAt,
+    this.entryRules,
+    this.exitRules,
     this.stats,
   });
 
@@ -60,6 +68,9 @@ class Strategy {
 
   /// Get the actual weight sum (for display purposes).
   double get weightSum => weightMA + weightBoll + weightVol + weightTrend;
+
+  /// Whether this strategy uses the new rule-based signal system.
+  bool get isRuleBased => entryRules != null && entryRules!.isNotEmpty;
 
   /// Check if review is needed (30+ days since last review).
   bool get needsReview {
@@ -86,6 +97,8 @@ class Strategy {
     bool? isEnabled,
     DateTime? updatedAt,
     DateTime? lastReviewAt,
+    List<SignalRule>? entryRules,
+    List<SignalRule>? exitRules,
     StrategyStats? stats,
   }) {
     return Strategy(
@@ -106,7 +119,66 @@ class Strategy {
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lastReviewAt: lastReviewAt ?? this.lastReviewAt,
+      entryRules: entryRules ?? this.entryRules,
+      exitRules: exitRules ?? this.exitRules,
       stats: stats ?? this.stats,
+    );
+  }
+
+  /// Serialize to JSON map.
+  Map<String, dynamic> toJson() {
+    final data = <String, dynamic>{
+      'id': id,
+      'name': name,
+      'description': description,
+      'maShortPeriod': maShortPeriod,
+      'maLongPeriod': maLongPeriod,
+      'bollPeriod': bollPeriod,
+      'bollStdDev': bollStdDev,
+      'weightMA': weightMA,
+      'weightBoll': weightBoll,
+      'weightVol': weightVol,
+      'weightTrend': weightTrend,
+      'recommendThreshold': recommendThreshold,
+      'isEnabled': isEnabled,
+      'isDefault': isDefault,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+    if (lastReviewAt != null) data['lastReviewAt'] = lastReviewAt!.toIso8601String();
+    if (entryRules != null) data['entryRules'] = entryRules!.map((r) => r.toJson()).toList();
+    if (exitRules != null) data['exitRules'] = exitRules!.map((r) => r.toJson()).toList();
+    return data;
+  }
+
+  /// Deserialize from JSON map.
+  factory Strategy.fromJson(Map<String, dynamic> json) {
+    return Strategy(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String? ?? '',
+      maShortPeriod: json['maShortPeriod'] as int,
+      maLongPeriod: json['maLongPeriod'] as int,
+      bollPeriod: json['bollPeriod'] as int,
+      bollStdDev: (json['bollStdDev'] as num).toDouble(),
+      weightMA: (json['weightMA'] as num).toDouble(),
+      weightBoll: (json['weightBoll'] as num).toDouble(),
+      weightVol: (json['weightVol'] as num).toDouble(),
+      weightTrend: (json['weightTrend'] as num).toDouble(),
+      recommendThreshold: json['recommendThreshold'] as int,
+      isEnabled: json['isEnabled'] as bool? ?? true,
+      isDefault: json['isDefault'] as bool? ?? false,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      lastReviewAt: json['lastReviewAt'] != null
+          ? DateTime.parse(json['lastReviewAt'] as String)
+          : null,
+      entryRules: json['entryRules'] != null
+          ? (json['entryRules'] as List).map((e) => SignalRule.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
+      exitRules: json['exitRules'] != null
+          ? (json['exitRules'] as List).map((e) => SignalRule.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
     );
   }
 }

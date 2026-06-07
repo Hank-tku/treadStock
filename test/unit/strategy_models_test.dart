@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stockpilot/features/strategy/domain/signal_rule.dart';
 import 'package:stockpilot/features/strategy/domain/strategy_models.dart';
 
 void main() {
@@ -392,6 +393,74 @@ void main() {
     test('actualChangeDisplay shows -- when null', () {
       final record = makeRecord();
       expect(record.actualChangeDisplay, '--');
+    });
+  });
+
+  group('Strategy signal rules', () {
+    test('isRuleBased returns false when entryRules is null', () {
+      final strategy = Strategy(
+        id: 'test', name: 'Test', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+      );
+      expect(strategy.isRuleBased, isFalse);
+    });
+
+    test('isRuleBased returns false when entryRules is empty', () {
+      final strategy = Strategy(
+        id: 'test', name: 'Test', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+        entryRules: [],
+      );
+      expect(strategy.isRuleBased, isFalse);
+    });
+
+    test('isRuleBased returns true when entryRules has rules', () {
+      final strategy = Strategy(
+        id: 'test', name: 'Test', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+        entryRules: [SignalRule(indicator: 'rsi', condition: 'lt', value: 30)],
+      );
+      expect(strategy.isRuleBased, isTrue);
+    });
+
+    test('JSON roundtrip preserves entryRules and exitRules', () {
+      final strategy = Strategy(
+        id: 'test', name: 'Test', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+        entryRules: [SignalRule(indicator: 'rsi', condition: 'lt', value: 30)],
+        exitRules: [SignalRule(indicator: 'rsi', condition: 'gt', value: 70)],
+      );
+      final json = strategy.toJson();
+      final restored = Strategy.fromJson(json);
+      expect(restored.isRuleBased, isTrue);
+      expect(restored.entryRules!.length, 1);
+      expect(restored.entryRules!.first.indicator, 'rsi');
+      expect(restored.exitRules!.length, 1);
+    });
+
+    test('Old JSON without rules fields deserializes correctly', () {
+      final json = {
+        'id': 'test', 'name': 'Test', 'description': '',
+        'maShortPeriod': 20, 'maLongPeriod': 60, 'bollPeriod': 20, 'bollStdDev': 2.0,
+        'weightMA': 0.3, 'weightBoll': 0.3, 'weightVol': 0.2, 'weightTrend': 0.2,
+        'recommendThreshold': 7, 'isEnabled': true, 'isDefault': false,
+        'createdAt': '2026-01-01T00:00:00.000', 'updatedAt': '2026-01-01T00:00:00.000',
+      };
+      final strategy = Strategy.fromJson(json);
+      expect(strategy.isRuleBased, isFalse);
+      expect(strategy.entryRules, isNull);
     });
   });
 }
