@@ -48,6 +48,14 @@ void main() {
       final rsi = IndicatorCalculator.calculateRSI(closes, period: 14);
       expect(rsi.last, greaterThan(90));
     });
+
+    test('minimum data points (period+1) returns exactly 1 RSI value', () {
+      // period=14, need exactly 15 closes
+      final closes = List.generate(15, (i) => 100.0 + i);
+      final rsi = IndicatorCalculator.calculateRSI(closes, period: 14);
+      expect(rsi.length, 1);
+      expect(rsi.single, closeTo(100.0, 0.01)); // all gains
+    });
   });
 
   group('IndicatorCalculator.calculateMACD', () {
@@ -85,6 +93,26 @@ void main() {
       final result = IndicatorCalculator.calculateMACD(closes);
       expect(result.signalLine.length, lessThanOrEqualTo(result.macdLine.length));
       expect(result.histogram.length, equals(result.signalLine.length));
+    });
+
+    test('monotonic increasing data makes MACD line positive', () {
+      final closes = List.generate(100, (i) => 100.0 + i * 2.0);
+      final result = IndicatorCalculator.calculateMACD(closes);
+      // After EMA warmup, MACD line should be positive for increasing data
+      final mid = result.macdLine.length ~/ 2;
+      for (var i = mid; i < result.macdLine.length; i++) {
+        expect(result.macdLine[i], greaterThan(0));
+      }
+    });
+
+    test('monotonic decreasing data makes MACD line negative', () {
+      final closes = List.generate(100, (i) => 200.0 - i * 2.0);
+      final result = IndicatorCalculator.calculateMACD(closes);
+      // After EMA warmup, MACD line should be negative for decreasing data
+      final mid = result.macdLine.length ~/ 2;
+      for (var i = mid; i < result.macdLine.length; i++) {
+        expect(result.macdLine[i], lessThan(0));
+      }
     });
   });
 
@@ -142,6 +170,35 @@ void main() {
       expect(result.kValues.length, 12); // 20 - 9 + 1
       expect(result.dValues.length, 12);
       expect(result.jValues.length, 12);
+    });
+
+    test('all identical klines (high=low=close) yields K=50, D=50, J=50', () {
+      final klines = List.generate(15, (i) => DailyKline(
+        date: DateTime(2026, 1, i + 1),
+        open: 100.0, close: 100.0, high: 100.0, low: 100.0,
+        volume: 100000, amount: 10000000, preClose: 100.0,
+      ));
+      final result = IndicatorCalculator.calculateKDJ(klines, period: 9);
+      // When high==low==close, RSV=50, and with prevK=prevD=50, K=D=50, J=50
+      for (var i = 0; i < result.kValues.length; i++) {
+        expect(result.kValues[i], closeTo(50.0, 0.01));
+        expect(result.dValues[i], closeTo(50.0, 0.01));
+        expect(result.jValues[i], closeTo(50.0, 0.01));
+      }
+    });
+  });
+
+  group('IndicatorCalculator.calculateBollPosition', () {
+    test('returns 0.5 when upper equals lower', () {
+      expect(IndicatorCalculator.calculateBollPosition(100, 100, 100), 0.5);
+    });
+
+    test('returns 0.0 when price at lower band', () {
+      expect(IndicatorCalculator.calculateBollPosition(90, 110, 90), closeTo(0.0, 0.001));
+    });
+
+    test('returns 1.0 when price at upper band', () {
+      expect(IndicatorCalculator.calculateBollPosition(110, 110, 90), closeTo(1.0, 0.001));
     });
   });
 }

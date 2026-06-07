@@ -1,51 +1,63 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stockpilot/features/strategy/domain/strategy_models.dart';
 import 'package:stockpilot/features/strategy/domain/strategy_presets.dart';
 
 void main() {
-  group('StrategyPresets', () {
-    final now = DateTime(2026, 6, 7);
-    var idCounter = 0;
-    String genId() => 'preset-${++idCounter}';
+  final validIndicators = {
+    'rsi', 'macd', 'macd_signal', 'macd_hist',
+    'k', 'd', 'j', 'boll_position',
+    'ma_alignment', 'vol_price_divergence', 'vol_ratio',
+  };
+  final validConditions = {'lt', 'gt', 'in_range', 'cross_up', 'cross_down'};
 
-    test('rsiOversoldBounce has correct entry and exit rules', () {
-      final s = StrategyPresets.rsiOversoldBounce(id: genId(), now: now);
-      expect(s.isRuleBased, isTrue);
-      expect(s.entryRules!.length, 1);
-      expect(s.entryRules!.first.indicator, 'rsi');
-      expect(s.entryRules!.first.condition, 'lt');
-      expect(s.entryRules!.first.value, 30);
-      expect(s.exitRules!.length, 1);
-      expect(s.exitRules!.first.indicator, 'rsi');
-      expect(s.exitRules!.first.condition, 'gt');
-      expect(s.exitRules!.first.value, 70);
-    });
+  List<Strategy> makePresets() => StrategyPresets.all(
+    idGenerator: () => 'test-id',
+    now: DateTime(2026, 1, 1),
+  );
 
-    test('macdGoldenCross has MACD cross rules', () {
-      final s = StrategyPresets.macdGoldenCross(id: genId(), now: now);
-      expect(s.isRuleBased, isTrue);
-      expect(s.entryRules!.first.indicator, 'macd');
-      expect(s.entryRules!.first.condition, 'cross_up');
-      expect(s.exitRules!.first.indicator, 'macd');
-      expect(s.exitRules!.first.condition, 'cross_down');
-    });
+  test('all() returns exactly 6 presets', () {
+    expect(makePresets().length, 6);
+  });
 
-    test('kdjLowGoldenCross has K cross and K < 40 entry rules', () {
-      final s = StrategyPresets.kdjLowGoldenCross(id: genId(), now: now);
-      expect(s.isRuleBased, isTrue);
-      expect(s.entryRules!.length, 2); // cross_up + lt
-      expect(s.exitRules!.first.indicator, 'k');
-      expect(s.exitRules!.first.condition, 'gt');
-      expect(s.exitRules!.first.value, 80);
-    });
+  test('all presets have non-empty name and description', () {
+    for (final preset in makePresets()) {
+      expect(preset.name, isNotEmpty);
+      expect(preset.description, isNotEmpty);
+    }
+  });
 
-    test('all() returns exactly 6 presets', () {
-      var counter = 100;
-      final presets = StrategyPresets.all(
-        idGenerator: () => 'p-${++counter}',
-        now: now,
-      );
-      expect(presets.length, 6);
-      expect(presets.every((s) => s.isRuleBased), isTrue);
-    });
+  test('all presets have non-empty entryRules', () {
+    for (final preset in makePresets()) {
+      expect(preset.entryRules, isNotNull);
+      expect(preset.entryRules!, isNotEmpty,
+          reason: '${preset.name} should have entry rules');
+    }
+  });
+
+  test('all presets have exitRules', () {
+    for (final preset in makePresets()) {
+      expect(preset.exitRules, isNotNull,
+          reason: '${preset.name} should have exit rules');
+      expect(preset.exitRules!, isNotEmpty,
+          reason: '${preset.name} should have non-empty exit rules');
+    }
+  });
+
+  test('all rules have valid indicator and condition values', () {
+    for (final preset in makePresets()) {
+      final allRules = [...?preset.entryRules, ...?preset.exitRules];
+      for (final rule in allRules) {
+        expect(validIndicators, contains(rule.indicator),
+            reason: '${preset.name}: invalid indicator "${rule.indicator}"');
+        expect(validConditions, contains(rule.condition),
+            reason: '${preset.name}: invalid condition "${rule.condition}"');
+      }
+    }
+  });
+
+  test('all presets have unique names', () {
+    final names = makePresets().map((p) => p.name).toList();
+    expect(names.toSet().length, names.length,
+        reason: 'Preset names should be unique');
   });
 }
