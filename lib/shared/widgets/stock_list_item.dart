@@ -60,7 +60,7 @@ class StockListItem extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row 1: badges + name + price
+            // Row 1: name + price
             Row(
               children: [
                 // Pin icon
@@ -72,23 +72,6 @@ class StockListItem extends StatelessWidget {
                       size: 14,
                       color: StockColors.pin,
                     ),
-                  ),
-
-                // Score badge
-                score != null
-                    ? Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ScoreBadge(score: score),
-                      )
-                    : const SizedBox(
-                        width: 34,
-                        height: 20,
-                      ), // placeholder alignment
-                // Band low tag
-                if (isBandLow)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: BandLowTag(),
                   ),
 
                 // Stock name
@@ -124,28 +107,35 @@ class StockListItem extends StatelessWidget {
               ],
             ),
 
-            // Row 2: code + market + change%
+            // Row 2: code + strategy score + tags + change%
             const SizedBox(height: 4),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Code and market
-                Text(
-                  '$code ${market == "SH" ? 'SH' : 'SZ'}',
-                  style: AppTextStyles.caption,
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        '$code ${market == "SH" ? 'SH' : 'SZ'}',
+                        style: AppTextStyles.caption,
+                      ),
+                      if (score != null) ScoreBadge(score: score),
+                      if (isBandLow) const BandLowTag(),
+                      if (expectedRange != null)
+                        Text(
+                          expectedRange!,
+                          style: AppTextStyles.caption.copyWith(
+                            color: StockColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
 
-                // Expected range (for pinned items)
-                if (expectedRange != null) ...[
-                  const SizedBox(width: 12),
-                  Text(
-                    expectedRange!,
-                    style: AppTextStyles.caption.copyWith(
-                      color: StockColors.textSecondary,
-                    ),
-                  ),
-                ],
-
-                const Spacer(),
+                const SizedBox(width: 8),
 
                 // Change percentage (right-aligned)
                 Text(

@@ -70,15 +70,6 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: '/strategy/:id',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          return StrategyDetailPage(
-            strategyId: state.pathParameters['id'] ?? '',
-          );
-        },
-      ),
-      GoRoute(
         path: '/strategy/new',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const StrategyEditPage(),
@@ -96,6 +87,15 @@ class AppRouter {
           return StrategyEditPage(
             strategyId: state.pathParameters['id'],
             suggestion: extra?['suggestion'] as StrategySuggestion?,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/strategy/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          return StrategyDetailPage(
+            strategyId: state.pathParameters['id'] ?? '',
           );
         },
       ),

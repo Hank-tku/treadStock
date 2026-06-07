@@ -1,5 +1,17 @@
 import 'dart:math';
 
+/// Result container for MACD calculation.
+class MACDResult {
+  final List<double> macdLine;
+  final List<double> signalLine;
+  final List<double> histogram;
+  const MACDResult({
+    required this.macdLine,
+    required this.signalLine,
+    required this.histogram,
+  });
+}
+
 /// Pure function technical indicator calculator.
 /// All methods are static and side-effect free.
 class IndicatorCalculator {
@@ -52,5 +64,62 @@ class IndicatorCalculator {
     }
 
     return rsiValues;
+  }
+
+  /// Compute EMA over [values] with the given [period].
+  /// Returns a list of the same length as [values] starting from index period-1.
+  static List<double> _computeEMA(List<double> values, int period) {
+    if (values.length < period) return [];
+    final k = 2.0 / (period + 1);
+    final ema = <double>[];
+    // First EMA value = SMA of first `period` values
+    double sum = 0;
+    for (var i = 0; i < period; i++) {
+      sum += values[i];
+    }
+    ema.add(sum / period);
+    // Subsequent EMA values
+    for (var i = period; i < values.length; i++) {
+      ema.add(values[i] * k + ema.last * (1 - k));
+    }
+    return ema;
+  }
+
+  /// Calculate MACD (Moving Average Convergence Divergence).
+  static MACDResult calculateMACD(
+    List<double> closes, {
+    int fastPeriod = 12,
+    int slowPeriod = 26,
+    int signalPeriod = 9,
+  }) {
+    if (closes.length < slowPeriod + signalPeriod) {
+      return const MACDResult(macdLine: [], signalLine: [], histogram: []);
+    }
+
+    // Calculate fast and slow EMA (both indexed from their respective start)
+    final fastEMA = _computeEMA(closes, fastPeriod);
+    final slowEMA = _computeEMA(closes, slowPeriod);
+
+    // MACD line: fastEMA - slowEMA, starting where both are available
+    // fastEMA has length closes.length - fastPeriod + 1, starting at fastPeriod-1
+    // slowEMA has length closes.length - slowPeriod + 1, starting at slowPeriod-1
+    // Both align at slowPeriod-1, so we take from that point
+    final offset = slowPeriod - fastPeriod; // indices into fastEMA to skip
+    final macdLine = <double>[];
+    for (var i = 0; i < slowEMA.length; i++) {
+      macdLine.add(fastEMA[i + offset] - slowEMA[i]);
+    }
+
+    // Signal line = EMA of MACD line
+    final signalLine = _computeEMA(macdLine, signalPeriod);
+
+    // Histogram = MACD - Signal (aligned from signal start)
+    final histOffset = macdLine.length - signalLine.length;
+    final histogram = <double>[];
+    for (var i = 0; i < signalLine.length; i++) {
+      histogram.add(macdLine[i + histOffset] - signalLine[i]);
+    }
+
+    return MACDResult(macdLine: macdLine, signalLine: signalLine, histogram: histogram);
   }
 }

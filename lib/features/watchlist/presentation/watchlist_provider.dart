@@ -61,6 +61,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
   final AnalysisEngine _analysisEngine;
   final StrategyService _strategyService;
   final StrategyScoringService _scoringService;
+  Future<void>? _initializeFuture;
 
   WatchlistNotifier(
     this._watchlistService,
@@ -74,14 +75,28 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
 
   /// Load persisted watchlist items into state.
   Future<void> initialize() async {
+    return _initializeFuture ??= _initialize();
+  }
+
+  Future<void> _initialize() async {
     await _watchlistService.init();
     if (!mounted) return;
     reload();
+    await refreshAll();
   }
 
   /// Reload watchlist from service.
   void reload() {
+    if (!mounted) return;
     state = state.copyWith(items: _watchlistService.getWatchlist());
+  }
+
+  void _syncWatchlistState({Map<String, StrategyScoreResult>? bestStrategies}) {
+    if (!mounted) return;
+    state = state.copyWith(
+      items: _watchlistService.getWatchlist(),
+      bestStrategies: bestStrategies ?? state.bestStrategies,
+    );
   }
 
   /// Search stocks by keyword.
@@ -157,26 +172,43 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
 
   /// Fetch latest data for a watchlist stock.
   Future<void> _fetchStockData(String code, String market) async {
+    StockQuote? latestQuote;
+    try {
+      latestQuote = await _apiService.fetchStockQuote(code, market: market);
+      if (latestQuote != null) {
+        _watchlistService.updateQuote(
+          code,
+          latestQuote.price,
+          latestQuote.changePct,
+        );
+        _syncWatchlistState();
+      }
+    } catch (_) {
+      // Keep K-line scoring attempt below even if real-time quote fails.
+    }
+
     try {
       final klines = await _apiService.fetchStockKline(code, market: market);
       if (klines.isNotEmpty) {
         final lastKline = klines.last;
         await _strategyService.init();
         final strategies = _strategyService.getEnabledStrategies();
-        final quote = StockQuote(
-          code: code,
-          name: _watchlistService.findByCode(code)?.stockName ?? code,
-          market: market,
-          price: lastKline.close,
-          changePct: lastKline.changePct,
-          changeAmt: lastKline.close - lastKline.preClose,
-          openPrice: lastKline.open,
-          highPrice: lastKline.high,
-          lowPrice: lastKline.low,
-          preClose: lastKline.preClose,
-          volume: lastKline.volume,
-          turnover: 0,
-        );
+        final quote =
+            latestQuote ??
+            StockQuote(
+              code: code,
+              name: _watchlistService.findByCode(code)?.stockName ?? code,
+              market: market,
+              price: lastKline.close,
+              changePct: lastKline.changePct,
+              changeAmt: lastKline.close - lastKline.preClose,
+              openPrice: lastKline.open,
+              highPrice: lastKline.high,
+              lowPrice: lastKline.low,
+              preClose: lastKline.preClose,
+              volume: lastKline.volume,
+              turnover: 0,
+            );
         final bestStrategy = _scoringService.bestScore(
           quote: quote,
           klines: klines,
@@ -184,19 +216,17 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
         );
         final score =
             bestStrategy?.score ?? _analysisEngine.calculateScore(klines);
-        _watchlistService.updateQuote(
-          code,
-          lastKline.close,
-          lastKline.changePct,
-        );
+        _watchlistService.updateQuote(code, quote.price, quote.changePct);
         _watchlistService.updateScore(code, score);
-        if (bestStrategy != null && mounted) {
-          final updated = Map<String, StrategyScoreResult>.from(
-            state.bestStrategies,
-          );
+        final updated = Map<String, StrategyScoreResult>.from(
+          state.bestStrategies,
+        );
+        if (bestStrategy != null) {
           updated[code] = bestStrategy;
-          state = state.copyWith(bestStrategies: updated);
+        } else {
+          updated.remove(code);
         }
+        _syncWatchlistState(bestStrategies: updated);
       }
     } catch (_) {
       // Silent fail for background data fetch

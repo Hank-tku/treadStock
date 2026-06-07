@@ -25,6 +25,7 @@ class StrategyRecommendationState {
   final List<StrategyRecommendation> groups;
   final bool isLoading;
   final bool hasError;
+  final bool hasEnabledStrategies;
   final String? errorMessage;
   final DateTime? lastUpdated;
 
@@ -32,6 +33,7 @@ class StrategyRecommendationState {
     this.groups = const [],
     this.isLoading = false,
     this.hasError = false,
+    this.hasEnabledStrategies = true,
     this.errorMessage,
     this.lastUpdated,
   });
@@ -40,6 +42,7 @@ class StrategyRecommendationState {
     List<StrategyRecommendation>? groups,
     bool? isLoading,
     bool? hasError,
+    bool? hasEnabledStrategies,
     String? errorMessage,
     DateTime? lastUpdated,
   }) {
@@ -47,6 +50,7 @@ class StrategyRecommendationState {
       groups: groups ?? this.groups,
       isLoading: isLoading ?? this.isLoading,
       hasError: hasError ?? this.hasError,
+      hasEnabledStrategies: hasEnabledStrategies ?? this.hasEnabledStrategies,
       errorMessage: errorMessage ?? this.errorMessage,
       lastUpdated: lastUpdated ?? this.lastUpdated,
     );
@@ -71,7 +75,11 @@ class StrategyRecommendationNotifier
       await _strategyService.init();
       final enabledStrategies = _strategyService.getEnabledStrategies();
       if (enabledStrategies.isEmpty) {
-        state = state.copyWith(groups: [], isLoading: false);
+        state = state.copyWith(
+          groups: [],
+          isLoading: false,
+          hasEnabledStrategies: false,
+        );
         return;
       }
 
@@ -80,6 +88,7 @@ class StrategyRecommendationNotifier
         state = state.copyWith(
           isLoading: false,
           hasError: true,
+          hasEnabledStrategies: true,
           errorMessage: '暂无行情数据',
         );
         return;
@@ -136,6 +145,7 @@ class StrategyRecommendationNotifier
       state = state.copyWith(
         groups: groups,
         isLoading: false,
+        hasEnabledStrategies: true,
         lastUpdated: DateTime.now(),
       );
     } catch (e) {

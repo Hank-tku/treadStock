@@ -512,7 +512,7 @@ void main() {
   // StockScore 模型属性
   // =========================================================================
   group('StockScore model', () {
-    test('label: score >= 8 -> 强烈推荐', () {
+    test('label: score >= 8 -> 重点观察', () {
       final score = StockScore(
         score: 8,
         maScore: 8,
@@ -521,7 +521,7 @@ void main() {
         trendScore: 8,
         isBandLow: false,
       );
-      expect(score.label, '强烈推荐');
+      expect(score.label, '重点观察');
     });
 
     test('label: score 5-7 -> 中性观望', () {

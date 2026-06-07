@@ -35,7 +35,11 @@ class StockApiService {
 
   /// Fetch all A-stock market quotes (price, change%, volume).
   Future<List<StockQuote>> fetchAllMarketQuotes() async {
-    return _fetchMarketQuotes(pageSize: _marketQuotePageSize);
+    try {
+      return await _fetchMarketQuotes(pageSize: _marketQuotePageSize);
+    } catch (_) {
+      return _fetchSinaMarketQuotes(limit: _marketQuotePageSize);
+    }
   }
 
   /// Fetch only the highest-ranked market quotes needed by recommendation pages.
@@ -46,7 +50,11 @@ class StockApiService {
   Future<List<StockQuote>> fetchRecommendationCandidates({
     int limit = _recommendationQuoteLimit,
   }) async {
-    return _fetchMarketQuotes(pageSize: limit, maxItems: limit);
+    try {
+      return await _fetchMarketQuotes(pageSize: limit, maxItems: limit);
+    } catch (_) {
+      return _fetchSinaMarketQuotes(limit: limit);
+    }
   }
 
   Future<List<StockQuote>> _fetchMarketQuotes({
@@ -113,11 +121,102 @@ class StockApiService {
     return (quotes: quotes, total: total);
   }
 
+  Future<List<StockQuote>> _fetchSinaMarketQuotes({required int limit}) async {
+    final perMarketLimit = (limit / 2).ceil();
+    final results = <StockQuote>[
+      ...await _fetchSinaMarketQuotePage('sz_a', perMarketLimit),
+      ...await _fetchSinaMarketQuotePage('sh_a', perMarketLimit),
+    ]..sort((a, b) => b.changePct.compareTo(a.changePct));
+
+    return results.take(limit).toList();
+  }
+
+  Future<List<StockQuote>> _fetchSinaMarketQuotePage(
+    String node,
+    int limit,
+  ) async {
+    final response = await _dio.get(
+      'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/'
+      'Market_Center.getHQNodeData',
+      queryParameters: {
+        'page': 1,
+        'num': limit,
+        'sort': 'changepercent',
+        'asc': 0,
+        'node': node,
+        'symbol': '',
+        '_s_r_a': 'page',
+      },
+      options: Options(responseType: ResponseType.plain),
+    );
+
+    final rows = json.decode(response.data?.toString() ?? '[]');
+    if (rows is! List) return [];
+
+    final quotes = <StockQuote>[];
+    for (final row in rows) {
+      if (row is! Map) continue;
+      final symbol = row['symbol']?.toString() ?? '';
+      final market = symbol.startsWith('sh')
+          ? 'SH'
+          : symbol.startsWith('sz')
+          ? 'SZ'
+          : null;
+      if (market == null) continue;
+
+      final code = row['code']?.toString() ?? '';
+      final price = _parseDouble(row['trade']?.toString());
+      final preClose = _parseDouble(row['settlement']?.toString());
+      final changeAmt = _parseDouble(row['pricechange']?.toString()) ?? 0;
+      final changePct = _parseDouble(row['changepercent']?.toString()) ?? 0;
+      if (code.isEmpty || price == null) continue;
+
+      quotes.add(
+        StockQuote(
+          code: code,
+          name: row['name']?.toString() ?? code,
+          market: market,
+          price: price,
+          changePct: changePct,
+          changeAmt: changeAmt,
+          openPrice: _parseDouble(row['open']?.toString()) ?? price,
+          highPrice: _parseDouble(row['high']?.toString()) ?? price,
+          lowPrice: _parseDouble(row['low']?.toString()) ?? price,
+          preClose: preClose ?? price - changeAmt,
+          volume: _parseDouble(row['volume']?.toString()) ?? 0,
+          turnover: _parseDouble(row['turnoverratio']?.toString()) ?? 0,
+        ),
+      );
+    }
+
+    return quotes;
+  }
+
   /// Fetch stock K-line data (daily).
   Future<List<DailyKline>> fetchStockKline(
     String stockCode, {
     String market = 'SH',
     int days = ApiConstants.defaultKlineDays,
+  }) async {
+    try {
+      final klines = await _fetchEastMoneyKline(
+        stockCode,
+        market: market,
+        days: days,
+      );
+      if (klines.isNotEmpty) return klines;
+    } catch (_) {
+      // Fall back below. East Money occasionally closes Dart HTTP connections
+      // before sending headers on macOS.
+    }
+
+    return _fetchSinaKline(stockCode, market: market, days: days);
+  }
+
+  Future<List<DailyKline>> _fetchEastMoneyKline(
+    String stockCode, {
+    required String market,
+    required int days,
   }) async {
     final secid = '${market == "SH" ? 1 : 0}.$stockCode';
     final now = DateTime.now();
@@ -145,6 +244,152 @@ class StockApiService {
     if (klinesStr == null) return [];
 
     return DailyKline.parseKlines(klinesStr.cast<String>());
+  }
+
+  /// Fetch latest quote for one stock.
+  ///
+  /// This endpoint is more stable than the historical K-line endpoint and is
+  /// used by watchlist surfaces so price data can still render when K-lines
+  /// are temporarily unavailable.
+  Future<StockQuote?> fetchStockQuote(
+    String stockCode, {
+    String market = 'SH',
+  }) async {
+    try {
+      final response = await _dio.get(
+        '${ApiConstants.eastmoneyPush}/stock/get',
+        queryParameters: {
+          'secid': getSecid(stockCode, market),
+          'fields': 'f43,f44,f45,f46,f47,f48,f57,f58,f60,f168,f169,f170',
+        },
+      );
+
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) {
+        return StockQuote.fromRealtimeJson(
+          data,
+          fallbackCode: stockCode,
+          fallbackMarket: market,
+        );
+      }
+    } catch (_) {
+      // Fall back below.
+    }
+
+    return _fetchSinaStockQuote(stockCode, market: market);
+  }
+
+  Future<StockQuote?> _fetchSinaStockQuote(
+    String stockCode, {
+    required String market,
+  }) async {
+    final symbol = '${market.toLowerCase()}$stockCode';
+    final response = await _dio.get(
+      'https://hq.sinajs.cn/list=$symbol',
+      options: Options(
+        responseType: ResponseType.plain,
+        headers: {'Referer': 'https://finance.sina.com.cn/'},
+      ),
+    );
+    final body = response.data?.toString() ?? '';
+    final start = body.indexOf('"');
+    final end = body.lastIndexOf('"');
+    if (start < 0 || end <= start) return null;
+
+    final fields = body.substring(start + 1, end).split(',');
+    if (fields.length < 10) return null;
+
+    final open = _parseDouble(fields[1]);
+    final preClose = _parseDouble(fields[2]);
+    final price = _parseDouble(fields[3]);
+    final high = _parseDouble(fields[4]);
+    final low = _parseDouble(fields[5]);
+    final volume = _parseDouble(fields[8]);
+    final amount = _parseDouble(fields[9]);
+    if (price == null || preClose == null) return null;
+
+    final changeAmt = price - preClose;
+    final changePct = preClose == 0 ? 0.0 : changeAmt / preClose * 100;
+    return StockQuote(
+      code: stockCode,
+      name: stockCode,
+      market: market,
+      price: price,
+      changePct: changePct,
+      changeAmt: changeAmt,
+      openPrice: open ?? price,
+      highPrice: high ?? price,
+      lowPrice: low ?? price,
+      preClose: preClose,
+      volume: volume ?? 0,
+      turnover: amount ?? 0,
+    );
+  }
+
+  Future<List<DailyKline>> _fetchSinaKline(
+    String stockCode, {
+    required String market,
+    required int days,
+  }) async {
+    final symbol = '${market.toLowerCase()}$stockCode';
+    final now = DateTime.now();
+    final callback = 'var _${symbol}_${now.year}_${now.month}_${now.day}=';
+    final response = await _dio.get(
+      'https://quotes.sina.cn/cn/api/jsonp_v2.php/$callback/'
+      'CN_MarketDataService.getKLineData',
+      queryParameters: {
+        'symbol': symbol,
+        'scale': 240,
+        'ma': 'no',
+        'datalen': days,
+      },
+      options: Options(responseType: ResponseType.plain),
+    );
+
+    final body = response.data?.toString() ?? '';
+    final start = body.indexOf('[');
+    final end = body.lastIndexOf(']');
+    if (start < 0 || end <= start) return [];
+
+    final rows = json.decode(body.substring(start, end + 1));
+    if (rows is! List) return [];
+
+    final klines = <DailyKline>[];
+    for (final row in rows) {
+      if (row is! Map) continue;
+      final date = DateTime.tryParse(row['day']?.toString() ?? '');
+      final open = _parseDouble(row['open']?.toString());
+      final high = _parseDouble(row['high']?.toString());
+      final low = _parseDouble(row['low']?.toString());
+      final close = _parseDouble(row['close']?.toString());
+      final volume = _parseDouble(row['volume']?.toString());
+      if (date == null ||
+          open == null ||
+          high == null ||
+          low == null ||
+          close == null) {
+        continue;
+      }
+      klines.add(
+        DailyKline(
+          date: date,
+          open: open,
+          close: close,
+          high: high,
+          low: low,
+          volume: volume ?? 0,
+          amount: 0,
+          preClose: klines.isEmpty ? open : klines.last.close,
+        ),
+      );
+    }
+
+    return klines;
+  }
+
+  double? _parseDouble(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return double.tryParse(value.trim());
   }
 
   /// Search stocks by code or name.

@@ -12,19 +12,19 @@ void main() {
   group('T-MOD-01: StockQuote.fromJson', () {
     test('正确解析东方财富实时行情 JSON', () {
       final json = {
-        'f2': 45.20,       // 最新价
-        'f3': 2.35,        // 涨跌幅
-        'f4': 1.05,        // 涨跌额
-        'f5': 125400,      // 成交量
-        'f6': 5678000000,  // 成交额
-        'f7': 2.85,        // 振幅
-        'f8': 1.23,        // 换手率
-        'f12': '601318',   // 代码
-        'f14': '中国平安',  // 名称
-        'f15': 45.80,      // 最高价
-        'f16': 44.50,      // 最低价
-        'f17': 44.80,      // 开盘价
-        'f18': 44.15,      // 昨收
+        'f2': 45.20, // 最新价
+        'f3': 2.35, // 涨跌幅
+        'f4': 1.05, // 涨跌额
+        'f5': 125400, // 成交量
+        'f6': 5678000000, // 成交额
+        'f7': 2.85, // 振幅
+        'f8': 1.23, // 换手率
+        'f12': '601318', // 代码
+        'f14': '中国平安', // 名称
+        'f15': 45.80, // 最高价
+        'f16': 44.50, // 最低价
+        'f17': 44.80, // 开盘价
+        'f18': 44.15, // 昨收
       };
 
       final quote = StockQuote.fromJson(json);
@@ -92,7 +92,12 @@ void main() {
     });
 
     test('字段值为 String 时正确转换', () {
-      final json = {'f2': '45.20', 'f3': '2.35', 'f12': '601318', 'f14': 'test'};
+      final json = {
+        'f2': '45.20',
+        'f3': '2.35',
+        'f12': '601318',
+        'f14': 'test',
+      };
       final quote = StockQuote.fromJson(json);
       expect(quote.price, 45.20);
       expect(quote.changePct, 2.35);
@@ -106,16 +111,57 @@ void main() {
 
     test('copyWith 正确更新指定字段', () {
       const quote = StockQuote(
-        code: '601318', name: '中国平安', market: 'SH',
-        price: 45.20, changePct: 2.35, changeAmt: 1.05,
-        openPrice: 44.80, highPrice: 45.80, lowPrice: 44.50,
-        preClose: 44.15, volume: 125400, turnover: 1.23,
+        code: '601318',
+        name: '中国平安',
+        market: 'SH',
+        price: 45.20,
+        changePct: 2.35,
+        changeAmt: 1.05,
+        openPrice: 44.80,
+        highPrice: 45.80,
+        lowPrice: 44.50,
+        preClose: 44.15,
+        volume: 125400,
+        turnover: 1.23,
       );
       final updated = quote.copyWith(price: 50.0, changePct: 5.0);
       expect(updated.price, 50.0);
       expect(updated.changePct, 5.0);
       expect(updated.code, '601318'); // 其他字段不变
       expect(updated.name, '中国平安');
+    });
+
+    test('fromRealtimeJson 正确解析 stock/get 缩放字段', () {
+      final quote = StockQuote.fromRealtimeJson(
+        {
+          'f43': 4286,
+          'f44': 4421,
+          'f45': 3905,
+          'f46': 4140,
+          'f47': 561344,
+          'f48': 2349735662.29,
+          'f57': '002472',
+          'f58': '双环传动',
+          'f60': 4139,
+          'f168': 750,
+          'f169': 147,
+          'f170': 355,
+        },
+        fallbackCode: '002472',
+        fallbackMarket: 'SZ',
+      );
+
+      expect(quote.code, '002472');
+      expect(quote.name, '双环传动');
+      expect(quote.market, 'SZ');
+      expect(quote.price, 42.86);
+      expect(quote.changePct, 3.55);
+      expect(quote.changeAmt, 1.47);
+      expect(quote.openPrice, 41.40);
+      expect(quote.highPrice, 44.21);
+      expect(quote.lowPrice, 39.05);
+      expect(quote.preClose, 41.39);
+      expect(quote.turnover, 7.50);
     });
   });
 
@@ -269,10 +315,7 @@ void main() {
   // =========================================================================
   group('StockSearchResult.fromJson', () {
     test('正确解析搜索结果', () {
-      final json = {
-        'Code': '601318',
-        'Name': '中国平安',
-      };
+      final json = {'Code': '601318', 'Name': '中国平安'};
       final result = StockSearchResult.fromJson(json);
       expect(result.code, '601318');
       expect(result.name, '中国平安');

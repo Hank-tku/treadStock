@@ -25,12 +25,15 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
   final TextEditingController _jsonImportController = TextEditingController();
   bool _isSaving = false;
   bool _isEdit = false;
+  bool _showAdvancedSettings = false;
   String? _selectedTemplateId;
+  String? _selectedGoalId;
 
   @override
   void initState() {
     super.initState();
     _isEdit = widget.strategyId != null;
+    _showAdvancedSettings = _isEdit;
 
     if (_isEdit) {
       final state = ref.read(strategyListProvider);
@@ -118,6 +121,8 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         padding: const EdgeInsets.all(AppTheme.pagePadding),
         children: [
           if (!_isEdit) ...[
+            _buildLearningGoalSection(),
+            const SizedBox(height: 24),
             _buildAiAssistSection(),
             const SizedBox(height: 24),
             _buildApiTemplateSection(),
@@ -140,80 +145,8 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
             onChanged: (v) => setState(() => _form.description = v),
           ),
           const SizedBox(height: 24),
-          _buildSection('分析参数'),
-          _buildNumberField(
-            label: 'MA 短期周期',
-            value: _form.maShortPeriod,
-            min: 5,
-            max: 60,
-            onChanged: (v) => setState(() => _form.maShortPeriod = v),
-          ),
-          if (_form.hasMAWarning) _buildWarning('MA 短期周期通常小于长期周期'),
-          const SizedBox(height: 12),
-          _buildNumberField(
-            label: 'MA 长期周期',
-            value: _form.maLongPeriod,
-            min: 20,
-            max: 120,
-            onChanged: (v) => setState(() => _form.maLongPeriod = v),
-          ),
-          const SizedBox(height: 12),
-          _buildNumberField(
-            label: '布林带周期',
-            value: _form.bollPeriod,
-            min: 10,
-            max: 40,
-            onChanged: (v) => setState(() => _form.bollPeriod = v),
-          ),
-          const SizedBox(height: 24),
-          _buildSection('评分权重'),
-          _buildWeightField(
-            'MA 权重',
-            _form.weightMA,
-            (v) => setState(() => _form.weightMA = v),
-          ),
-          _buildWeightField(
-            '布林带权重',
-            _form.weightBoll,
-            (v) => setState(() => _form.weightBoll = v),
-          ),
-          _buildWeightField(
-            '量比权重',
-            _form.weightVol,
-            (v) => setState(() => _form.weightVol = v),
-          ),
-          _buildWeightField(
-            '趋势权重',
-            _form.weightTrend,
-            (v) => setState(() => _form.weightTrend = v),
-          ),
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _form.isWeightSumValid
-                  ? StockColors.success.withValues(alpha: 0.1)
-                  : StockColors.danger.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: Text(
-              '权重合计: ${_form.weightSum.toStringAsFixed(2)} ${_form.isWeightSumValid ? '✓' : '(必须等于1.0)'}',
-              style: AppTextStyles.body.copyWith(
-                color: _form.isWeightSumValid
-                    ? StockColors.success
-                    : StockColors.danger,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSection('推荐设置'),
-          _buildNumberField(
-            label: '推荐阈值分数',
-            value: _form.recommendThreshold,
-            min: 1,
-            max: 10,
-            onChanged: (v) => setState(() => _form.recommendThreshold = v),
-          ),
+          _buildAdvancedToggle(),
+          if (_showAdvancedSettings) _buildAdvancedSettings(),
           const SizedBox(height: 40),
         ],
       ),
@@ -224,6 +157,124 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(title, style: AppTextStyles.h3),
+    );
+  }
+
+  Widget _buildAdvancedToggle() {
+    return InkWell(
+      onTap: () =>
+          setState(() => _showAdvancedSettings = !_showAdvancedSettings),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              _showAdvancedSettings
+                  ? Icons.keyboard_arrow_down
+                  : Icons.keyboard_arrow_right,
+              color: StockColors.textTertiary,
+            ),
+            const SizedBox(width: 4),
+            const Text('高级参数', style: AppTextStyles.h3),
+            const Spacer(),
+            Text(
+              _showAdvancedSettings ? '收起' : '可选',
+              style: AppTextStyles.caption.copyWith(
+                color: StockColors.textTertiary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdvancedSettings() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '新手可以先使用系统生成的参数，运行几天后再根据复盘结果微调。',
+          style: AppTextStyles.caption.copyWith(
+            color: StockColors.textTertiary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildSection('分析参数'),
+        _buildNumberField(
+          label: 'MA 短期周期',
+          value: _form.maShortPeriod,
+          min: 5,
+          max: 60,
+          onChanged: (v) => setState(() => _form.maShortPeriod = v),
+        ),
+        if (_form.hasMAWarning) _buildWarning('MA 短期周期通常小于长期周期'),
+        const SizedBox(height: 12),
+        _buildNumberField(
+          label: 'MA 长期周期',
+          value: _form.maLongPeriod,
+          min: 20,
+          max: 120,
+          onChanged: (v) => setState(() => _form.maLongPeriod = v),
+        ),
+        const SizedBox(height: 12),
+        _buildNumberField(
+          label: '布林带周期',
+          value: _form.bollPeriod,
+          min: 10,
+          max: 40,
+          onChanged: (v) => setState(() => _form.bollPeriod = v),
+        ),
+        const SizedBox(height: 24),
+        _buildSection('评分权重'),
+        _buildWeightField(
+          'MA 权重',
+          _form.weightMA,
+          (v) => setState(() => _form.weightMA = v),
+        ),
+        _buildWeightField(
+          '布林带权重',
+          _form.weightBoll,
+          (v) => setState(() => _form.weightBoll = v),
+        ),
+        _buildWeightField(
+          '量比权重',
+          _form.weightVol,
+          (v) => setState(() => _form.weightVol = v),
+        ),
+        _buildWeightField(
+          '趋势权重',
+          _form.weightTrend,
+          (v) => setState(() => _form.weightTrend = v),
+        ),
+        Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _form.isWeightSumValid
+                ? StockColors.success.withValues(alpha: 0.1)
+                : StockColors.danger.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          ),
+          child: Text(
+            '权重合计: ${_form.weightSum.toStringAsFixed(2)} ${_form.isWeightSumValid ? '✓' : '(必须等于1.0)'}',
+            style: AppTextStyles.body.copyWith(
+              color: _form.isWeightSumValid
+                  ? StockColors.success
+                  : StockColors.danger,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildSection('推荐设置'),
+        _buildNumberField(
+          label: '推荐阈值分数',
+          value: _form.recommendThreshold,
+          min: 1,
+          max: 10,
+          onChanged: (v) => setState(() => _form.recommendThreshold = v),
+        ),
+      ],
     );
   }
 
@@ -240,6 +291,98 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         ),
         const SizedBox(height: 12),
         ...ApiStrategyTemplates.all.map(_buildTemplateCard),
+      ],
+    );
+  }
+
+  Widget _buildLearningGoalSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSection('新手策略向导'),
+        Text(
+          '先选择一个你能理解的观察目标，系统会生成可编辑的策略草稿。',
+          style: AppTextStyles.caption.copyWith(
+            color: StockColors.textTertiary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...StrategyLearningGoals.all.map(_buildLearningGoalCard),
+      ],
+    );
+  }
+
+  Widget _buildLearningGoalCard(StrategyLearningGoal goal) {
+    final isSelected = _selectedGoalId == goal.id;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? StockColors.brand.withValues(alpha: 0.06)
+            : StockColors.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(
+          color: isSelected ? StockColors.brand : StockColors.border,
+          width: isSelected ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                size: 20,
+                color: isSelected ? StockColors.brand : StockColors.gray400,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(goal.title, style: AppTextStyles.h3),
+                    const SizedBox(height: 4),
+                    Text(
+                      goal.subtitle,
+                      style: AppTextStyles.body.copyWith(
+                        color: StockColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () => _applyLearningGoal(goal),
+                child: Text(isSelected ? '已选择' : '选择'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildGuideLine(Icons.school_outlined, goal.learningPoint),
+          const SizedBox(height: 4),
+          _buildGuideLine(Icons.visibility_outlined, goal.watchPoint),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideLine(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 15, color: StockColors.textTertiary),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTextStyles.caption.copyWith(
+              color: StockColors.textTertiary,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -377,8 +520,18 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
     setState(() {
       _form = StrategyFormData.fromTemplate(template);
       _selectedTemplateId = template.id;
+      _selectedGoalId = null;
     });
     ToastHelper.showSuccess(context, '已生成${template.name}策略草稿');
+  }
+
+  void _applyLearningGoal(StrategyLearningGoal goal) {
+    setState(() {
+      _form = StrategyFormData.fromLearningGoal(goal);
+      _selectedGoalId = goal.id;
+      _selectedTemplateId = null;
+    });
+    ToastHelper.showSuccess(context, '已生成${goal.formData.name}策略草稿');
   }
 
   Future<void> _copyGenerationRules() async {
@@ -426,8 +579,8 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
             ..selection = TextSelection.collapsed(offset: value.length),
           maxLength: maxLength,
           onChanged: onChanged,
-          decoration: const InputDecoration(
-            hintText: '',
+          decoration: InputDecoration(
+            hintText: hint,
             border: OutlineInputBorder(),
             counterText: '',
           ),

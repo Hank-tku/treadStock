@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Score Badge widget.
@@ -9,39 +10,43 @@ class ScoreBadge extends StatelessWidget {
   final int? score;
   final double? width;
 
-  const ScoreBadge({
-    super.key,
-    required this.score,
-    this.width,
-  });
+  const ScoreBadge({super.key, required this.score, this.width});
 
   @override
   Widget build(BuildContext context) {
     if (score == null) {
       return _buildContainer(
         width: 76,
-        child: const Text(
-          'N/A',
-          style: TextStyle(
-            fontFamily: AppTheme.numberFont,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: StockColors.textTertiary,
-          ),
-        ),
+        child: const Text('暂无评分', style: AppTextStyles.caption),
       );
     }
 
     return _buildContainer(
-      width: 28,
-      child: Text(
-        '$score',
-        style: const TextStyle(
-          fontFamily: AppTheme.numberFont,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: StockColors.textOnPrimary,
-        ),
+      width: 96,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '观察分',
+            style: AppTextStyles.caption.copyWith(
+              color: getScoreColor(score),
+              fontWeight: FontWeight.w500,
+              height: 1,
+            ),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            '$score/10',
+            style: TextStyle(
+              fontFamily: AppTheme.numberFont,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: getScoreColor(score),
+              height: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -59,7 +64,12 @@ class ScoreBadge extends StatelessWidget {
       height: 20,
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: score == null
+              ? StockColors.gray300
+              : getScoreColor(score).withValues(alpha: 0.18),
+        ),
       ),
       alignment: Alignment.center,
       child: DefaultTextStyle(

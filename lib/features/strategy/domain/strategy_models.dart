@@ -413,6 +413,92 @@ class ApiStrategyTemplates {
   ];
 }
 
+/// Plain-language goals for users who do not want to tune indicators first.
+class StrategyLearningGoal {
+  final String id;
+  final String title;
+  final String subtitle;
+  final String learningPoint;
+  final String watchPoint;
+  final StrategyFormData formData;
+
+  const StrategyLearningGoal({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.learningPoint,
+    required this.watchPoint,
+    required this.formData,
+  });
+}
+
+class StrategyLearningGoals {
+  StrategyLearningGoals._();
+
+  static final List<StrategyLearningGoal> all = [
+    StrategyLearningGoal(
+      id: 'beginner_band_low',
+      title: '我想观察低位修复',
+      subtitle: '适合学习“价格接近低位，但还没有明显破位”的波段观察。',
+      learningPoint: '先学会看布林带下沿、MA20/60 和成交量是否配合。',
+      watchPoint: '后续重点观察是否重新站上 MA20；跌破近期低点时应停止观察。',
+      formData: StrategyFormData(
+        name: '新手低位修复',
+        description: '低位观察 + 布林带下沿 + 均线未破坏',
+        maShortPeriod: 20,
+        maLongPeriod: 60,
+        bollPeriod: 20,
+        bollStdDev: 2.0,
+        weightMA: 0.25,
+        weightBoll: 0.40,
+        weightVol: 0.20,
+        weightTrend: 0.15,
+        recommendThreshold: 7,
+      ),
+    ),
+    StrategyLearningGoal(
+      id: 'beginner_trend',
+      title: '我想观察趋势延续',
+      subtitle: '适合学习“走势已经变强，观察能否继续沿趋势运行”。',
+      learningPoint: '先学会看短期均线、长期均线和近期涨跌节奏是否一致。',
+      watchPoint: '后续重点观察是否维持在 MA20 上方；连续走弱时降低关注。',
+      formData: StrategyFormData(
+        name: '新手趋势延续',
+        description: '均线趋势 + 近期节奏 + 观察延续性',
+        maShortPeriod: 20,
+        maLongPeriod: 60,
+        bollPeriod: 20,
+        bollStdDev: 2.0,
+        weightMA: 0.45,
+        weightBoll: 0.15,
+        weightVol: 0.10,
+        weightTrend: 0.30,
+        recommendThreshold: 7,
+      ),
+    ),
+    StrategyLearningGoal(
+      id: 'beginner_stable',
+      title: '我想少一点噪声',
+      subtitle: '适合刚开始使用，只看更严格、更少量的观察结果。',
+      learningPoint: '先学会用更高阈值控制数量，避免一次看太多标的。',
+      watchPoint: '如果连续几天没有结果，再考虑降低阈值或换成低位修复目标。',
+      formData: StrategyFormData(
+        name: '新手稳健过滤',
+        description: '更高阈值 + 均线和趋势共同过滤',
+        maShortPeriod: 20,
+        maLongPeriod: 80,
+        bollPeriod: 20,
+        bollStdDev: 2.0,
+        weightMA: 0.35,
+        weightBoll: 0.25,
+        weightVol: 0.15,
+        weightTrend: 0.25,
+        recommendThreshold: 8,
+      ),
+    ),
+  ];
+}
+
 /// Helpers for copying external-AI instructions and importing generated JSON.
 class StrategyImportHelper {
   StrategyImportHelper._();
@@ -574,6 +660,11 @@ class StrategyFormData {
   /// Apply an API-based template to the editable form.
   factory StrategyFormData.fromTemplate(ApiStrategyTemplate template) {
     return StrategyFormData.fromForm(template.formData);
+  }
+
+  /// Apply a plain-language learning goal to the editable form.
+  factory StrategyFormData.fromLearningGoal(StrategyLearningGoal goal) {
+    return StrategyFormData.fromForm(goal.formData);
   }
 
   /// Validate that weights sum to 1.0 (with tolerance +/- 0.01).

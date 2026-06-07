@@ -13,6 +13,27 @@ import 'package:stockpilot/features/watchlist/presentation/watchlist_provider.da
 
 class FakeKlineApiService extends StockApiService {
   @override
+  Future<StockQuote?> fetchStockQuote(
+    String stockCode, {
+    String market = 'SH',
+  }) async {
+    return StockQuote(
+      code: stockCode,
+      name: stockCode,
+      market: market,
+      price: 21.5,
+      changePct: 1.25,
+      changeAmt: 0.27,
+      openPrice: 21.0,
+      highPrice: 22.0,
+      lowPrice: 20.8,
+      preClose: 21.23,
+      volume: 100000,
+      turnover: 2.0,
+    );
+  }
+
+  @override
   Future<List<DailyKline>> fetchStockKline(
     String stockCode, {
     String market = 'SH',
@@ -37,6 +58,38 @@ class FakeKlineApiService extends StockApiService {
       );
     }
     return klines;
+  }
+}
+
+class FakeQuoteOnlyApiService extends StockApiService {
+  @override
+  Future<StockQuote?> fetchStockQuote(
+    String stockCode, {
+    String market = 'SH',
+  }) async {
+    return StockQuote(
+      code: stockCode,
+      name: stockCode,
+      market: market,
+      price: 42.86,
+      changePct: 3.55,
+      changeAmt: 1.47,
+      openPrice: 41.4,
+      highPrice: 44.21,
+      lowPrice: 39.05,
+      preClose: 41.39,
+      volume: 561344,
+      turnover: 7.5,
+    );
+  }
+
+  @override
+  Future<List<DailyKline>> fetchStockKline(
+    String stockCode, {
+    String market = 'SH',
+    int days = 120,
+  }) async {
+    throw Exception('K-line unavailable');
   }
 }
 
@@ -106,7 +159,7 @@ void main() {
       final reloadedService = WatchlistService(db: db, seedDefaults: false);
       final notifier = WatchlistNotifier(
         reloadedService,
-        StockApiService(),
+        FakeKlineApiService(),
         AnalysisEngine(),
         StrategyService(db: db),
         StrategyScoringService(AnalysisEngine()),
@@ -116,6 +169,8 @@ void main() {
 
       expect(notifier.state.items, hasLength(1));
       expect(notifier.state.items.single.stockCode, '601318');
+      expect(notifier.state.items.single.currentPrice, isNotNull);
+      expect(notifier.state.items.single.currentScore, isNotNull);
 
       notifier.dispose();
       await db.close();
@@ -143,6 +198,30 @@ void main() {
 
       expect(notifier.state.bestStrategies['601318'], isNotNull);
       expect(notifier.state.items.single.currentScore, isNotNull);
+
+      notifier.dispose();
+      await db.close();
+    });
+
+    test('refreshAll keeps quote data when K-line scoring fails', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final watchlistService = WatchlistService(db: db, seedDefaults: false);
+      await watchlistService.init();
+      await watchlistService.addToWatchlist('002472', '双环传动', 'SZ');
+      final analysisEngine = AnalysisEngine();
+      final notifier = WatchlistNotifier(
+        watchlistService,
+        FakeQuoteOnlyApiService(),
+        analysisEngine,
+        StrategyService(db: db),
+        StrategyScoringService(analysisEngine),
+      );
+
+      await notifier.initialize();
+
+      expect(notifier.state.items.single.currentPrice, 42.86);
+      expect(notifier.state.items.single.currentChangePct, 3.55);
+      expect(notifier.state.items.single.currentScore, isNull);
 
       notifier.dispose();
       await db.close();

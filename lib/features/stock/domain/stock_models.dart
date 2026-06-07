@@ -48,6 +48,28 @@ class StockQuote {
     );
   }
 
+  factory StockQuote.fromRealtimeJson(
+    Map<String, dynamic> json, {
+    required String fallbackCode,
+    required String fallbackMarket,
+  }) {
+    final code = json['f57'] as String? ?? fallbackCode;
+    return StockQuote(
+      code: code,
+      name: json['f58'] as String? ?? '',
+      market: code.isEmpty ? fallbackMarket : _detectMarket(code),
+      price: _toScaledPrice(json['f43']),
+      changePct: _toScaledPrice(json['f170']),
+      changeAmt: _toScaledPrice(json['f169']),
+      volume: _toDouble(json['f47']),
+      openPrice: _toScaledPrice(json['f46']),
+      highPrice: _toScaledPrice(json['f44']),
+      lowPrice: _toScaledPrice(json['f45']),
+      preClose: _toScaledPrice(json['f60']),
+      turnover: _toScaledPrice(json['f168']),
+    );
+  }
+
   static String _detectMarket(String code) {
     if (code.startsWith('6') || code.startsWith('9')) return 'SH';
     return 'SZ';
@@ -58,6 +80,17 @@ class StockQuote {
     if (value is double) return value;
     if (value is int) return value.toDouble();
     if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  static double _toScaledPrice(dynamic value) {
+    if (value == null || value == '-') return 0.0;
+    if (value is int) return value / 100;
+    if (value is double) return value / 100;
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      return parsed == null ? 0.0 : parsed / 100;
+    }
     return 0.0;
   }
 

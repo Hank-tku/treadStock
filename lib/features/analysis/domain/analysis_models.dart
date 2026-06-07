@@ -20,7 +20,7 @@ class StockScore {
   });
 
   String get label {
-    if (score >= 8) return '强烈推荐';
+    if (score >= 8) return '重点观察';
     if (score >= 5) return '中性观望';
     return '风险较高';
   }

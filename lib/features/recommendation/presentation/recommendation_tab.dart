@@ -10,6 +10,8 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/cache_banner.dart';
 import '../../../shared/widgets/disclaimer_label.dart';
 import '../../../shared/utils/formatters.dart';
+import '../../strategy/domain/strategy_explanation.dart';
+import '../../strategy/domain/strategy_models.dart';
 import '../../strategy/presentation/strategy_provider.dart';
 
 /// Recommendation list tab (Tab 1).
@@ -159,10 +161,10 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     if (state.groups.isEmpty) {
       return EmptyState(
         icon: Icons.inbox_outlined,
-        title: '暂无推荐数据',
-        subtitle: state.groups.isEmpty
-            ? '暂无启用的策略，请前往策略管理启用至少一个策略'
-            : '当前市场无符合条件的股票',
+        title: state.hasEnabledStrategies ? '暂无匹配标的' : '暂无启用策略',
+        subtitle: state.hasEnabledStrategies
+            ? '当前策略可能较严格，或行情数据暂不可用。可下拉刷新，或前往策略页降低阈值。'
+            : '请前往策略管理启用至少一个策略',
       );
     }
 
@@ -187,16 +189,17 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                     horizontal: AppTheme.pagePadding,
                     vertical: 10,
                   ),
-                  child: Text(
-                    '当前策略暂无匹配标的',
-                    style: AppTextStyles.body.copyWith(
-                      color: StockColors.textTertiary,
-                    ),
-                  ),
+                  child: _buildStrategyEmptyDiagnosis(group.strategy),
                 )
               else
-                ...group.recommendations.map(
-                  (item) => StockListItem(
+                ...group.recommendations.map((item) {
+                  final insight = item.score == null
+                      ? null
+                      : StrategyExplanation.recommendationInsight(
+                          strategy: group.strategy,
+                          score: item.score!,
+                        );
+                  return StockListItem(
                     name: item.name,
                     code: item.code,
                     market: item.market,
@@ -205,7 +208,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                     score: item.score?.score,
                     isBandLow: item.isBandLow,
                     strategyName: group.strategy.name,
-                    scoreReason: item.score?.reason,
+                    scoreReason: insight?.compact ?? item.score?.reason,
                     riskText: '仅供参考',
                     onTap: () => _navigateToDetail(
                       context,
@@ -215,14 +218,60 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                       group.strategy.id,
                       group.strategy.name,
                     ),
-                  ),
-                ),
+                  );
+                }),
           ],
 
           // Disclaimer
           const SizedBox(height: 16),
           const DisclaimerLabel(),
           const SizedBox(height: 64), // space above tab bar
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStrategyEmptyDiagnosis(Strategy strategy) {
+    final diagnosis = StrategyExplanation.emptyDiagnosis(strategy);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: StockColors.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.manage_search_outlined,
+            size: 18,
+            color: StockColors.textTertiary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(diagnosis.title, style: AppTextStyles.body),
+                const SizedBox(height: 2),
+                Text(
+                  diagnosis.body,
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  diagnosis.actionLabel,
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.brand,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -277,6 +326,15 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                 ),
                 maxLines: isCollapsed ? 1 : 2,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            if (!isCollapsed) ...[
+              const SizedBox(height: 4),
+              Text(
+                '按该策略观察分排序，只作为学习和观察线索。',
+                style: AppTextStyles.caption.copyWith(
+                  color: StockColors.textTertiary,
+                ),
               ),
             ],
           ],

@@ -5,6 +5,8 @@ import '../../../shared/providers.dart';
 
 // ── Strategy Detail State ──────────────────────────────────────
 
+enum StrategyDetailErrorType { none, notFound, statsFailed }
+
 class StrategyDetailState {
   final Strategy? strategy;
   final List<StrategyHitRecord> hitRecords;
@@ -14,7 +16,7 @@ class StrategyDetailState {
   final ReviewPeriodInfo? reviewPeriod;
   final List<StrategySuggestion> suggestions;
   final bool isLoading;
-  final bool hasError;
+  final StrategyDetailErrorType errorType;
 
   const StrategyDetailState({
     this.strategy,
@@ -25,11 +27,15 @@ class StrategyDetailState {
     this.reviewPeriod,
     this.suggestions = const [],
     this.isLoading = true,
-    this.hasError = false,
+    this.errorType = StrategyDetailErrorType.none,
   });
 
+  bool get hasError => errorType != StrategyDetailErrorType.none;
+  bool get hasInsufficientSample =>
+      !hasError && !isLoading && stats.evaluatedCount < 20;
+
   StrategyDetailState copyWith({
-    Strategy? strategy,
+    Object? strategy = _unset,
     List<StrategyHitRecord>? hitRecords,
     List<StrategyReview>? reviewHistory,
     StrategyStats? stats,
@@ -37,10 +43,12 @@ class StrategyDetailState {
     ReviewPeriodInfo? reviewPeriod,
     List<StrategySuggestion>? suggestions,
     bool? isLoading,
-    bool? hasError,
+    StrategyDetailErrorType? errorType,
   }) {
     return StrategyDetailState(
-      strategy: strategy ?? this.strategy,
+      strategy: identical(strategy, _unset)
+          ? this.strategy
+          : strategy as Strategy?,
       hitRecords: hitRecords ?? this.hitRecords,
       reviewHistory: reviewHistory ?? this.reviewHistory,
       stats: stats ?? this.stats,
@@ -48,10 +56,12 @@ class StrategyDetailState {
       reviewPeriod: reviewPeriod ?? this.reviewPeriod,
       suggestions: suggestions ?? this.suggestions,
       isLoading: isLoading ?? this.isLoading,
-      hasError: hasError ?? this.hasError,
+      errorType: errorType ?? this.errorType,
     );
   }
 }
+
+const Object _unset = Object();
 
 class StrategyDetailNotifier extends StateNotifier<StrategyDetailState> {
   final StrategyService _strategyService;
@@ -60,20 +70,45 @@ class StrategyDetailNotifier extends StateNotifier<StrategyDetailState> {
     : super(const StrategyDetailState());
 
   Future<void> loadDetail(String strategyId) async {
-    state = state.copyWith(isLoading: true, hasError: false);
+    state = state.copyWith(
+      isLoading: true,
+      errorType: StrategyDetailErrorType.none,
+    );
     try {
       await _strategyService.init();
       final strategy = _strategyService.getStrategy(strategyId);
       if (strategy == null) {
         if (!mounted) return;
-        state = state.copyWith(isLoading: false, hasError: true);
+        state = state.copyWith(
+          strategy: null,
+          hitRecords: const [],
+          reviewHistory: const [],
+          stats: const StrategyStats(),
+          suggestions: const [],
+          isLoading: false,
+          errorType: StrategyDetailErrorType.notFound,
+        );
         return;
       }
 
-      final stats = await _strategyService.computeStats(strategyId);
-      final hitRecords = await _strategyService.getHitRecords(strategyId);
-      final reviewHistory = await _strategyService.getReviewHistory(strategyId);
-      final suggestions = _strategyService.generateSuggestions(strategy, stats);
+      StrategyStats stats;
+      List<StrategyHitRecord> hitRecords;
+      List<StrategyReview> reviewHistory;
+      List<StrategySuggestion> suggestions;
+      try {
+        stats = await _strategyService.computeStats(strategyId);
+        hitRecords = await _strategyService.getHitRecords(strategyId);
+        reviewHistory = await _strategyService.getReviewHistory(strategyId);
+        suggestions = _strategyService.generateSuggestions(strategy, stats);
+      } catch (_) {
+        if (!mounted) return;
+        state = state.copyWith(
+          strategy: strategy,
+          isLoading: false,
+          errorType: StrategyDetailErrorType.statsFailed,
+        );
+        return;
+      }
 
       if (!mounted) return;
       state = state.copyWith(
@@ -83,10 +118,14 @@ class StrategyDetailNotifier extends StateNotifier<StrategyDetailState> {
         reviewHistory: reviewHistory,
         suggestions: suggestions,
         isLoading: false,
+        errorType: StrategyDetailErrorType.none,
       );
     } catch (_) {
       if (!mounted) return;
-      state = state.copyWith(isLoading: false, hasError: true);
+      state = state.copyWith(
+        isLoading: false,
+        errorType: StrategyDetailErrorType.statsFailed,
+      );
     }
   }
 

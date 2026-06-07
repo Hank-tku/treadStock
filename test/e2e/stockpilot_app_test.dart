@@ -21,6 +21,12 @@ class FakeStockApiService extends StockApiService {
   }) async => [];
 
   @override
+  Future<StockQuote?> fetchStockQuote(
+    String stockCode, {
+    String market = 'SH',
+  }) async => null;
+
+  @override
   Future<List<StockSearchResult>> searchStock(String keyword) async {
     if (keyword.contains('双环') || keyword.contains('002472')) {
       return [

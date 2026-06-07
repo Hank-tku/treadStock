@@ -7,7 +7,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/toast_helper.dart';
 import '../../../shared/widgets/disclaimer_label.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/utils/formatters.dart';
+import '../domain/strategy_explanation.dart';
 import '../domain/strategy_models.dart';
 import 'strategy_provider.dart';
 
@@ -55,10 +57,12 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                 ],
               )
             else if (state.hasError)
-              _buildErrorState()
+              _buildErrorState(state)
             else ...[
               _buildReviewBanner(state),
+              _buildReviewSummaryCard(state),
               _buildStatsCards(state),
+              _buildSampleNotice(state),
               _buildStrategyCoreSection(state),
               _buildHitRecords(state),
               if (state.suggestions.isNotEmpty) _buildSuggestions(state),
@@ -68,6 +72,67 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
             const SizedBox(height: 80),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildReviewSummaryCard(StrategyDetailState state) {
+    if (state.strategy == null) return const SizedBox.shrink();
+    final summary = StrategyExplanation.reviewSummary(
+      stats: state.stats,
+      suggestions: state.suggestions,
+    );
+    final color = summary.needsAttention
+        ? StockColors.warning
+        : StockColors.success;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        12,
+        AppTheme.pagePadding,
+        0,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            summary.needsAttention
+                ? Icons.report_problem_outlined
+                : Icons.task_alt,
+            color: color,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(summary.title, style: AppTextStyles.h3),
+                const SizedBox(height: 4),
+                Text(
+                  summary.conclusion,
+                  style: AppTextStyles.body.copyWith(
+                    color: StockColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  summary.nextStep,
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -117,19 +182,20 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                       minHeight: 44,
                     ),
                   ),
-                IconButton(
-                  onPressed: () =>
-                      context.push('/strategy/${widget.strategyId}/edit'),
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    size: 20,
-                    color: StockColors.brand,
+                if (strategy != null)
+                  IconButton(
+                    onPressed: () =>
+                        context.push('/strategy/${widget.strategyId}/edit'),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      size: 20,
+                      color: StockColors.brand,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
                   ),
-                  constraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 44,
-                  ),
-                ),
               ],
             ),
             Padding(
@@ -153,25 +219,91 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(StrategyDetailState state) {
+    final isNotFound = state.errorType == StrategyDetailErrorType.notFound;
     return Padding(
       padding: const EdgeInsets.all(AppTheme.pagePadding),
       child: Column(
         children: [
-          const Icon(Icons.error_outline, size: 32, color: StockColors.gray400),
-          const SizedBox(height: 8),
-          const Text(
-            '统计计算失败',
-            style: TextStyle(fontSize: 13, color: StockColors.textSecondary),
+          EmptyState(
+            icon: isNotFound
+                ? Icons.manage_search_outlined
+                : Icons.query_stats_outlined,
+            title: isNotFound ? '未找到该策略' : '统计暂不可用',
+            subtitle: isNotFound
+                ? '这条策略可能已被删除，或当前链接不是有效策略。'
+                : '策略已加载，但本地统计暂时计算失败。可重新计算，或先查看策略参数。',
           ),
-          const SizedBox(height: 4),
-          GestureDetector(
-            onTap: () => ref
-                .read(strategyDetailProvider.notifier)
-                .loadDetail(widget.strategyId),
-            child: const Text(
-              '重新计算',
-              style: TextStyle(fontSize: 13, color: StockColors.brand),
+          const SizedBox(height: 8),
+          if (isNotFound)
+            ElevatedButton(
+              onPressed: () => context.go('/strategies'),
+              child: const Text('返回策略列表'),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: () => ref
+                      .read(strategyDetailProvider.notifier)
+                      .loadDetail(widget.strategyId),
+                  child: const Text('重新计算'),
+                ),
+                if (state.strategy != null)
+                  TextButton(
+                    onPressed: () =>
+                        context.push('/strategy/${widget.strategyId}/edit'),
+                    child: const Text('查看策略参数'),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSampleNotice(StrategyDetailState state) {
+    if (!state.hasInsufficientSample) return const SizedBox.shrink();
+    final evaluatedCount = state.stats.evaluatedCount;
+    final totalCount = state.stats.totalRecommendations;
+    final message = evaluatedCount == 0
+        ? '这条策略还没有可复盘样本。先运行几天，系统会在推荐记录满足周期后回填 5 日表现。'
+        : '已评估 $evaluatedCount 条，少于 20 条样本。当前统计只适合观察趋势，不适合判断策略好坏。';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        12,
+        AppTheme.pagePadding,
+        0,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: StockColors.info.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: StockColors.info.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.school_outlined, color: StockColors.info, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('复盘样本不足', style: AppTextStyles.body),
+                const SizedBox(height: 2),
+                Text(
+                  totalCount == 0 ? message : '$message 当前累计推荐 $totalCount 条。',
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

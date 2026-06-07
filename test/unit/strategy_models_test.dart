@@ -28,6 +28,31 @@ void main() {
     });
   });
 
+  group('StrategyLearningGoals', () {
+    test('all beginner goals generate valid strategy forms', () {
+      expect(StrategyLearningGoals.all, hasLength(3));
+
+      for (final goal in StrategyLearningGoals.all) {
+        final form = StrategyFormData.fromLearningGoal(goal);
+
+        expect(form.validate(), isNull, reason: goal.id);
+        expect(form.isWeightSumValid, isTrue, reason: goal.id);
+        expect(goal.learningPoint, isNotEmpty, reason: goal.id);
+        expect(goal.watchPoint, isNotEmpty, reason: goal.id);
+      }
+    });
+
+    test('generated form is detached from learning goal form data', () {
+      final goal = StrategyLearningGoals.all.first;
+      final generated = StrategyFormData.fromLearningGoal(goal);
+
+      generated.name = '用户修改后的策略';
+
+      expect(goal.formData.name, '新手低位修复');
+      expect(generated.name, '用户修改后的策略');
+    });
+  });
+
   group('StrategyFormData', () {
     test('validate returns error when name is empty', () {
       final form = StrategyFormData(name: '');
@@ -140,6 +165,16 @@ void main() {
       expect(form.weightVol, template.formData.weightVol);
       expect(form.weightTrend, template.formData.weightTrend);
       expect(form.recommendThreshold, template.formData.recommendThreshold);
+    });
+
+    test('fromLearningGoal applies beginner goal values', () {
+      final goal = StrategyLearningGoals.all.first;
+      final form = StrategyFormData.fromLearningGoal(goal);
+
+      expect(form.name, goal.formData.name);
+      expect(form.description, goal.formData.description);
+      expect(form.weightBoll, goal.formData.weightBoll);
+      expect(form.recommendThreshold, goal.formData.recommendThreshold);
     });
   });
 

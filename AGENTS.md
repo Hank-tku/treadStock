@@ -121,6 +121,28 @@ dart run build_runner build --delete-conflicting-outputs
 - Use existing theme tokens in `AppTheme`, `StockColors`, and `AppTextStyles` instead of ad hoc styling.
 - User-facing text is mostly Chinese. Keep financial wording conservative and avoid language that sounds like guaranteed advice.
 
+## Stock Product Workflow Skill
+
+For non-trivial product, UX, strategy-learning, recommendation, QA, or finance-copy work, use the repo workflow in `docs/stock-product-workflow-skill.md`.
+
+The workflow adapts two external agent-process ideas to this project:
+
+- `garrytan/gstack`: product/CEO/design/engineering/QA/security/release specialist passes.
+- `poz110/claude-harness`: staged delivery from idea and PRD through architecture, design, implementation, QA, security, and deployment readiness.
+
+Default to the smallest useful mode:
+
+- Hotfix: reproduce or trace the bug, find root cause, patch, focused test.
+- Feature: product framing, UX/state design, implementation, focused tests, then broader validation if shared behavior changed.
+- Product review: run product, design, engineering, QA, security, and documentation passes, then return ranked findings and implementation slices.
+
+For ordinary-user strategy features, always distinguish:
+
+- no enabled strategy,
+- strategy exists but has no matching stocks,
+- insufficient review sample,
+- true loading/statistics error.
+
 ## Data And API Notes
 
 `StockApiService` calls public East Money endpoints:

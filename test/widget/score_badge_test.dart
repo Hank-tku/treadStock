@@ -15,10 +15,9 @@ void main() {
       );
 
       final container = tester.widget<Container>(
-        find.ancestor(
-          of: find.text('9'),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .ancestor(of: find.text('9/10'), matching: find.byType(Container))
+            .first,
       );
       final decoration = container.decoration as BoxDecoration;
       // score >= 8 -> upBg = rgba(230, 67, 45, 0.08)
@@ -33,10 +32,9 @@ void main() {
       );
 
       final container = tester.widget<Container>(
-        find.ancestor(
-          of: find.text('6'),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .ancestor(of: find.text('6/10'), matching: find.byType(Container))
+            .first,
       );
       final decoration = container.decoration as BoxDecoration;
       // score 5-7 -> rgba(212,160,23,0.08)
@@ -51,10 +49,9 @@ void main() {
       );
 
       final container = tester.widget<Container>(
-        find.ancestor(
-          of: find.text('3'),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .ancestor(of: find.text('3/10'), matching: find.byType(Container))
+            .first,
       );
       final decoration = container.decoration as BoxDecoration;
       // score < 5 -> downBg = rgba(29, 185, 84, 0.08)
@@ -68,13 +65,12 @@ void main() {
         ),
       );
 
-      expect(find.text('N/A'), findsOneWidget);
+      expect(find.text('暂无评分'), findsOneWidget);
 
       final container = tester.widget<Container>(
-        find.ancestor(
-          of: find.text('N/A'),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .ancestor(of: find.text('暂无评分'), matching: find.byType(Container))
+            .first,
       );
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, StockColors.gray200);
@@ -86,7 +82,8 @@ void main() {
           home: Scaffold(body: Center(child: ScoreBadge(score: 10))),
         ),
       );
-      expect(find.text('10'), findsOneWidget);
+      expect(find.text('观察分'), findsOneWidget);
+      expect(find.text('10/10'), findsOneWidget);
     });
   });
 

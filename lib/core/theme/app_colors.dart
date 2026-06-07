@@ -15,8 +15,8 @@ class StockColors {
 
   // Score colors
   static const Color scoreHigh = Color(0xFFE6432D); // 8-10 strong buy
-  static const Color scoreMid = Color(0xFFD4A017);  // 5-7 neutral
-  static const Color scoreLow = Color(0xFF1DB954);  // 1-4 risk
+  static const Color scoreMid = Color(0xFFD4A017); // 5-7 neutral
+  static const Color scoreLow = Color(0xFF1DB954); // 1-4 risk
 
   // Band low tag
   static const Color bandLow = Color(0xFFE69321);
@@ -103,7 +103,7 @@ Color getPriceColor(double changePct) {
 /// Get score semantic label.
 String getScoreLabel(int? score) {
   if (score == null) return '';
-  if (score >= 8) return '强烈推荐';
+  if (score >= 8) return '重点观察';
   if (score >= 5) return '中性观望';
   return '风险较高';
 }

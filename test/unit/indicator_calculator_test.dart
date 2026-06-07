@@ -48,4 +48,38 @@ void main() {
       expect(rsi.last, greaterThan(90));
     });
   });
+
+  group('IndicatorCalculator.calculateMACD', () {
+    test('returns empty result when closes length < slowPeriod + signalPeriod', () {
+      final result = IndicatorCalculator.calculateMACD([10, 20, 30, 40]);
+      expect(result.macdLine, isEmpty);
+      expect(result.signalLine, isEmpty);
+      expect(result.histogram, isEmpty);
+    });
+
+    test('MACD line crosses zero when price trend reverses from up to down', () {
+      final closes = <double>[];
+      for (var i = 0; i < 30; i++) closes.add(100 + i * 2.0);
+      for (var i = 0; i < 30; i++) closes.add(158 - i * 2.0);
+      final result = IndicatorCalculator.calculateMACD(closes);
+      expect(result.macdLine.first, greaterThan(0));
+      expect(result.macdLine.last, lessThan(0));
+    });
+
+    test('histogram equals macdLine minus signalLine', () {
+      final closes = List.generate(80, (i) => 100.0 + i * 0.5);
+      final result = IndicatorCalculator.calculateMACD(closes);
+      for (var i = 0; i < result.histogram.length; i++) {
+        expect(result.histogram[i],
+            closeTo(result.macdLine[i + (result.macdLine.length - result.histogram.length)] - result.signalLine[i], 0.001));
+      }
+    });
+
+    test('signal line length <= MACD line length', () {
+      final closes = List.generate(80, (i) => 100.0 + i * 0.5);
+      final result = IndicatorCalculator.calculateMACD(closes);
+      expect(result.signalLine.length, lessThanOrEqualTo(result.macdLine.length));
+      expect(result.histogram.length, equals(result.signalLine.length));
+    });
+  });
 }
