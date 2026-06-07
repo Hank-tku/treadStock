@@ -60,8 +60,12 @@ void main() {
 
     test('MACD line crosses zero when price trend reverses from up to down', () {
       final closes = <double>[];
-      for (var i = 0; i < 30; i++) closes.add(100 + i * 2.0);
-      for (var i = 0; i < 30; i++) closes.add(158 - i * 2.0);
+      for (var i = 0; i < 30; i++) {
+        closes.add(100 + i * 2.0);
+      }
+      for (var i = 0; i < 30; i++) {
+        closes.add(158 - i * 2.0);
+      }
       final result = IndicatorCalculator.calculateMACD(closes);
       expect(result.macdLine.first, greaterThan(0));
       expect(result.macdLine.last, lessThan(0));

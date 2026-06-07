@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:stockpilot/features/stock/domain/stock_models.dart';
 
 /// Result container for MACD calculation.
