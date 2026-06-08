@@ -11,6 +11,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/utils/formatters.dart';
 import '../domain/strategy_explanation.dart';
 import '../domain/strategy_models.dart';
+import '../domain/signal_rule.dart';
 import 'strategy_provider.dart';
 
 /// Strategy detail page showing stats, hit records, and review.
@@ -64,6 +65,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
               _buildStatsCards(state),
               _buildSampleNotice(state),
               _buildStrategyCoreSection(state),
+              _buildRuleVisualization(state),
               _buildHitRecords(state),
               if (state.suggestions.isNotEmpty) _buildSuggestions(state),
               _buildReviewSection(state),
@@ -204,6 +206,22 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                     ),
                     icon: const Icon(
                       Icons.query_stats_outlined,
+                      size: 20,
+                      color: StockColors.brand,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                  ),
+                if (strategy != null)
+                  IconButton(
+                    onPressed: () => context.push(
+                      '/strategy/${widget.strategyId}/tuner',
+                      extra: {'stockCode': ''},
+                    ),
+                    icon: const Icon(
+                      Icons.tune,
                       size: 20,
                       color: StockColors.brand,
                     ),
@@ -914,5 +932,202 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
         ],
       ),
     );
+  }
+
+  /// S5: Rule visualization section — shows entry/exit rules and groups visually.
+  Widget _buildRuleVisualization(StrategyDetailState state) {
+    final strategy = state.strategy;
+    if (strategy == null || !strategy.isRuleBased) return const SizedBox.shrink();
+
+    final hasEntryRules = (strategy.entryRules?.isNotEmpty ?? false) ||
+        (strategy.entryGroups?.isNotEmpty ?? false);
+    final hasExitRules = (strategy.exitRules?.isNotEmpty ?? false) ||
+        (strategy.exitGroups?.isNotEmpty ?? false);
+
+    if (!hasEntryRules && !hasExitRules) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        12,
+        AppTheme.pagePadding,
+        0,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: StockColors.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('信号规则', style: AppTextStyles.h3),
+          const SizedBox(height: 8),
+          if (hasEntryRules) ...[
+            _buildRuleSection(
+              '入场规则',
+              StockColors.up,
+              strategy.entryRules ?? [],
+              strategy.entryGroups ?? [],
+            ),
+          ],
+          if (hasExitRules) ...[
+            const SizedBox(height: 12),
+            _buildRuleSection(
+              '离场规则',
+              StockColors.down,
+              strategy.exitRules ?? [],
+              strategy.exitGroups ?? [],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRuleSection(
+    String title,
+    Color color,
+    List<SignalRule> flatRules,
+    List<RuleGroup> groups,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 16,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Flat rules (AND)
+        if (flatRules.isNotEmpty)
+          _buildRuleGroupCard(
+            flatRules.map((r) => _ruleLabel(r)).toList(),
+            logic: 'AND',
+            color: color,
+          ),
+        // Groups (OR of ANDs)
+        for (var i = 0; i < groups.length; i++) ...[
+          if (flatRules.isNotEmpty || i > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Center(
+                child: Text(
+                  'OR',
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textTertiary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          _buildRuleGroupCard(
+            groups[i].rules.map((r) => _ruleLabel(r)).toList(),
+            logic: 'AND',
+            color: color,
+            groupIndex: groups.length > 1 ? i + 1 : null,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildRuleGroupCard(
+    List<String> labels, {
+    required String logic,
+    required Color color,
+    int? groupIndex,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (groupIndex != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '组 $groupIndex',
+                style: AppTextStyles.caption.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          for (var i = 0; i < labels.length; i++) ...[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  '  AND',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: StockColors.textTertiary,
+                  ),
+                ),
+              ),
+            Row(
+              children: [
+                Icon(Icons.check_circle_outline, size: 14, color: color),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    labels[i],
+                    style: AppTextStyles.caption,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _ruleLabel(SignalRule rule) {
+    final indicatorNames = {
+      'rsi': 'RSI',
+      'macd': 'MACD',
+      'macd_signal': 'MACD信号线',
+      'macd_hist': 'MACD柱',
+      'k': 'K值',
+      'd': 'D值',
+      'j': 'J值',
+      'boll_position': '布林位置',
+      'ma_alignment': '均线排列',
+      'vol_price_divergence': '量价背离',
+      'vol_ratio': '量比',
+    };
+    final conditionNames = {
+      'gt': '>',
+      'lt': '<',
+      'in_range': '∈',
+      'cross_up': '上穿',
+      'cross_down': '下穿',
+    };
+    final name = indicatorNames[rule.indicator] ?? rule.indicator;
+    final cond = conditionNames[rule.condition] ?? rule.condition;
+    if (rule.condition == 'in_range' && rule.value2 != null) {
+      return '$name $cond [${rule.value.toStringAsFixed(1)}, ${rule.value2!.toStringAsFixed(1)}]';
+    }
+    return '$name $cond ${rule.value.toStringAsFixed(1)}';
   }
 }

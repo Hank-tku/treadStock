@@ -69,6 +69,16 @@ class _StrategyTabState extends ConsumerState<StrategyTab> {
         children: [
           const Expanded(child: Text('策略', style: AppTextStyles.h1)),
           TextButton.icon(
+            onPressed: () => context.push('/strategy/compare'),
+            icon: const Icon(Icons.compare_arrows, size: 18),
+            label: const Text('对比'),
+          ),
+          TextButton.icon(
+            onPressed: () => context.push('/strategy/templates'),
+            icon: const Icon(Icons.inventory_2_outlined, size: 18),
+            label: const Text('模板'),
+          ),
+          TextButton.icon(
             onPressed: () => context.push('/strategy/knowledge'),
             icon: const Icon(Icons.school_outlined, size: 18),
             label: const Text('关于策略'),

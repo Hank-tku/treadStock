@@ -11,6 +11,9 @@ import 'features/strategy/presentation/strategy_detail_page.dart';
 import 'features/strategy/presentation/strategy_edit_page.dart';
 import 'features/strategy/presentation/strategy_knowledge_page.dart';
 import 'features/strategy/presentation/backtest_config_page.dart';
+import 'features/strategy/presentation/strategy_compare_page.dart';
+import 'features/strategy/presentation/strategy_template_page.dart';
+import 'features/strategy/presentation/strategy_tuner_page.dart';
 import 'features/strategy/domain/strategy_models.dart';
 import 'main.dart' show RiskDisclaimerDialog;
 
@@ -108,6 +111,27 @@ class AppRouter {
           return BacktestConfigPage(
             strategyId: state.pathParameters['id'] ?? '',
             strategyName: extra?['strategyName'] as String? ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/strategy/compare',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const StrategyComparePage(),
+      ),
+      GoRoute(
+        path: '/strategy/templates',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const StrategyTemplatePage(),
+      ),
+      GoRoute(
+        path: '/strategy/:id/tuner',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return StrategyTunerPage(
+            strategyId: state.pathParameters['id'] ?? '',
+            stockCode: extra?['stockCode'] as String? ?? '',
           );
         },
       ),
