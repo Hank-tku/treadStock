@@ -39,6 +39,10 @@ class RuleEngine {
     int macdSlow = 26,
     int macdSignal = 9,
     int kdjPeriod = 9,
+    int emaPeriod = 20,
+    int atrPeriod = 14,
+    int maShortPeriod = 5,
+    int maLongPeriod = 20,
   }) {
     // Compute indicators
     final closes = klines.map((k) => k.close).toList();
@@ -50,6 +54,15 @@ class RuleEngine {
       signalPeriod: macdSignal,
     );
     final kdjResult = IndicatorCalculator.calculateKDJ(klines, period: kdjPeriod);
+
+    // New indicators
+    final emaValues = IndicatorCalculator.calculateEMA(closes, period: emaPeriod);
+    final atrValues = IndicatorCalculator.calculateATR(klines, period: atrPeriod);
+    final obvValues = IndicatorCalculator.calculateOBV(klines);
+
+    // MA lines for indicator cross (MA_short and MA_long)
+    final maShortValues = IndicatorCalculator.computeEMA(closes, maShortPeriod);
+    final maLongValues = IndicatorCalculator.computeEMA(closes, maLongPeriod);
 
     // Build current + previous indicator value maps
     final current = <String, double>{};
@@ -87,6 +100,34 @@ class RuleEngine {
       }
     }
 
+    // EMA
+    if (emaValues.isNotEmpty) {
+      current['ema'] = emaValues.last;
+      if (emaValues.length >= 2) prev['ema'] = emaValues[emaValues.length - 2];
+    }
+
+    // ATR
+    if (atrValues.isNotEmpty) {
+      current['atr'] = atrValues.last;
+      if (atrValues.length >= 2) prev['atr'] = atrValues[atrValues.length - 2];
+    }
+
+    // OBV
+    if (obvValues.isNotEmpty) {
+      current['obv'] = obvValues.last;
+      if (obvValues.length >= 2) prev['obv'] = obvValues[obvValues.length - 2];
+    }
+
+    // MA lines for indicator cross
+    if (maShortValues.isNotEmpty) {
+      current['ma_short'] = maShortValues.last;
+      if (maShortValues.length >= 2) prev['ma_short'] = maShortValues[maShortValues.length - 2];
+    }
+    if (maLongValues.isNotEmpty) {
+      current['ma_long'] = maLongValues.last;
+      if (maLongValues.length >= 2) prev['ma_long'] = maLongValues[maLongValues.length - 2];
+    }
+
     // Bollinger Bands position
     final boll = IndicatorCalculator.calculateBollingerBands(closes);
     if (boll != null) {
@@ -109,6 +150,24 @@ class RuleEngine {
 
     // Evaluate a single rule
     bool evalRule(SignalRule rule) {
+      // Indicator-vs-indicator cross
+      if (rule.isIndicatorCross && rule.indicator2 != null) {
+        final curA = current[rule.indicator];
+        final prevA = prev[rule.indicator];
+        final curB = current[rule.indicator2];
+        final prevB = prev[rule.indicator2];
+        if (curA == null || prevA == null || curB == null || prevB == null) {
+          return false;
+        }
+        return rule.evaluateIndicatorCross(
+          prevA: prevA,
+          curA: curA,
+          prevB: prevB,
+          curB: curB,
+        );
+      }
+
+      // Standard evaluation
       final val = current[rule.indicator];
       final prevVal = prev[rule.indicator];
       if (val == null) return false;

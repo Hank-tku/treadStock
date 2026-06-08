@@ -32,6 +32,15 @@ class BacktestConfig {
   /// Take-profit threshold as a fraction (e.g. 0.10 = +10%). null = no take-profit.
   final double? takeProfitPct;
 
+  /// Trailing stop activation threshold as a fraction (e.g. 0.05 = +5%).
+  /// Once profit reaches this level, the trailing stop is activated.
+  /// null = no trailing stop.
+  final double? trailingStopActivationPct;
+
+  /// Trailing stop distance as a fraction from peak (e.g. 0.03 = 3%).
+  /// Once activated, exit when price drops this % from the peak.
+  final double? trailingStopDistancePct;
+
   const BacktestConfig({
     this.initialCapital = 100000,
     this.positionSize = 1.0,
@@ -42,7 +51,14 @@ class BacktestConfig {
     this.maxTrades = 0,
     this.stopLossPct,
     this.takeProfitPct,
+    this.trailingStopActivationPct,
+    this.trailingStopDistancePct,
   });
+
+  /// Whether trailing stop is configured.
+  bool get hasTrailingStop =>
+      trailingStopActivationPct != null &&
+      trailingStopDistancePct != null;
 }
 
 /// Represents a single simulated trade within a backtest.
@@ -229,6 +245,9 @@ enum ExitReason {
 
   /// Take-profit hit.
   takeProfit,
+
+  /// Trailing stop hit.
+  trailingStop,
 
   /// End of data reached; forced close.
   endOfData,

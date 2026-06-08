@@ -7,16 +7,17 @@ void main() {
     'rsi', 'macd', 'macd_signal', 'macd_hist',
     'k', 'd', 'j', 'boll_position',
     'ma_alignment', 'vol_price_divergence', 'vol_ratio',
+    'ma_short', 'ma_long',
   };
-  final validConditions = {'lt', 'gt', 'in_range', 'cross_up', 'cross_down'};
+  final validConditions = {'lt', 'gt', 'in_range', 'cross_up', 'cross_down', 'indicator_cross_up', 'indicator_cross_down'};
 
   List<Strategy> makePresets() => StrategyPresets.all(
     idGenerator: () => 'test-id',
     now: DateTime(2026, 1, 1),
   );
 
-  test('all() returns exactly 6 presets', () {
-    expect(makePresets().length, 6);
+  test('all() returns exactly 8 presets', () {
+    expect(makePresets().length, 8);
   });
 
   test('all presets have non-empty name and description', () {

@@ -264,12 +264,12 @@ void main() {
   });
 
   group('StrategyPresets new templates', () {
-    test('all() returns 6 presets', () {
+    test('all() returns 8 presets', () {
       final presets = StrategyPresets.all(
         idGenerator: () => 'test-id',
         now: DateTime(2026, 1, 1),
       );
-      expect(presets.length, 6);
+      expect(presets.length, 8);
     });
 
     test('bollBandBounce has correct entry/exit rules', () {

@@ -266,6 +266,7 @@ class BacktestResultPage extends StatelessWidget {
       ExitReason.signalExit => '信号出场',
       ExitReason.stopLoss => '止损',
       ExitReason.takeProfit => '止盈',
+      ExitReason.trailingStop => '移动止损',
       ExitReason.endOfData => '期末平仓',
     };
 

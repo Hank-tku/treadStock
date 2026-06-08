@@ -195,6 +195,87 @@ class StrategyPresets {
     );
   }
 
+  /// 趋势金叉追踪 — MA5上穿MA20（金叉）+ RSI确认 + 量比放大入场，MA5下穿MA20（死叉）出场
+  static Strategy trendGoldenCross({
+    required String id,
+    required DateTime now,
+  }) {
+    return Strategy(
+      id: id,
+      name: '趋势金叉追踪',
+      description: 'MA短线上穿长线（金叉）且RSI和量能双重确认时入场，死叉时出场',
+      maShortPeriod: 5,
+      maLongPeriod: 20,
+      bollPeriod: 20,
+      bollStdDev: 2.0,
+      weightMA: 0.25,
+      weightBoll: 0.25,
+      weightVol: 0.25,
+      weightTrend: 0.25,
+      recommendThreshold: 7,
+      isEnabled: true,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+      entryRules: [
+        SignalRule(
+          indicator: 'ma_short',
+          condition: 'indicator_cross_up',
+          value: 0,
+          indicator2: 'ma_long',
+        ),
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 40),
+        SignalRule(indicator: 'vol_ratio', condition: 'gt', value: 1.0),
+      ],
+      exitRules: [
+        SignalRule(
+          indicator: 'ma_short',
+          condition: 'indicator_cross_down',
+          value: 0,
+          indicator2: 'ma_long',
+        ),
+      ],
+    );
+  }
+
+  /// 超卖反弹猎人 — RSI超卖 + KDJ低位金叉 + 布林下轨三重确认入场，RSI回升出场
+  static Strategy oversoldBounceHunter({
+    required String id,
+    required DateTime now,
+  }) {
+    return Strategy(
+      id: id,
+      name: '超卖反弹猎人',
+      description: 'RSI超卖、KDJ低位金叉、布林下轨三重确认捕捉底部反转机会',
+      maShortPeriod: 20,
+      maLongPeriod: 60,
+      bollPeriod: 20,
+      bollStdDev: 2.0,
+      weightMA: 0.25,
+      weightBoll: 0.25,
+      weightVol: 0.25,
+      weightTrend: 0.25,
+      recommendThreshold: 7,
+      isEnabled: true,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+      entryRules: [
+        SignalRule(indicator: 'rsi', condition: 'lt', value: 30),
+        SignalRule(
+          indicator: 'k',
+          condition: 'cross_up',
+          value: 30,
+        ),
+        SignalRule(indicator: 'boll_position', condition: 'lt', value: 0.2),
+      ],
+      exitRules: [
+        SignalRule(indicator: 'rsi', condition: 'gt', value: 60),
+        SignalRule(indicator: 'boll_position', condition: 'gt', value: 0.7),
+      ],
+    );
+  }
+
   /// Get all preset templates.
   static List<Strategy> all({
     required String Function() idGenerator,
@@ -207,6 +288,8 @@ class StrategyPresets {
       bollBandBounce(id: idGenerator(), now: now),
       maBullAlignment(id: idGenerator(), now: now),
       volPriceDivergenceBottom(id: idGenerator(), now: now),
+      trendGoldenCross(id: idGenerator(), now: now),
+      oversoldBounceHunter(id: idGenerator(), now: now),
     ];
   }
 }

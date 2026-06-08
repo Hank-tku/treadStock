@@ -56,6 +56,10 @@ class BacktestEngine {
     double? entryPrice;
     DateTime? entryDate;
 
+    // Trailing stop state
+    double trailingPeak = 0.0;
+    bool trailingActivated = false;
+
     // Equity curve tracking
     double peakEquity = config.initialCapital;
     double maxDrawdown = 0.0;
@@ -73,9 +77,32 @@ class BacktestEngine {
         final pnlPct = (currentPrice - ep) / ep;
         ExitReason? exitReason;
 
+        // Update trailing stop peak
+        if (config.hasTrailingStop) {
+          if (!trailingActivated) {
+            // Check if activation threshold reached
+            if (pnlPct >= config.trailingStopActivationPct!) {
+              trailingActivated = true;
+              trailingPeak = currentPrice;
+            }
+          } else {
+            // Update peak
+            if (currentPrice > trailingPeak) {
+              trailingPeak = currentPrice;
+            }
+          }
+        }
+
         // Stop loss
         if (config.stopLossPct != null && pnlPct <= config.stopLossPct!) {
           exitReason = ExitReason.stopLoss;
+        }
+        // Trailing stop
+        if (exitReason == null && trailingActivated && config.hasTrailingStop) {
+          final dropFromPeak = (trailingPeak - currentPrice) / trailingPeak;
+          if (dropFromPeak >= config.trailingStopDistancePct!) {
+            exitReason = ExitReason.trailingStop;
+          }
         }
         // Take profit
         if (exitReason == null &&
@@ -142,6 +169,8 @@ class BacktestEngine {
           entryBarIndex = null;
           entryPrice = null;
           entryDate = null;
+          trailingActivated = false;
+          trailingPeak = 0.0;
         }
       } else {
         // ── NO POSITION: check entry conditions ──
@@ -169,6 +198,8 @@ class BacktestEngine {
           entryBarIndex = i;
           entryPrice = klines[i].close + config.slippage;
           entryDate = currentDate;
+          trailingPeak = klines[i].close;
+          trailingActivated = false;
         }
       }
 

@@ -81,7 +81,7 @@ class IndicatorCalculator {
 
   /// Compute EMA over [values] with the given [period].
   /// Returns a list of the same length as [values] starting from index period-1.
-  static List<double> _computeEMA(List<double> values, int period) {
+  static List<double> computeEMA(List<double> values, int period) {
     if (values.length < period) return [];
     final k = 2.0 / (period + 1);
     final ema = <double>[];
@@ -110,8 +110,8 @@ class IndicatorCalculator {
     }
 
     // Calculate fast and slow EMA (both indexed from their respective start)
-    final fastEMA = _computeEMA(closes, fastPeriod);
-    final slowEMA = _computeEMA(closes, slowPeriod);
+    final fastEMA = computeEMA(closes, fastPeriod);
+    final slowEMA = computeEMA(closes, slowPeriod);
 
     // MACD line: fastEMA - slowEMA, starting where both are available
     // fastEMA has length closes.length - fastPeriod + 1, starting at fastPeriod-1
@@ -124,7 +124,7 @@ class IndicatorCalculator {
     }
 
     // Signal line = EMA of MACD line
-    final signalLine = _computeEMA(macdLine, signalPeriod);
+    final signalLine = computeEMA(macdLine, signalPeriod);
 
     // Histogram = MACD - Signal (aligned from signal start)
     final histOffset = macdLine.length - signalLine.length;
@@ -315,5 +315,76 @@ class IndicatorCalculator {
     if (avgVol <= 0) return 1.0;
 
     return currentVol / avgVol;
+  }
+
+  /// Calculate EMA (Exponential Moving Average).
+  /// Returns a list of EMA values. Length = values.length - period + 1.
+  static List<double> calculateEMA(List<double> values, {int period = 20}) {
+    return computeEMA(values, period);
+  }
+
+  /// Calculate ATR (Average True Range) using Wilder's smoothing.
+  /// Returns a list of ATR values. Length = klines.length - period.
+  static List<double> calculateATR(
+    List<DailyKline> klines, {
+    int period = 14,
+  }) {
+    if (klines.length < period + 1) return [];
+
+    final trueRanges = <double>[];
+    for (var i = 1; i < klines.length; i++) {
+      final high = klines[i].high;
+      final low = klines[i].low;
+      final prevClose = klines[i - 1].close;
+      final tr = (high - low) > (high - prevClose).abs()
+          ? (high - low)
+          : (high - prevClose).abs();
+      final tr2 = tr > (prevClose - low).abs() ? tr : (prevClose - low).abs();
+      trueRanges.add(tr2);
+    }
+
+    if (trueRanges.length < period) return [];
+
+    // First ATR = simple average of first `period` TRs
+    var atr = 0.0;
+    for (var i = 0; i < period; i++) {
+      atr += trueRanges[i];
+    }
+    atr /= period;
+
+    final atrValues = [atr];
+
+    // Wilder's smoothing for subsequent values
+    for (var i = period; i < trueRanges.length; i++) {
+      atr = (atr * (period - 1) + trueRanges[i]) / period;
+      atrValues.add(atr);
+    }
+
+    return atrValues;
+  }
+
+  /// Calculate OBV (On Balance Volume).
+  /// Returns a list of OBV values. Length = klines.length.
+  static List<double> calculateOBV(List<DailyKline> klines) {
+    if (klines.isEmpty) return [];
+
+    final obvValues = <double>[];
+    var obv = 0.0;
+
+    for (var i = 0; i < klines.length; i++) {
+      if (i == 0) {
+        obv = klines[i].volume;
+      } else {
+        if (klines[i].close > klines[i - 1].close) {
+          obv += klines[i].volume;
+        } else if (klines[i].close < klines[i - 1].close) {
+          obv -= klines[i].volume;
+        }
+        // If close == prevClose, OBV unchanged
+      }
+      obvValues.add(obv);
+    }
+
+    return obvValues;
   }
 }
