@@ -1,14 +1,15 @@
 # 股势 TrendStock 设计系统
-版本：v1.0 | 建立日期：2026-04-10
-状态：路径 B -- 全新项目从零建立
+版本：v2.0 | 更新日期：2026-06-08
+状态：设计升级 — 专业金融级视觉
 
 ---
 
 ## 设计原则
 
-1. **数据优先，减少装饰**：每屏的信息密度必须让用户在 5 秒内获取关键决策数据。装饰性元素为零 -- 没有渐变背景、没有装饰性图形、没有多余阴影。颜色只传达语义（涨跌、评分等级），不用于美化。
+1. **数据优先，减少装饰**：每屏的信息密度必须让用户在 5 秒内获取关键决策数据。装饰性元素为零 — 没有渐变背景、没有装饰性图形、没有多余阴影。颜色只传达语义（涨跌、评分等级），不用于美化。
 2. **操作零犹豫**：每个列表项的滑动操作、点击目标、状态切换都有即时反馈。用户不需要思考"这个能不能点"。可交互元素的最小触摸区域为 44x44px。
 3. **错误不中断流程**：任何加载失败、网络异常都不展示全屏错误页。用内联 Banner 或 Toast 提示问题，同时展示缓存数据，保证用户始终能看到内容。
+4. **专业克制**（v2 新增）：金融工具的信任感来自克制的视觉。深蓝灰文字 + 精确的数字排版 + 高对比度涨跌色，营造专业交易终端质感。
 
 ---
 
@@ -17,119 +18,146 @@
 **产品类型**：A股散户交易辅助工具（行情 + 选股 + 跟踪）
 
 | 竞品 | 字体系统 | 主色 | 颜色数量 | 圆角风格 | 整体感觉 |
-|------|---------|------|---------|---------|---------|
+|------|---------|------|---------|---------| ---------|
 | 同花顺 | PingFang SC | #1677FF 蓝色 | 10+ | 4px/8px 混用 | 信息密集，专业工具感 |
 | 东方财富 | PingFang SC | #E6432D 红色 | 10+ | 4px 为主 | 传统金融红绿色系 |
 | 雪球 | PingFang SC | #1A6AFF 蓝色 | 8+ | 8px | 社交+行情混合 |
 | 富途牛牛 | DIN + PingFang | #2B6FF6 蓝色 | 8+ | 6px | 港股风格，数字突出 |
 
-**品类规范**（A股工具类 App 的共同特征）：
-- 红色=涨，绿色=跌（中国 A 股标准，与美股相反）
-- 数字使用等宽字体，价格对齐右/左对齐
-- 行情数据区域紧凑，标题区域简洁
-- 底部 Tab 导航（3-5 个 Tab）
-- 深色或浅色背景为主，不做花哨渐变
+**v2 设计方向**：在 v1 基础上提升质感 — 更精细的灰度梯度、更饱和的涨跌色、更有层次感的表面系统。对标富途牛牛的数字排版精度 + 雪球的简洁留白。
 
-**打破规范的机会**：
-- 同花顺/东方财富信息过载，我们通过评分系统（1-10 + 颜色）帮用户做减法
-- 传统 App 缺少"波段低位"的可视化标识，我们可以用标签系统突出
-- 竞品新闻聚合差（都在跳转外部），我们在详情页内嵌新闻列表
+---
+
+## v1 → v2 变更摘要
+
+| 维度 | v1 | v2 | 理由 |
+|------|----|----|------|
+| 涨色 | #E6432D（番茄红） | #D93025（深红） | 更沉稳，减少视觉噪音，更接近专业交易终端 |
+| 跌色 | #1DB954（Spotify绿） | #0F9D58（金融绿） | 更接近东方财富/同花顺的绿色系，辨识度更高 |
+| 品牌色 | #1A6AFF（亮蓝） | #2563EB（深蓝） | 更信任感，减少游戏感 |
+| 文字主色 | #1A1A1A | #111827 | Tailwind gray-900，更自然 |
+| 文字次色 | #6B6B6B | #4B5563 | Tailwind gray-600，对比度更好 |
+| 灰度 | 等间距灰度 | Tailwind 灰度 | 视觉层次更自然 |
+| 圆角 | xs:4 sm:6 md:8 lg:12 | xs:4 sm:8 md:12 lg:16 xl:24 | 更现代的圆角趋势 |
+| 阴影 | 2级 | 3级（sm/md/lg） | 更细腻的层次 |
 
 ---
 
 ## 字体系统
 
 ### 选型
-- **正文字体**：PingFang SC -- iOS 系统字体，中文显示优秀，无需额外引入
-- **数字字体**：DIN Alternate / SF Mono -- 价格、涨跌幅、评分数字使用等宽数字字体，保证列对齐
+- **正文字体**：PingFang SC — iOS 系统字体，中文显示优秀，无需额外引入
+- **数字字体**：DIN Alternate / SF Mono — 价格、涨跌幅、评分数字使用等宽数字字体，保证列对齐
 - **Android 回退**：Noto Sans SC（正文）+ Roboto Mono（数字）
-
-Flutter 实现：
-```dart
-// pubspec.yaml 中无需额外引入，使用系统字体
-fontFamily: 'PingFang SC',  // iOS 默认
-fontFamilyFallback: ['Noto Sans SC', 'Roboto'],  // Android 回退
-
-// 数字字体
-fontFamily: 'DIN Alternate',  // iOS
-fontFamilyFallback: ['Roboto Mono', 'monospace'],  // Android 回退
-```
 
 ### 字阶
 
 | 级别 | 大小 | 字重 | 行高 | 用途 |
 |------|------|------|------|------|
-| display-lg | 32px | 700 | 1.2 | 股票当前价格（详情页顶部） |
-| display | 28px | 700 | 1.2 | 大标题价格 |
-| h1 | 20px | 600 | 1.3 | 页面标题 |
-| h2 | 17px | 600 | 1.4 | 区块标题（新闻列表头等） |
-| h3 | 15px | 500 | 1.4 | 子标题、分组标题 |
-| body-lg | 15px | 400 | 1.5 | 列表项主信息 |
-| body | 13px | 400 | 1.5 | 辅助文字、新闻来源 |
-| caption | 11px | 400 | 1.4 | 标注、时间戳、免责声明 |
-| number-lg | 24px | 700 | 1.2 | 涨跌幅数字（列表项） |
-| number | 16px | 600 | 1.2 | 评分数字、小价格 |
+| display-xl | 40px | 800 | 1.15 | 股票当前价格（详情页顶部英雄数字） |
+| display-lg | 32px | 700 | 1.2 | 大标题价格 |
+| display | 28px | 700 | 1.2 | 价格展示 |
+| h1 | 22px | 700 | 1.3 | 页面标题（加粗加粗） |
+| h2 | 17px | 600 | 1.4 | 区块标题 |
+| h3 | 15px | 600 | 1.4 | 子标题（v1 w500→w600） |
+| body-lg | 16px | 400 | 1.6 | 列表项主信息（+1px，+行高） |
+| body | 14px | 400 | 1.5 | 辅助文字（+1px） |
+| caption | 12px | 400 | 1.4 | 标注（+1px） |
+| micro | 10px | 500 | 1.3 | 极小标注（新增） |
+| number-xl | 28px | 700 | 1.15 | 大号价格数字（新增） |
+| number-lg | 24px | 700 | 1.2 | 涨跌幅数字 |
+| number | 16px | 600 | 1.2 | 评分数字 |
 | number-sm | 13px | 500 | 1.2 | 次要数字 |
 
 ---
 
 ## 颜色系统
 
-### 语义颜色
+### 涨跌色（A股标准：红涨绿跌）
 
-```css
-/* === 涨跌色（A股标准：红涨绿跌）=== */
---color-up: #E6432D;           /* 上涨 / 正收益 / 强烈推荐评分 */
---color-up-bg: rgba(230, 67, 45, 0.08);  /* 上涨背景 */
---color-down: #1DB954;         /* 下跌 / 负收益 / 风险评分 */
---color-down-bg: rgba(29, 185, 84, 0.08); /* 下跌背景 */
---color-flat: #8C8C8C;         /* 平盘 */
+| 名称 | v1 | v2 | 用途 |
+|------|----|----|------|
+| up | #E6432D | #D93025 | 上涨 / 正收益 |
+| upLight | — | #FEF2F2 | 上涨淡背景（替代低透明度叠加） |
+| upBg | rgba(230,67,45,0.08) | #FEE2E2 | 上涨背景 |
+| down | #1DB954 | #0F9D58 | 下跌 / 负收益 |
+| downLight | — | #ECFDF5 | 下跌淡背景 |
+| downBg | rgba(29,185,84,0.08) | #DCFCE7 | 下跌背景 |
+| flat | #8C8C8C | #6B7280 | 平盘 |
 
-/* === 评分色（语义映射）=== */
---color-score-high: #E6432D;   /* 8-10 强烈推荐，复用涨色 */
---color-score-mid: #D4A017;    /* 5-7 中性，琥珀色 */
---color-score-low: #1DB954;    /* 1-4 风险较高，复用跌色 */
+### 评分色
 
-/* === 品牌色 === */
---color-brand: #1A6AFF;        /* 主操作色：Tab 高亮、搜索框、主按钮 */
---color-brand-hover: #1554D6;
+| 名称 | 值 | 用途 |
+|------|-----|------|
+| scoreHigh | #D93025 | 8-10 强烈推荐 |
+| scoreMid | #D97706 | 5-7 中性（更暖的琥珀） |
+| scoreLow | #0F9D58 | 1-4 风险较高 |
 
-/* === 中性色（10 级灰度）=== */
---color-gray-50: #FAFAFA;
---color-gray-100: #F5F5F5;
---color-gray-200: #EEEEEE;
---color-gray-300: #E0E0E0;
---color-gray-400: #BDBDBD;
---color-gray-500: #8C8C8C;
---color-gray-600: #6B6B6B;
---color-gray-700: #4A4A4A;
---color-gray-800: #333333;
---color-gray-900: #1A1A1A;
+### 品牌色
 
-/* === 语义中性色 === */
---color-bg-primary: #FFFFFF;
---color-bg-secondary: #F7F8FA;
---color-bg-tertiary: #F0F1F3;
---color-text-primary: #1A1A1A;
---color-text-secondary: #6B6B6B;
---color-text-tertiary: #8C8C8C;
---color-border: #EEEEEE;
---color-border-focus: #1A6AFF;
---color-divider: #F0F1F3;
+| 名称 | v1 | v2 | 用途 |
+|------|----|----|------|
+| brand | #1A6AFF | #2563EB | 主操作色 |
+| brandLight | — | #EFF6FF | 品牌淡背景 |
+| brandDark | — | #1D4ED8 | 品牌深色（按下态） |
+| brandHover | #1554D6 | #1E40AF | 悬停/按压 |
 
-/* === 功能色 === */
---color-error: #E6432D;
---color-warning: #D4A017;
---color-success: #1DB954;
---color-info: #1A6AFF;
-```
+### 中性色（Tailwind Gray 系列）
 
-### 颜色使用规则
-- **总颜色数**：22 种（含 10 级灰度），主色 5 种 + 功能色 4 种 + 灰度 10 种 + 背景/文字/边框 6 种
-- 涨跌色严格遵循 A 股标准：红涨绿跌，不允许反转
-- 评分色映射到涨跌色体系：高分=红（机会）、低分=绿（风险）、中分=琥珀（中性）
-- 禁止：渐变色、非语义装饰色、品牌色用于大面积背景
-- 背景：主背景 #FFFFFF，次级区域 #F7F8FA，卡片无需阴影（用 1px border 分隔）
+| 名称 | v2 值 | 说明 |
+|------|--------|------|
+| gray50 | #F9FAFB | 极浅背景 |
+| gray100 | #F3F4F6 | 次级背景 |
+| gray200 | #E5E7EB | 边框/分割线 |
+| gray300 | #D1D5DB | 禁用边框 |
+| gray400 | #9CA3AF | 占位符 |
+| gray500 | #6B7280 | 辅助文字 |
+| gray600 | #4B5563 | 次级文字 |
+| gray700 | #374151 | 正文深色 |
+| gray800 | #1F2937 | 标题色 |
+| gray900 | #111827 | 主文字 |
+
+### 语义表面色
+
+| 名称 | 值 | 用途 |
+|------|-----|------|
+| bgPrimary | #FFFFFF | 页面主背景 |
+| bgSecondary | #F9FAFB | 卡片/次级背景 |
+| bgTertiary | #F3F4F6 | 嵌套背景 |
+| bgCard | #FFFFFF | 卡片背景（带微妙阴影） |
+| bgWarning | #FFFBEB | 警告背景 |
+| bgInfo | #EFF6FF | 信息背景 |
+| textPrimary | #111827 | 主文字 |
+| textSecondary | #4B5563 | 次级文字 |
+| textTertiary | #6B7280 | 三级文字 |
+| textDisabled | #9CA3AF | 禁用文字 |
+| textOnPrimary | #FFFFFF | 品牌色上的文字 |
+| border | #E5E7EB | 默认边框 |
+| borderLight | #F3F4F6 | 浅边框 |
+| borderFocus | #D1D5DB | 聚焦边框 |
+| borderActive | #2563EB | 激活边框 |
+| divider | #F3F4F6 | 分割线 |
+
+### 功能色
+
+| 名称 | 值 | 用途 |
+|------|-----|------|
+| error | #DC2626 | 错误 |
+| warning | #D97706 | 警告 |
+| success | #0F9D58 | 成功 |
+| info | #2563EB | 信息 |
+
+### 特殊色
+
+| 名称 | 值 | 用途 |
+|------|-----|------|
+| cacheBannerText | #92400E | 缓存提示文字 |
+| bandLow | #D97706 | 波段低位标签 |
+| bandLowBg | #FEF3C7 | 波段低位背景 |
+| toastBg | #1F2937 | Toast 背景 |
+| danger | #DC2626 | 危险操作 |
+| pin | #2563EB | 置顶标记 |
+| alert | #DC2626 | 警报 |
 
 ---
 
@@ -139,8 +167,6 @@ fontFamilyFallback: ['Roboto Mono', 'monospace'],  // Android 回退
 
 所有间距值：4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 96px
 
-**禁止使用任意值**（如 13px, 22px, 37px）
-
 | 用途 | 间距值 | 说明 |
 |------|--------|------|
 | 列表项内边距 | 16px 水平，12px 垂直 | 紧凑但不拥挤 |
@@ -149,7 +175,6 @@ fontFamilyFallback: ['Roboto Mono', 'monospace'],  // Android 回退
 | 区块间距 | 24px | 区块之间的留白 |
 | 图标与文字间距 | 8px | 紧凑 |
 | 底部 Tab 高度 | 48px + 安全区域 | 标准尺寸 |
-| 顶部安全区域 | 状态栏高度（iOS 44px / Android 24px） | 适配刘海屏 |
 
 ---
 
@@ -158,26 +183,26 @@ fontFamilyFallback: ['Roboto Mono', 'monospace'],  // Android 回退
 | 级别 | 值 | 用途 |
 |------|------|------|
 | none | 0px | 全屏卡片、分割线 |
-| xs | 4px | 小标签（波段低谷、评分标签） |
-| sm | 6px | 按钮、搜索框 |
-| md | 8px | 卡片、弹窗 |
-| lg | 12px | 底部弹窗（BottomSheet） |
-| full | 999px | Badge/Chip、搜索结果的高亮标签 |
-
-**规则**：不使用统一圆角。标签 4px，卡片 8px，底部弹窗 12px。
+| xs | 4px | 小标签 |
+| sm | 8px | 按钮、搜索框（v1:6→8） |
+| md | 12px | 卡片、弹窗（v1:8→12） |
+| lg | 16px | 底部弹窗（v1:12→16） |
+| xl | 24px | 大卡片、模态框（新增） |
+| full | 999px | Badge/Chip |
 
 ---
 
 ## 阴影系统
 
-仅 2 级阴影，严格限制使用场景：
+3 级阴影，精确控制使用场景：
 
 | 级别 | 值 | 用途 |
-|------|------|------|
-| sm | `0 1px 2px rgba(0,0,0,0.05)` | 搜索框聚焦态 |
-| md | `0 4px 12px rgba(0,0,0,0.08)` | BottomSheet / 弹窗 |
+|------|-----|------|
+| sm | rgba(0,0,0,0.04) | 搜索框、轻浮卡片 |
+| md | rgba(0,0,0,0.08) | BottomSheet / 弹窗 |
+| lg | rgba(0,0,0,0.12) | 模态框 / 全屏弹出 |
 
-**规则**：列表项、卡片、Tab 栏不使用阴影。分隔用 border 或 divider。
+**规则**：列表项、Tab 栏不使用阴影。卡片可选 sm 阴影替代 border。
 
 ---
 
@@ -185,51 +210,44 @@ fontFamilyFallback: ['Roboto Mono', 'monospace'],  // Android 回退
 
 | 级别 | 时长 | 缓动 | 用途 |
 |------|------|------|------|
-| instant | 100ms | ease-out | 颜色变化、评分更新 |
-| fast | 200ms | ease-in-out | Tab 切换、列表项滑动 |
-| normal | 300ms | ease-in-out | 页面转场、BottomSheet 弹出 |
-
-Flutter 实现：`Curves.easeInOut`，不使用弹簧动画（过于活泼，不符合金融工具调性）。
+| instant | 100ms | ease-out | 颜色变化 |
+| fast | 200ms | ease-in-out | Tab 切换 |
+| normal | 300ms | ease-in-out | 页面转场 |
 
 ---
 
 ## 评分系统视觉规范
 
-评分 1-10 分，映射到三级语义色：
-
-| 范围 | 含义 | 颜色 | 文字 | 背景色 |
-|------|------|------|------|--------|
-| 8-10 | 强烈推荐 | --color-up (#E6432D) | 白色 | --color-up-bg |
-| 5-7 | 中性观望 | --color-score-mid (#D4A017) | 白色 | rgba(212,160,23,0.08) |
-| 1-4 | 风险较高 | --color-down (#1DB954) | 白色 | --color-down-bg |
-
-**实现**：评分数字用圆形/圆角矩形背景 + 反色文字，视觉上像一个 Badge。
-```
-  [8]    ->  红底白字圆角方块，4px 圆角
-  [5]    ->  琥珀底白字圆角方块，4px 圆角
-  [2]    ->  绿底白字圆角方块，4px 圆角
-```
+| 范围 | 含义 | 颜色 | 背景色 |
+|------|------|------|--------|
+| 8-10 | 强烈推荐 | #D93025 | #FEE2E2 |
+| 5-7 | 中性观望 | #D97706 | #FEF3C7 |
+| 1-4 | 风险较高 | #0F9D58 | #DCFCE7 |
 
 ---
 
-## 涨跌幅视觉规范
+## Flutter Theme 映射
 
-| 范围 | 颜色 | 前缀 | 字体 |
-|------|------|------|------|
-| > 0% | #E6432D 红 | + | number 等宽 |
-| = 0% | #8C8C8C 灰 | -- | number 等宽 |
-| < 0% | #1DB954 绿 | -- | number 等宽 |
+```dart
+// v2 ColorScheme
+ColorScheme(
+  brightness: Brightness.light,
+  primary: Color(0xFF2563EB),      // 深蓝品牌色
+  onPrimary: Colors.white,
+  surface: Color(0xFFFFFFFF),
+  onSurface: Color(0xFF111827),
+  error: Color(0xFFDC2626),
+  onError: Colors.white,
+)
 
-示例：`+2.35%`（红）/ `-1.28%`（绿）/ `0.00%`（灰）
-
----
-
-## 暗色模式
-
-本期不做（PRD 明确 Out of Scope），但颜色系统已预留给暗色模式扩展：
-- 所有颜色通过 CSS 变量 / Flutter Theme 引用
-- 暗色模式只需要覆盖变量值，不需要修改组件代码
-- v2 实现时，背景色 #FFFFFF -> #121212，次级 -> #1E1E1E
+// StockColors 核心语义
+class StockColors {
+  static const up = Color(0xFFD93025);     // 深红
+  static const down = Color(0xFF0F9D58);   // 金融绿
+  static const brand = Color(0xFF2563EB);  // 深蓝
+  // ... 完整定义见 app_colors.dart
+}
+```
 
 ---
 
@@ -254,77 +272,12 @@ Flutter 实现：`Curves.easeInOut`，不使用弹簧动画（过于活泼，不
 | 取消操作 | 取消 | 否 |
 | 重试 | 重试 | 请稍后再试 |
 
-### 错误消息规范
-
-| 场景 | 推荐 | 避免 |
-|------|------|------|
-| 网络异常 | 推荐数据加载失败，显示上次缓存数据 | 网络错误 |
-| API 错误 | 数据更新失败，请下拉刷新 | 请求失败 |
-| 搜索无结果 | 未找到匹配股票 | 没有数据 |
-| 计算失败 | 数据不足，暂无评分 | 计算错误 |
-| 离线模式 | 离线模式，数据更新于 14:30 | 无法连接 |
-
-### 空状态三件套
-
-| 场景 | 标题 | 副标题 | CTA |
-|------|------|--------|-----|
-| 关注列表为空 | 暂无关注的股票 | 搜索添加你感兴趣的股票 | 搜索添加 |
-| 推荐列表加载失败 | 暂无推荐数据 | 检查网络后下拉刷新 | 下拉刷新 |
-| 新闻列表为空 | 暂无相关新闻 | 该股票最近没有新闻动态 | -- |
-
-### Toast / 反馈消息
-- 成功：说明完成了什么，持续 2s（「已添加中国平安到关注列表」）
-- 失败：简洁错误 + 可操作建议，持续 3s（「添加失败，请重试」）
-- 位置：屏幕底部，距底部 Tab 栏上方 16px
-
-### Loading 文案
-- < 1s：Skeleton 占位，无文案
-- 1-3s：Skeleton + 底部「加载中...」
-- > 3s：具体说明（「正在计算波段分析...」）
-
----
-
-## 数据显示格式规范
+### 数据显示格式规范
 
 | 类型 | 格式 | 示例 |
 |------|------|------|
 | 股票价格 | ¥{,###.##} | ¥45.20 |
 | 涨跌幅 | {+/-}{#.###}% | +2.35% / -1.28% |
 | 评分 | {整数} | 8 |
-| 市值 | {,###}亿 | 8,542亿 |
-| 市盈率 | {#.#} | 12.8 |
-| 日期 | M月D日 | 4月10日 |
-| 时间 | HH:mm | 14:30 |
-| 新闻时间 | 相对时间 | 3小时前 / 昨天 / 4月8日 |
-| 成交量 | {,###}手 | 125,400手 |
 | 空值显示 | -- | -- |
 | 代码 | {代码} {市场} | 601318 SH |
-
----
-
-## Flutter Theme 映射
-
-```dart
-// lib/core/theme/app_theme.dart 概要
-// 实际代码由 FE 按此规范编写
-
-ColorScheme(
-  brightness: Brightness.light,
-  primary: Color(0xFF1A6AFF),      // 品牌色
-  onPrimary: Colors.white,
-  surface: Color(0xFFFFFFFF),       // 卡片/列表背景
-  onSurface: Color(0xFF1A1A1A),    // 主文字
-  error: Color(0xFFE6432D),        // 错误/涨色
-)
-
-// 自定义语义色（不走 ColorScheme，直接定义常量）
-class StockColors {
-  static const up = Color(0xFFE6432D);
-  static const down = Color(0xFF1DB954);
-  static const flat = Color(0xFF8C8C8C);
-  static const scoreHigh = Color(0xFFE6432D);
-  static const scoreMid = Color(0xFFD4A017);
-  static const scoreLow = Color(0xFF1DB954);
-  static const brand = Color(0xFF1A6AFF);
-}
-```

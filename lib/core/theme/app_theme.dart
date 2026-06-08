@@ -2,23 +2,24 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 /// StockPilot app theme.
-/// Design: DESIGN.md v1.0 Typography + Spacing + Border Radius + Shadow
+/// Design: DESIGN.md v2.0 Typography + Spacing + Border Radius + Shadow
 class AppTheme {
   AppTheme._();
 
-  // Font families
+  // ── Font families ────────────────────────────────────────────────
   static const String textFont = 'PingFang SC';
   static const String numberFont = 'DIN Alternate';
 
-  // Border radius levels
+  // ── Border radius levels ─────────────────────────────────────────
   static const double radiusNone = 0;
   static const double radiusXs = 4;
-  static const double radiusSm = 6;
-  static const double radiusMd = 8;
-  static const double radiusLg = 12;
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 16;
+  static const double radiusXl = 24;
   static const double radiusFull = 999;
 
-  // Spacing (4px base)
+  // ── Spacing (4px base) ───────────────────────────────────────────
   static const double space1 = 4;
   static const double space2 = 8;
   static const double space3 = 12;
@@ -31,16 +32,16 @@ class AppTheme {
   static const double space12 = 64;
   static const double space16 = 96;
 
-  // Animation durations
+  // ── Animation durations ──────────────────────────────────────────
   static const Duration instantDuration = Duration(milliseconds: 100);
   static const Duration fastDuration = Duration(milliseconds: 200);
   static const Duration normalDuration = Duration(milliseconds: 300);
 
-  // Animation curves
+  // ── Animation curves ─────────────────────────────────────────────
   static const Curve easeOut = Curves.easeOut;
   static const Curve easeInOut = Curves.easeInOut;
 
-  // Layout
+  // ── Layout constants ─────────────────────────────────────────────
   static const double pagePadding = 16;
   static const double listItemPaddingH = 16;
   static const double listItemPaddingV = 12;
@@ -48,6 +49,7 @@ class AppTheme {
   static const double searchBarHeight = 40;
   static const double sectionSpacing = 24;
 
+  // ── Light theme ──────────────────────────────────────────────────
   static ThemeData get light {
     return ThemeData(
       brightness: Brightness.light,
@@ -73,22 +75,32 @@ class AppTheme {
         centerTitle: false,
         titleTextStyle: TextStyle(
           fontFamily: textFont,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
           color: StockColors.textPrimary,
           height: 1.3,
+          letterSpacing: -0.2,
         ),
       ),
       textTheme: const TextTheme(
         // Display
         displayLarge: TextStyle(
           fontFamily: numberFont,
+          fontSize: 40,
+          fontWeight: FontWeight.w800,
+          height: 1.15,
+          color: StockColors.textPrimary,
+          letterSpacing: -0.5,
+        ),
+        displayMedium: TextStyle(
+          fontFamily: numberFont,
           fontSize: 32,
           fontWeight: FontWeight.w700,
           height: 1.2,
           color: StockColors.textPrimary,
+          letterSpacing: -0.5,
         ),
-        displayMedium: TextStyle(
+        displaySmall: TextStyle(
           fontFamily: numberFont,
           fontSize: 28,
           fontWeight: FontWeight.w700,
@@ -98,10 +110,11 @@ class AppTheme {
         // Headings
         headlineMedium: TextStyle(
           fontFamily: textFont,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
           height: 1.3,
           color: StockColors.textPrimary,
+          letterSpacing: -0.2,
         ),
         headlineSmall: TextStyle(
           fontFamily: textFont,
@@ -113,28 +126,28 @@ class AppTheme {
         titleMedium: TextStyle(
           fontFamily: textFont,
           fontSize: 15,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           height: 1.4,
           color: StockColors.textPrimary,
         ),
         // Body
         bodyLarge: TextStyle(
           fontFamily: textFont,
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w400,
-          height: 1.5,
+          height: 1.6,
           color: StockColors.textPrimary,
         ),
         bodyMedium: TextStyle(
           fontFamily: textFont,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w400,
           height: 1.5,
           color: StockColors.textPrimary,
         ),
         bodySmall: TextStyle(
           fontFamily: textFont,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w400,
           height: 1.4,
           color: StockColors.textTertiary,
@@ -199,7 +212,7 @@ class AppTheme {
         ),
         contentTextStyle: const TextStyle(
           fontFamily: textFont,
-          fontSize: 13,
+          fontSize: 14,
           color: Colors.white,
         ),
       ),

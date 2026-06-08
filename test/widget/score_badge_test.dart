@@ -37,8 +37,8 @@ void main() {
             .first,
       );
       final decoration = container.decoration as BoxDecoration;
-      // score 5-7 -> rgba(212,160,23,0.08)
-      expect(decoration.color, Color(0x14D4A017));
+      // score 5-7 -> rgba(217,119,6,0.08)
+      expect(decoration.color, Color(0x14D97706));
     });
 
     testWidgets('低分（<5）显示绿色背景', (WidgetTester tester) async {
