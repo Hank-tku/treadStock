@@ -15,6 +15,12 @@ import '../../analysis/domain/analysis_models.dart';
 import '../../strategy/domain/strategy_scoring_service.dart';
 import '../../../shared/providers.dart';
 import '../../watchlist/presentation/watchlist_provider.dart';
+import '../../../shared/widgets/decision_labels/decision_labels_panel.dart';
+import '../../strategy/domain/decision_engine.dart';
+import '../../strategy/domain/decision_signal_engine.dart';
+import '../../strategy/domain/signal_card.dart';
+import '../../strategy/presentation/widgets/signal_card_widget.dart';
+import '../../strategy/presentation/widgets/decision_signal_badge.dart';
 
 /// Stock detail page.
 /// Design: DESIGN.md Page 3 - Stock Detail Page.
@@ -50,6 +56,8 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   double? _ma20;
   double? _ma60;
   StrategyScoreResult? _strategyScore;
+  List<StrategyScoreResult>? _allStrategyScores;
+  List<SignalCard>? _signalCards;
 
   @override
   void initState() {
@@ -122,6 +130,29 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
         setState(() => _score = score);
         setState(() => _strategyScore = strategyScore);
 
+        // Score all strategies for decision signal
+        final allScores = <StrategyScoreResult>[];
+        for (final s in strategies) {
+          final result = scoringService.scoreStock(
+            quote: quote,
+            klines: klines,
+            strategy: s,
+          );
+          allScores.add(result);
+        }
+        allScores.sort((a, b) => b.score.score.compareTo(a.score.score));
+        setState(() => _allStrategyScores = allScores);
+
+        final signalCards = DecisionSignalEngine.evaluateMultiple(
+          klines: klines,
+          strategies: selectedStrategy != null ? [selectedStrategy] : strategies,
+          stockCode: widget.code,
+          stockName: widget.name,
+          currentPrice: lastKline.close,
+          changePct: lastKline.changePct,
+        );
+        setState(() => _signalCards = signalCards);
+
         final closes = klines.map((k) => k.close).toList();
         final ma20List = engine.calculateMA(closes, 20);
         final ma60List = engine.calculateMA(closes, 60);
@@ -189,6 +220,15 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 : _buildScoreSection(),
 
             _isLoading ? const SizedBox.shrink() : _buildStrategyScoreSection(),
+
+            // Signal cards
+            _isLoading ? const SizedBox.shrink() : _buildSignalCardsSection(),
+
+            // Decision signal card
+            _isLoading ? const SizedBox.shrink() : _buildDecisionSignalOverviewSection(),
+
+            // Decision labels
+            _isLoading ? const SizedBox.shrink() : DecisionLabelsPanel(score: _score),
 
             // Company info section
             _isLoading
@@ -461,6 +501,105 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
         ],
       ),
     );
+  }
+
+
+  Widget _buildSignalCardsSection() {
+    final cards = _signalCards;
+    if (cards == null || cards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppTheme.pagePadding,
+            16,
+            AppTheme.pagePadding,
+            8,
+          ),
+          child: Text('信号卡片', style: AppTextStyles.h2),
+        ),
+        ...cards.map(
+          (card) => SignalCardWidget(
+            card: card,
+            onTap: () {
+              // Keep current behavior simple: signal card is informational.
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDecisionSignalOverviewSection() {
+    final strategyScore = _strategyScore;
+    final allScores = _allStrategyScores ?? const <StrategyScoreResult>[];
+    if (strategyScore == null) {
+      return const SizedBox.shrink();
+    }
+
+    final signal = _decisionSignalFor(strategyScore);
+    final signalScore = strategyScore.score.score / 10.0;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        12,
+        AppTheme.pagePadding,
+        0,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: StockColors.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DecisionSignalBadge(signal: signal, isSmall: true),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(strategyScore.displayTitle, style: AppTextStyles.h3),
+                const SizedBox(height: 3),
+                Text(
+                  strategyScore.displayReason,
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '策略数：${allScores.length} · 信号强度 ${(signalScore * 100).toStringAsFixed(0)}%',
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  DecisionSignal _decisionSignalFor(StrategyScoreResult result) {
+    final score = result.score.score;
+    if (score >= result.recommendThreshold + 1) {
+      return DecisionSignal.strongWatch;
+    }
+    if (score >= result.recommendThreshold) {
+      return DecisionSignal.watch;
+    }
+    if (score >= 5) {
+      return DecisionSignal.observe;
+    }
+    return DecisionSignal.notRecommended;
   }
 
   Widget _buildCompanyInfoSection() {

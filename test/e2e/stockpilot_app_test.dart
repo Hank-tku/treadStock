@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:drift/native.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stockpilot/app.dart';
 import 'package:stockpilot/features/strategy/data/database.dart';
 import 'package:stockpilot/features/stock/data/stock_api_service.dart';
@@ -56,6 +57,9 @@ List<Override> testOverrides() {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({'onboarding_completed': true});
+  });
   group('StockPilot App Integration', () {
     testWidgets('T-F001-1: App renders recommendation tab by default', (
       WidgetTester tester,

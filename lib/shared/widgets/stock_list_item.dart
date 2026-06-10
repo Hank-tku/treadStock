@@ -4,6 +4,11 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
 import 'score_badge.dart';
 import 'band_low_tag.dart';
+import '../../features/analysis/domain/analysis_models.dart';
+import 'decision_labels/decision_labels.dart';
+import 'decision_labels/decision_label_chip.dart' as chip;
+import '../../features/strategy/domain/decision_engine.dart';
+import '../../features/strategy/presentation/widgets/decision_signal_badge.dart';
 
 /// Stock list item widget used in both recommendation and watchlist tabs.
 /// Design: DESIGN.md StockListItem component spec.
@@ -21,6 +26,8 @@ class StockListItem extends StatelessWidget {
   final String? strategyName;
   final String? scoreReason;
   final String? riskText;
+  final StockScore? stockScore;
+  final DecisionResult? decisionResult;
   final VoidCallback? onTap;
 
   const StockListItem({
@@ -38,6 +45,8 @@ class StockListItem extends StatelessWidget {
     this.strategyName,
     this.scoreReason,
     this.riskText,
+    this.stockScore,
+    this.decisionResult,
     this.onTap,
   });
 
@@ -123,7 +132,10 @@ class StockListItem extends StatelessWidget {
                         style: AppTextStyles.caption,
                       ),
                       if (score != null) ScoreBadge(score: score),
+                      if (decisionResult != null)
+                        DecisionSignalBadge(signal: decisionResult!.signal, isSmall: true),
                       if (isBandLow) const BandLowTag(),
+                      _buildDecisionLabelWidget(stockScore),
                       if (expectedRange != null)
                         Text(
                           expectedRange!,
@@ -176,11 +188,11 @@ class _StrategySummaryLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final parts = [
-      ?strategyName == null ? null : '策略 $strategyName',
-      ?scoreReason,
-      ?riskText,
-    ];
+    final parts = <String?>[
+      strategyName != null ? '策略 $strategyName' : null,
+      scoreReason,
+      riskText,
+    ].whereType<String>().toList();
 
     return Container(
       width: double.infinity,
@@ -198,3 +210,35 @@ class _StrategySummaryLine extends StatelessWidget {
     );
   }
 }
+
+
+
+Widget _buildDecisionLabelWidget(StockScore? stockScore) {
+  if (stockScore == null || stockScore.score <= 0) {
+    return const SizedBox.shrink();
+  }
+
+  final labels = DecisionLabelEngine.generate(stockScore);
+  if (labels.isEmpty) return const SizedBox.shrink();
+
+  final label = labels.first;
+  return chip.DecisionLabelChip(
+    text: label.displayName,
+    detail: label.detail,
+    sentiment: _toChipSentiment(label.sentiment),
+  );
+}
+/// Convert model sentiment to widget sentiment.
+chip.DecisionSentiment _toChipSentiment(DecisionSentiment s) {
+  switch (s) {
+    case DecisionSentiment.bullish:
+      return chip.DecisionSentiment.bullish;
+    case DecisionSentiment.neutral:
+      return chip.DecisionSentiment.neutral;
+    case DecisionSentiment.bearish:
+      return chip.DecisionSentiment.bearish;
+    case DecisionSentiment.unknown:
+      return chip.DecisionSentiment.unknown;
+  }
+}
+

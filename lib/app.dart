@@ -3,6 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/dashboard/presentation/dashboard_tab.dart';
+import 'features/onboarding/data/onboarding_service.dart';
+import 'features/onboarding/presentation/onboarding_page.dart';
 import 'features/recommendation/presentation/recommendation_tab.dart';
 import 'features/watchlist/presentation/watchlist_tab.dart';
 import 'features/stock/presentation/stock_detail_page.dart';
@@ -25,14 +28,37 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/recommend',
+    initialLocation: '/dashboard',
     debugLogDiagnostics: false,
+    redirect: (context, state) async {
+      final currentPath = state.matchedLocation;
+      // If already on onboarding page, do nothing.
+      if (currentPath == '/onboarding') return null;
+      // Check if onboarding is needed.
+      final onboardingService = OnboardingService();
+      final completed = await onboardingService.isCompleted();
+      if (!completed) return '/onboarding';
+      return null;
+    },
     routes: [
+      GoRoute(
+        path: '/onboarding',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const OnboardingPage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return _MainScaffold(navigationShell: navigationShell);
         },
         branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/dashboard',
+                builder: (context, state) => const DashboardTab(),
+              ),
+            ],
+          ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -153,6 +179,11 @@ class _MainScaffold extends StatelessWidget {
         currentIndex: navigationShell.currentIndex,
         onTap: (index) => navigationShell.goBranch(index),
         items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined, size: 24),
+            activeIcon: Icon(Icons.dashboard, size: 24),
+            label: '看板',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.trending_up_outlined, size: 24),
             activeIcon: Icon(Icons.trending_up, size: 24),

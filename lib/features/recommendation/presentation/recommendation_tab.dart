@@ -9,10 +9,13 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/cache_banner.dart';
 import '../../../shared/widgets/disclaimer_label.dart';
+import '../../analysis/domain/analysis_models.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../strategy/domain/strategy_explanation.dart';
 import '../../strategy/domain/strategy_models.dart';
+import '../../strategy/domain/decision_engine.dart';
 import '../../strategy/presentation/strategy_provider.dart';
+import '../../strategy/presentation/widgets/decision_summary_bar.dart';
 
 /// Recommendation list tab (Tab 1).
 /// Design: DESIGN.md Page 1 - Recommend List Page.
@@ -174,6 +177,12 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
           ref.read(strategyRecommendationProvider.notifier).refresh(),
       child: ListView(
         children: [
+          // Decision summary bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
+            child: _buildDecisionSummaryBar(state),
+          ),
+
           // Strategy groups
           for (final group in state.groups) ...[
             _buildSectionHeader(
@@ -210,6 +219,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                     strategyName: group.strategy.name,
                     scoreReason: insight?.compact ?? item.score?.reason,
                     riskText: '仅供参考',
+                    decisionResult: _evaluateDecision(group.strategy, item.score),
                     onTap: () => _navigateToDetail(
                       context,
                       item.code,
@@ -341,6 +351,26 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
         ),
       ),
     );
+  }
+
+  DecisionResult _evaluateDecision(Strategy strategy, StockScore? score) {
+    return DecisionEngine.evaluate(
+      strategyScore: (score?.score ?? 0).toDouble(),
+      hitRate: strategy.stats?.hitRate ?? 0,
+      sampleSize: strategy.stats?.totalRecommendations ?? 0,
+      isEnabled: strategy.isEnabled,
+    );
+  }
+
+  Widget _buildDecisionSummaryBar(StrategyRecommendationState state) {
+    final results = <DecisionResult>[];
+    for (final group in state.groups) {
+      for (final item in group.recommendations) {
+        results.add(_evaluateDecision(group.strategy, item.score));
+      }
+    }
+    if (results.isEmpty) return const SizedBox.shrink();
+    return DecisionSummaryBar.fromResults(results);
   }
 
   void _navigateToDetail(
