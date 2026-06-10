@@ -26,6 +26,7 @@ class StrategyDetailPage extends ConsumerStatefulWidget {
 
 class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
   bool _isDeleting = false;
+  String? _expandedReviewId;
 
   @override
   void initState() {
@@ -62,6 +63,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
             else ...[
               _buildReviewBanner(state),
               _buildReviewSummaryCard(state),
+              if (state.isAccumulatingData) _buildDataAccumulationNotice(state),
               _buildStatsCards(state),
               _buildSampleNotice(state),
               _buildStrategyCoreSection(state),
@@ -345,6 +347,51 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
     );
   }
 
+  Widget _buildDataAccumulationNotice(StrategyDetailState state) {
+    final days = state.stats.tradingDaysRun;
+    final recCount = state.stats.totalRecommendations;
+    final detail = days <= 0
+        ? '策略刚启用，先积累几天推荐记录，再看命中率、极限涨跌和平均差。'
+        : '策略已启用 $days 个交易日，当前仅积累了 $recCount 条推荐记录；满 5 个交易日后再看统计更稳妥。';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        12,
+        AppTheme.pagePadding,
+        0,
+      ),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: StockColors.info.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: StockColors.info.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.hourglass_bottom, color: StockColors.info, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('数据积累中', style: AppTextStyles.body),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: AppTextStyles.caption.copyWith(
+                    color: StockColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildReviewBanner(StrategyDetailState state) {
     final strategy = state.strategy;
     if (strategy == null || !strategy.needsReview || !strategy.isEnabled) {
@@ -379,6 +426,9 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
 
   Widget _buildStatsCards(StrategyDetailState state) {
     final stats = state.stats;
+    final avgChangeColor = stats.evaluatedCount == 0
+        ? StockColors.textPrimary
+        : (stats.avgChange >= 0 ? StockColors.up : StockColors.down);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
       child: Row(
@@ -390,16 +440,12 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           ),
           const SizedBox(width: 8),
           _buildStatCard(
-            '极限分值',
+            '极限涨跌',
             stats.extremeScoreDisplay,
             StockColors.textPrimary,
           ),
           const SizedBox(width: 8),
-          _buildStatCard(
-            '健康度',
-            stats.healthScoreDisplay,
-            getScoreColor(stats.healthScore.round()),
-          ),
+          _buildStatCard('平均差', stats.avgChangeDisplay, avgChangeColor),
         ],
       ),
     );
@@ -480,6 +526,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
   }
 
   Widget _buildHitRecords(StrategyDetailState state) {
+    final isAccumulating = state.isAccumulatingData;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -502,11 +549,11 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           ),
         ),
         if (state.hitRecords.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(AppTheme.pagePadding),
+          Padding(
+            padding: const EdgeInsets.all(AppTheme.pagePadding),
             child: Text(
-              '暂无推荐记录',
-              style: TextStyle(fontSize: 13, color: StockColors.gray500),
+              isAccumulating ? '数据积累中，满 5 个交易日后再查看命中率和平均差。' : '暂无推荐记录',
+              style: const TextStyle(fontSize: 13, color: StockColors.gray500),
             ),
           )
         else
@@ -660,39 +707,124 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
   }
 
   Widget _buildReviewItem(StrategyReview review) {
+    final isExpanded = _expandedReviewId == review.id;
     return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: AppTheme.pagePadding,
         vertical: 4,
       ),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: StockColors.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
-      child: Row(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          onTap: () {
+            setState(() {
+              _expandedReviewId = isExpanded ? null : review.id;
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            Formatters.formatDate(review.reviewDate),
+                            style: AppTextStyles.body,
+                          ),
+                          if (review.note != null && review.note!.isNotEmpty)
+                            Text(
+                              review.note!,
+                              style: AppTextStyles.caption,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '健康度 ${review.healthScore.toStringAsFixed(1)}',
+                      style: AppTextStyles.numberSm,
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 20,
+                        color: AppTextStyles.caption.color,
+                      ),
+                    ),
+                  ],
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  alignment: Alignment.topCenter,
+                  child: isExpanded && review.checklistItems.isNotEmpty
+                      ? _buildChecklistContent(review.checklistItems)
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChecklistContent(List<ChecklistItem> items) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Divider(height: 1, color: AppTextStyles.caption.color?.withValues(alpha: 0.2)),
+          const SizedBox(height: 8),
+          ...items.map((item) => _buildChecklistItemRow(item)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistItemRow(ChecklistItem item) {
+    final icon = switch (item.result) {
+      CheckResult.pass => '✅',
+      CheckResult.warning => '⚠️',
+      CheckResult.fail => '❌',
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  Formatters.formatDate(review.reviewDate),
-                  style: AppTextStyles.body,
+                  item.title,
+                  style: AppTextStyles.body.copyWith(fontSize: 13),
                 ),
-                if (review.note != null && review.note!.isNotEmpty)
+                if (item.detail.isNotEmpty)
                   Text(
-                    review.note!,
-                    style: AppTextStyles.caption,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    item.detail,
+                    style: AppTextStyles.caption.copyWith(fontSize: 11),
                   ),
               ],
             ),
-          ),
-          Text(
-            '健康度 ${review.healthScore.toStringAsFixed(1)}',
-            style: AppTextStyles.numberSm,
           ),
         ],
       ),
@@ -937,11 +1069,15 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
   /// S5: Rule visualization section — shows entry/exit rules and groups visually.
   Widget _buildRuleVisualization(StrategyDetailState state) {
     final strategy = state.strategy;
-    if (strategy == null || !strategy.isRuleBased) return const SizedBox.shrink();
+    if (strategy == null || !strategy.isRuleBased) {
+      return const SizedBox.shrink();
+    }
 
-    final hasEntryRules = (strategy.entryRules?.isNotEmpty ?? false) ||
+    final hasEntryRules =
+        (strategy.entryRules?.isNotEmpty ?? false) ||
         (strategy.entryGroups?.isNotEmpty ?? false);
-    final hasExitRules = (strategy.exitRules?.isNotEmpty ?? false) ||
+    final hasExitRules =
+        (strategy.exitRules?.isNotEmpty ?? false) ||
         (strategy.exitGroups?.isNotEmpty ?? false);
 
     if (!hasEntryRules && !hasExitRules) return const SizedBox.shrink();
@@ -1088,12 +1224,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
               children: [
                 Icon(Icons.check_circle_outline, size: 14, color: color),
                 const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    labels[i],
-                    style: AppTextStyles.caption,
-                  ),
-                ),
+                Expanded(child: Text(labels[i], style: AppTextStyles.caption)),
               ],
             ),
           ],

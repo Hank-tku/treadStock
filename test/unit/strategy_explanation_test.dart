@@ -39,7 +39,7 @@ void main() {
 
     test('reviewSummary asks for more data when sample is insufficient', () {
       final summary = StrategyExplanation.reviewSummary(
-        stats: const StrategyStats(totalRecommendations: 10, evaluatedCount: 5),
+        stats: const StrategyStats(totalRecommendations: 10, evaluatedCount: 5, tradingDaysRun: 10),
         suggestions: const [],
       );
 
@@ -52,7 +52,7 @@ void main() {
       'reviewSummary surfaces first suggestion when attention is needed',
       () {
         final summary = StrategyExplanation.reviewSummary(
-          stats: const StrategyStats(
+          stats: const StrategyStats(tradingDaysRun: 30,
             hitRate: 0.35,
             avgChange: -1.2,
             totalRecommendations: 30,

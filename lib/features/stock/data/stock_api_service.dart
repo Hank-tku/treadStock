@@ -31,6 +31,12 @@ class StockApiService {
         LogInterceptor(requestBody: false, responseBody: false),
       );
     }
+
+    // Automatic retry for network errors and server-side failures.
+    _dio.interceptors.add(_RetryInterceptor(
+      maxRetries: ApiConstants.maxRetries,
+      retryDelay: ApiConstants.retryDelay,
+    ));
   }
 
   /// Fetch all A-stock market quotes (price, change%, volume).
@@ -483,5 +489,78 @@ class StockApiService {
   /// Get secid for a stock code.
   String getSecid(String code, String market) {
     return '${market == "SH" ? 1 : 0}.$code';
+  }
+}
+
+/// Simple retry interceptor that retries on network-level errors (connection
+/// closed, timeout, etc.) and HTTP 5xx responses.
+///
+/// This avoids adding an external dependency while addressing the frequent
+/// `HttpException: Connection closed before full header was received` errors
+/// seen when calling East Money APIs from macOS desktop.
+class _RetryInterceptor extends Interceptor {
+  final int maxRetries;
+  final Duration retryDelay;
+
+  _RetryInterceptor({
+    required this.maxRetries,
+    required this.retryDelay,
+  });
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final attempt = (err.requestOptions.extra['_retryAttempt'] as int?) ?? 0;
+    if (attempt >= maxRetries || !_isRetriable(err)) {
+      return handler.next(err);
+    }
+
+    // Wait before retrying; use exponential-ish backoff: base * (attempt + 1)
+    await Future<void>.delayed(retryDelay * (attempt + 1));
+
+    final options = err.requestOptions.copyWith(
+      extra: {...err.requestOptions.extra, '_retryAttempt': attempt + 1},
+    );
+
+    try {
+      final dio = Dio(BaseOptions(
+        connectTimeout: options.connectTimeout ?? ApiConstants.connectTimeout,
+        receiveTimeout: options.receiveTimeout ?? ApiConstants.receiveTimeout,
+        headers: options.headers,
+      ));
+      final response = await dio.fetch(options);
+      handler.resolve(response);
+    } on DioException catch (e) {
+      handler.next(e);
+    } catch (e) {
+      handler.next(DioException(
+        requestOptions: options,
+        error: e,
+        type: DioExceptionType.unknown,
+      ));
+    }
+  }
+
+  /// Whether the error deserves a retry.
+  bool _isRetriable(DioException err) {
+    switch (err.type) {
+      // Network-level errors where the server dropped the connection or
+      // responded too slowly.
+      case DioExceptionType.connectionError:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.unknown:
+        return true;
+
+      // Server returned a response — retry only on 5xx.
+      case DioExceptionType.badResponse:
+        final statusCode = err.response?.statusCode;
+        return statusCode != null && statusCode >= 500;
+
+      // Request was cancelled or bad — don't retry.
+      case DioExceptionType.cancel:
+      case DioExceptionType.badCertificate:
+        return false;
+    }
   }
 }

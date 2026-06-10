@@ -34,6 +34,12 @@ class StrategyDetailState {
   bool get hasInsufficientSample =>
       !hasError && !isLoading && stats.evaluatedCount < 20;
 
+  bool get isAccumulatingData =>
+      strategy?.isEnabled == true &&
+      !hasError &&
+      !isLoading &&
+      stats.tradingDaysRun < 5;
+
   StrategyDetailState copyWith({
     Object? strategy = _unset,
     List<StrategyHitRecord>? hitRecords,

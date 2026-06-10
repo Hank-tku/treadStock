@@ -135,14 +135,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('复盘样本不足'), findsOneWidget);
-    expect(find.textContaining('当前累计推荐 3 条'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('样本不足，先看趋势'),
-      180,
-      scrollable: find.byType(Scrollable),
-    );
-    expect(find.text('样本不足，先看趋势'), findsOneWidget);
+    expect(find.text('数据积累中'), findsWidgets);
+    expect(find.textContaining('当前还在积累样本'), findsOneWidget);
+    expect(find.textContaining('满 5 个交易日后再看命中率、极限涨跌和平均差'), findsOneWidget);
   });
 
   testWidgets('recommendation strategy group can collapse and expand', (

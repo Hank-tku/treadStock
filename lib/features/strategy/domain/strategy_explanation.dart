@@ -96,6 +96,16 @@ class StrategyExplanation {
     required StrategyStats stats,
     required List<StrategySuggestion> suggestions,
   }) {
+    if (stats.tradingDaysRun < 5) {
+      return StrategyReviewSummary(
+        title: '数据积累中',
+        conclusion: stats.totalRecommendations == 0
+            ? '策略刚启用，暂时还没有推荐记录。'
+            : '策略已启用 ${stats.tradingDaysRun} 个交易日，当前还在积累样本。',
+        nextStep: '满 5 个交易日后再看命中率、极限涨跌和平均差。',
+      );
+    }
+
     if (stats.totalRecommendations == 0) {
       return const StrategyReviewSummary(
         title: '还没有可复盘记录',

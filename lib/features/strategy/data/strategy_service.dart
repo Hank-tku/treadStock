@@ -5,19 +5,23 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/strategy_models.dart';
 import '../domain/signal_rule.dart';
+import '../../stock/data/kline_cache.dart';
 import 'database.dart';
 
 /// Service layer for strategy CRUD, hit records, and reviews.
 /// All operations go through Drift (SQLite).
 class StrategyService {
   final AppDatabase _db;
+  final KlineCacheDatabase? _klineCache;
   final _uuid = const Uuid();
   Future<void>? _initFuture;
 
   /// In-memory cache of strategies with their stats.
   List<Strategy> _cache = [];
 
-  StrategyService({AppDatabase? db}) : _db = db ?? AppDatabase();
+  StrategyService({AppDatabase? db, KlineCacheDatabase? klineCache})
+      : _db = db ?? AppDatabase(),
+        _klineCache = klineCache;
 
   /// Initialize: load all strategies and compute stats.
   Future<void> init() async {
@@ -27,6 +31,8 @@ class StrategyService {
   Future<void> _init() async {
     await _db.ensureDefaultStrategy();
     await reloadCache();
+    // Fire-and-forget: backfill from local K-line cache without blocking startup.
+    backfillFromLocalData();
   }
 
   /// Reload all strategies from DB into cache with stats.
@@ -293,6 +299,71 @@ class StrategyService {
       final changePct =
           ((currentPrice - record.recommendPrice) / record.recommendPrice) *
           100;
+      final isHit = changePct > 0;
+
+      await (_db.update(
+        _db.strategyHitRecords,
+      )..where((t) => t.id.equals(record.id))).write(
+        StrategyHitRecordsCompanion(
+          actualChange5d: Value(changePct),
+          isHit: Value(isHit),
+        ),
+      );
+      updated++;
+    }
+
+    if (updated > 0) {
+      await reloadCache();
+    }
+    return updated;
+  }
+
+  /// Backfill actual 5-day changes from local K-line cache.
+  /// Automatically retrieves closing prices from cached K-line data
+  /// for records that are due but haven't been filled yet.
+  /// Returns the number of records updated.
+  Future<int> backfillFromLocalData() async {
+    if (_klineCache == null) return 0;
+
+    // Find all unfilled records
+    final unfilled = await (_db.select(
+      _db.strategyHitRecords,
+    )..where((t) => t.isHit.isNull())).get();
+
+    int updated = 0;
+    final now = DateTime.now();
+
+    for (final record in unfilled) {
+      final recDate = DateTime.tryParse(record.recommendDate);
+      if (recDate == null) continue;
+
+      // Only backfill if at least 7 calendar days have passed (approx 5 trading days)
+      final daysSince = now.difference(recDate).inDays;
+      if (daysSince < 7) continue;
+
+      // Get K-line data from local cache
+      final klines = await _klineCache.getCachedKlines(record.stockCode);
+      if (klines == null || klines.isEmpty) continue;
+
+      // Sort klines by date ascending
+      final sorted = List.of(klines)
+        ..sort((a, b) => a.date.compareTo(b.date));
+
+      // Find klines on or after the recommend date
+      final afterRec = sorted.where((k) =>
+          !k.date.isBefore(recDate)).toList();
+      if (afterRec.isEmpty) continue;
+
+      // Need at least 5 trading days after the recommend date
+      // The first entry is the recommend date itself, so we need index 5
+      if (afterRec.length < 6) continue;
+
+      // Use the close price on the 5th trading day after recommend date
+      final day5Close = afterRec[5].close;
+      if (day5Close <= 0 || record.recommendPrice <= 0) continue;
+
+      final changePct =
+          ((day5Close - record.recommendPrice) / record.recommendPrice) * 100;
       final isHit = changePct > 0;
 
       await (_db.update(

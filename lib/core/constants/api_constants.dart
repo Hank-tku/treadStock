@@ -23,11 +23,11 @@ class ApiConstants {
 
   // Request timeouts
   static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 10);
+  static const Duration receiveTimeout = Duration(seconds: 15);
 
-  // Retry config
-  static const int maxRetries = 1;
-  static const Duration retryDelay = Duration(seconds: 30);
+  // Retry config (used by RetryInterceptor inside StockApiService)
+  static const int maxRetries = 2;
+  static const Duration retryDelay = Duration(seconds: 2);
   static const Duration rateLimitDelay = Duration(seconds: 60);
 
   // Cache durations

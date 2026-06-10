@@ -40,6 +40,7 @@ class StockDetailPage extends ConsumerStatefulWidget {
 
 class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   List<DailyKline>? _klines;
+  StockQuote? _quote;
   StockScore? _score;
   List<StockNews>? _news;
   bool _isLoading = true;
@@ -105,6 +106,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           volume: lastKline.volume,
           turnover: 0,
         );
+        setState(() => _quote = quote);
         final strategyScore = selectedStrategy != null
             ? scoringService.scoreStock(
                 quote: quote,
@@ -186,9 +188,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 ? const DetailSectionSkeleton(height: 80)
                 : _buildScoreSection(),
 
-            _isLoading
-                ? const SizedBox.shrink()
-                : _buildStrategyScoreSection(),
+            _isLoading ? const SizedBox.shrink() : _buildStrategyScoreSection(),
 
             // Company info section
             _isLoading
@@ -421,9 +421,11 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       return const SizedBox.shrink();
     }
 
-    final strategyName = strategyScore?.strategyName ?? routeStrategyName ?? '--';
+    final strategyName =
+        strategyScore?.strategyName ?? routeStrategyName ?? '--';
     final score = strategyScore?.score.score ?? _score?.score;
-    final reason = strategyScore?.displayReason ?? _score?.reason ?? '数据不足，暂无策略评分';
+    final reason =
+        strategyScore?.displayReason ?? _score?.reason ?? '数据不足，暂无策略评分';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
@@ -462,6 +464,11 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   }
 
   Widget _buildCompanyInfoSection() {
+    final quote = _quote;
+    if (quote == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.all(AppTheme.pagePadding),
       padding: const EdgeInsets.all(16),
@@ -472,11 +479,15 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('公司信息', style: AppTextStyles.h3),
+          const Text('基础信息', style: AppTextStyles.h3),
           const SizedBox(height: 8),
-          _buildInfoRow('行业', '--'),
-          _buildInfoRow('市值', '--'),
-          _buildInfoRow('市盈率', '--'),
+          _buildInfoRow('代码', quote.fullCode),
+          _buildInfoRow('今开', Formatters.formatPriceLarge(quote.openPrice)),
+          _buildInfoRow('昨收', Formatters.formatPriceLarge(quote.preClose)),
+          _buildInfoRow('最高', Formatters.formatPriceLarge(quote.highPrice)),
+          _buildInfoRow('最低', Formatters.formatPriceLarge(quote.lowPrice)),
+          _buildInfoRow('成交量', Formatters.formatVolume(quote.volume)),
+          _buildInfoRow('换手率', '${quote.turnover.toStringAsFixed(2)}%'),
         ],
       ),
     );
