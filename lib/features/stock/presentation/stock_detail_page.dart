@@ -21,6 +21,7 @@ import '../../strategy/domain/decision_signal_engine.dart';
 import '../../strategy/domain/signal_card.dart';
 import '../../strategy/presentation/widgets/signal_card_widget.dart';
 import '../../strategy/presentation/widgets/decision_signal_badge.dart';
+import '../../strategy/presentation/widgets/decision_bubble.dart';
 
 /// Stock detail page.
 /// Design: DESIGN.md Page 3 - Stock Detail Page.
@@ -226,6 +227,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
 
             // Decision signal card
             _isLoading ? const SizedBox.shrink() : _buildDecisionSignalOverviewSection(),
+
+            // Decision bubble for signal explanation
+            _isLoading ? const SizedBox.shrink() : _buildDecisionBubble(),
 
             // Decision labels
             _isLoading ? const SizedBox.shrink() : DecisionLabelsPanel(score: _score),
@@ -600,6 +604,29 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       return DecisionSignal.observe;
     }
     return DecisionSignal.notRecommended;
+  }
+
+  Widget _buildDecisionBubble() {
+    final strategyScore = _strategyScore;
+    if (strategyScore == null) return const SizedBox.shrink();
+
+    final signal = _decisionSignalFor(strategyScore);
+    final signalColor = DecisionEngine.signalColor(signal);
+    final reason = strategyScore.displayReason;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        6,
+        AppTheme.pagePadding,
+        0,
+      ),
+      child: DecisionBubble(
+        summaryText: reason,
+        detailText: '该信号由策略评分、历史命中率和样本量综合计算，仅作观察参考，不构成任何投资建议。',
+        signalColor: signalColor,
+      ),
+    );
   }
 
   Widget _buildCompanyInfoSection() {

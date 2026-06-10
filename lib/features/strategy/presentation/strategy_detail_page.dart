@@ -11,8 +11,14 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/utils/formatters.dart';
 import '../domain/strategy_explanation.dart';
 import '../domain/strategy_models.dart';
+import '../domain/strategy_trust_engine.dart';
 import '../domain/signal_rule.dart';
 import 'strategy_provider.dart';
+import 'widgets/trust_badge.dart';
+import 'widgets/backtest_summary_card.dart';
+import 'widgets/decision_bubble.dart';
+import 'widgets/hit_rate_trend_chart.dart';
+import 'providers/hit_rate_trend_provider.dart';
 
 /// Strategy detail page showing stats, hit records, and review.
 class StrategyDetailPage extends ConsumerStatefulWidget {
@@ -64,10 +70,33 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
               _buildReviewBanner(state),
               _buildReviewSummaryCard(state),
               if (state.isAccumulatingData) _buildDataAccumulationNotice(state),
+              if (!state.isLoading && state.strategy != null) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTheme.pagePadding,
+                    12,
+                    AppTheme.pagePadding,
+                    0,
+                  ),
+                  child: TrustDescriptionText(
+                    trustResult: StrategyTrustEngine.evaluate(state.stats),
+                  ),
+                ),
+                if (state.stats.evaluatedCount > 0)
+                  DecisionBubble(
+                    summaryText: StrategyTrustEngine.evaluate(state.stats).description,
+                    detailText: '综合分由命中率（40%权重）、样本量（30%权重）和运行天数（30%权重）计算得出，仅供参考，不构成投资建议。',
+                    signalColor: StrategyTrustEngine.trustColor(
+                      StrategyTrustEngine.evaluate(state.stats).level,
+                    ),
+                  ),
+              ],
               _buildStatsCards(state),
+              BacktestSummaryCard(stats: state.stats),
               _buildSampleNotice(state),
               _buildStrategyCoreSection(state),
               _buildRuleVisualization(state),
+              _buildHitRateTrend(state),
               _buildHitRecords(state),
               if (state.suggestions.isNotEmpty) _buildSuggestions(state),
               _buildReviewSection(state),
@@ -241,7 +270,17 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(strategy?.name ?? '策略详情', style: AppTextStyles.h1),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(strategy?.name ?? '策略详情', style: AppTextStyles.h1),
+                      ),
+                      if (strategy != null && !state.isLoading)
+                        TrustBadge(
+                          trustResult: StrategyTrustEngine.evaluate(state.stats),
+                        ),
+                    ],
+                  ),
                   if (strategy?.description.isNotEmpty == true) ...[
                     const SizedBox(height: 4),
                     Text(strategy!.description, style: AppTextStyles.caption),
@@ -522,6 +561,53 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHitRateTrend(StrategyDetailState state) {
+    final trendAsync = ref.watch(hitRateTrendProvider(widget.strategyId));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppTheme.pagePadding,
+            16,
+            AppTheme.pagePadding,
+            8,
+          ),
+          child: const Text('命中率趋势', style: AppTextStyles.h2),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppTheme.pagePadding,
+          ),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: StockColors.bgSecondary,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          ),
+          child: trendAsync.when(
+            data: (data) => HitRateTrendChart(data: data),
+            loading: () => const SizedBox(
+              height: 200,
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+            error: (_, __) => const SizedBox(
+              height: 200,
+              child: Center(
+                child: Text('加载失败', style: TextStyle(fontSize: 13, color: StockColors.gray500)),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

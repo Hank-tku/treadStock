@@ -14,8 +14,10 @@ import '../../../shared/utils/formatters.dart';
 import '../../strategy/domain/strategy_explanation.dart';
 import '../../strategy/domain/strategy_models.dart';
 import '../../strategy/domain/decision_engine.dart';
+import '../../strategy/domain/strategy_trust_engine.dart';
 import '../../strategy/presentation/strategy_provider.dart';
 import '../../strategy/presentation/widgets/decision_summary_bar.dart';
+import '../../strategy/presentation/widgets/trust_badge.dart';
 
 /// Recommendation list tab (Tab 1).
 /// Design: DESIGN.md Page 1 - Recommend List Page.
@@ -190,6 +192,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
               group.strategy.name,
               '${group.recommendations.length}只 · 观察阈值 ${group.strategy.recommendThreshold}',
               group.strategy.description,
+              stats: group.strategy.stats,
             ),
             if (!_collapsedStrategyIds.contains(group.strategy.id))
               if (group.recommendations.isEmpty)
@@ -291,8 +294,9 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     String strategyId,
     String title,
     String meta,
-    String description,
-  ) {
+    String description, {
+    StrategyStats? stats,
+  }) {
     final isCollapsed = _collapsedStrategyIds.contains(strategyId);
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -324,6 +328,14 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                 ),
                 const SizedBox(width: 2),
                 Expanded(child: Text(title, style: AppTextStyles.h3)),
+                if (stats != null) ...[
+                  const SizedBox(width: 4),
+                  TrustBadge(
+                    trustResult: StrategyTrustEngine.evaluate(stats),
+                    isSmall: true,
+                  ),
+                ],
+                const SizedBox(width: 4),
                 Text(meta, style: AppTextStyles.caption),
               ],
             ),

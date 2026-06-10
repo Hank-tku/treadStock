@@ -17,6 +17,7 @@ import 'features/strategy/presentation/backtest_config_page.dart';
 import 'features/strategy/presentation/strategy_compare_page.dart';
 import 'features/strategy/presentation/strategy_template_page.dart';
 import 'features/strategy/presentation/strategy_tuner_page.dart';
+import 'features/strategy/presentation/strategy_creation_guide_page.dart';
 import 'features/strategy/domain/strategy_models.dart';
 import 'main.dart' show RiskDisclaimerDialog;
 
@@ -103,6 +104,11 @@ class AppRouter {
         path: '/strategy/new',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const StrategyEditPage(),
+      ),
+      GoRoute(
+        path: '/strategy/create',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const StrategyCreationGuidePage(),
       ),
       GoRoute(
         path: '/strategy/knowledge',

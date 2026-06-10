@@ -50,7 +50,7 @@ class _StrategyTabState extends ConsumerState<StrategyTab> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/strategy/new'),
+        onPressed: () => context.push('/strategy/create'),
         backgroundColor: StockColors.brand,
         child: const Icon(Icons.add, color: Colors.white),
       ),
