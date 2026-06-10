@@ -599,7 +599,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                 ),
               ),
             ),
-            error: (_, __) => const SizedBox(
+            error: (_, _) => const SizedBox(
               height: 200,
               child: Center(
                 child: Text('加载失败', style: TextStyle(fontSize: 13, color: StockColors.gray500)),

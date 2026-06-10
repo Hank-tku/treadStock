@@ -18,7 +18,7 @@ class StrategyCreationGuidePage extends ConsumerStatefulWidget {
 
 class _StrategyCreationGuidePageState
     extends ConsumerState<StrategyCreationGuidePage> {
-
+  bool _isCreating = false;
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +28,24 @@ class _StrategyCreationGuidePageState
         title: const Text('创建策略'),
         backgroundColor: StockColors.bgPrimary,
       ),
-      body: StrategyCreationGuide(
-        onComplete: _handleComplete,
+      body: IgnorePointer(
+        ignoring: _isCreating,
+        child: Stack(
+          children: [
+            StrategyCreationGuide(
+              onComplete: _handleComplete,
+            ),
+            if (_isCreating)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: ColoredBox(
+                    color: Color(0x33000000),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
