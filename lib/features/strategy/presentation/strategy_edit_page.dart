@@ -10,6 +10,7 @@ import '../domain/signal_rule.dart';
 import '../domain/strategy_models.dart';
 import 'strategy_provider.dart';
 import 'widgets/signal_rule_edit_sheet.dart';
+import 'widgets/stock_filter_edit_card.dart';
 
 const _indicatorLabels = {
   'rsi': 'RSI',
@@ -305,6 +306,10 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
           style: AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
         ),
         const SizedBox(height: 12),
+        StockFilterEditCard(
+          initialFilter: _form.stockFilter,
+          onChanged: (filter) => setState(() => _form.stockFilter = filter),
+        ),
         SwitchListTile(
           title: const Text('启用信号规则模式'),
           value: _form.isRuleBased,

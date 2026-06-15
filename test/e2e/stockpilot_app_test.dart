@@ -132,7 +132,7 @@ void main() {
       expect(find.text('关注'), findsWidgets);
     });
 
-    testWidgets('T-F002-8: Search result add button updates watchlist', (
+    testWidgets('T-F002-8: Search result one-click follow updates watchlist', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -150,17 +150,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 350));
       await tester.pump(const Duration(seconds: 2));
 
+      // Search result should appear with a one-click "关注" button
       expect(find.text('双环传动'), findsWidgets);
-      expect(find.text('选择'), findsOneWidget);
+      expect(find.text('关注'), findsAtLeastNWidgets(1));
 
-      await tester.tap(find.text('选择'));
-      await tester.pump();
-      expect(find.text('关注所选'), findsOneWidget);
-
-      await tester.tap(find.text('关注所选'));
+      // One-click to follow — tap the last "关注" which is the follow button
+      // (the first ones are the nav tab and page title)
+      await tester.tap(find.text('关注').last);
       await tester.pump(const Duration(seconds: 2));
 
-      expect(find.text('双环传动'), findsOneWidget);
+      // Stock should now appear in watchlist.
+      // Search is intentionally NOT cleared (E503), so the stock appears
+      // both in the search result and as the new watchlist item.
+      expect(find.text('双环传动'), findsWidgets);
       expect(find.textContaining('002472'), findsWidgets);
       expect(find.text('暂无关注的股票'), findsNothing);
     });

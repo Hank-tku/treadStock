@@ -5,6 +5,8 @@ import '../../stock/domain/stock_models.dart';
 import '../data/strategy_service.dart';
 import '../domain/strategy_models.dart';
 import '../domain/strategy_scoring_service.dart';
+import '../domain/stock_filter.dart';
+import '../../analysis/domain/market_environment.dart';
 import '../../../shared/providers.dart';
 
 // ── Recommendation by Strategy ─────────────────────────────────
@@ -13,11 +15,17 @@ import '../../../shared/providers.dart';
 class StrategyRecommendation {
   final Strategy strategy;
   final List<DailyRecommendation> recommendations;
+  final EnvironmentMatchResult? environmentMatch;
 
   const StrategyRecommendation({
     required this.strategy,
     required this.recommendations,
+    this.environmentMatch,
   });
+
+  /// Whether the environment is unfavourable (matchScore < 50).
+  bool get isEnvironmentUnfavourable =>
+      environmentMatch != null && !environmentMatch!.isFavourable;
 }
 
 /// State for strategy-grouped recommendations.
@@ -94,6 +102,22 @@ class StrategyRecommendationNotifier
         return;
       }
 
+      // ── Fetch market environment for E502 ──────────────────────
+      MarketEnvironment? env;
+      try {
+        final indexKlines = await _apiService.fetchStockKline(
+          '000001',
+          market: 'SH',
+        );
+        env = MarketEnvironmentCalculator.calculate(
+          quotes: quotes,
+          indexKlines: indexKlines,
+        );
+      } catch (_) {
+        // Environment fetch failure should not block recommendations
+        env = null;
+      }
+
       await _strategyService.backfillActualChanges({
         for (final quote in quotes) quote.code: quote.price,
       });
@@ -102,21 +126,82 @@ class StrategyRecommendationNotifier
       final groups = <StrategyRecommendation>[];
 
       for (final strategy in enabledStrategies) {
-        final scored = await _fetchAndScoreForStrategy(topStocks, strategy);
+        // Apply strategy-specific stock filter if configured
+        final candidates = strategy.stockFilter != null &&
+                strategy.stockFilter!.isActive
+            ? _applyStockFilter(quotes, strategy.stockFilter!)
+            : topStocks;
+
+        // ── Compute environment match for this strategy ───────────
+        final envMatch = env != null
+            ? EnvironmentMatchResult.evaluate(
+                env: env,
+                weightMA: strategy.weightMA,
+                weightBoll: strategy.weightBoll,
+                weightVol: strategy.weightVol,
+                weightTrend: strategy.weightTrend,
+              )
+            : null;
+
+        // When environment is unfavourable, lower the effective threshold
+        final effectiveThreshold = envMatch != null && !envMatch.isFavourable
+            ? (strategy.recommendThreshold *
+                    envMatch.weightMultiplier)
+                .ceil()
+            : strategy.recommendThreshold;
+
+        final scored = await _fetchAndScoreForStrategy(candidates, strategy);
         final recs =
             scored
                 .where(
                   (item) =>
                       item.score != null &&
-                      item.score!.score >= strategy.recommendThreshold,
+                      item.score!.score >= effectiveThreshold,
                 )
                 .toList()
               ..sort(
                 (a, b) => (b.score?.score ?? 0).compareTo(a.score?.score ?? 0),
               );
 
+        // When environment is poor, apply weight multiplier to displayed scores
+        List<DailyRecommendation> adjustedRecs = recs;
+        if (envMatch != null &&
+            envMatch.weightMultiplier < 1.0 &&
+            recs.isNotEmpty) {
+          adjustedRecs = recs
+              .map((rec) {
+                final adjusted =
+                    (rec.score!.score * envMatch.weightMultiplier).round();
+                return DailyRecommendation(
+                  code: rec.code,
+                  name: rec.name,
+                  market: rec.market,
+                  category: rec.category,
+                  closePrice: rec.closePrice,
+                  changePct: rec.changePct,
+                  isBandLow: rec.isBandLow,
+                  score: StockScore(
+                    score: adjusted,
+                    maScore: rec.score!.maScore,
+                    bollScore: rec.score!.bollScore,
+                    volScore: rec.score!.volScore,
+                    trendScore: rec.score!.trendScore,
+                    isBandLow: rec.score!.isBandLow,
+                    reason: rec.score!.reason != null
+                        ? '${rec.score!.reason}（环境降权 ×${envMatch.weightMultiplier.toStringAsFixed(2)}）'
+                        : null,
+                  ),
+                );
+              })
+              .toList();
+        }
+
         groups.add(
-          StrategyRecommendation(strategy: strategy, recommendations: recs),
+          StrategyRecommendation(
+            strategy: strategy,
+            recommendations: adjustedRecs,
+            environmentMatch: envMatch,
+          ),
         );
 
         // Record recommendations for hit tracking
@@ -155,6 +240,59 @@ class StrategyRecommendationNotifier
         errorMessage: '数据更新失败',
       );
     }
+  }
+
+  /// Apply a StockFilter to a list of quotes, returning filtered candidates.
+  /// Filters by price, change %, turnover, and board (based on code prefix).
+  List<StockQuote> _applyStockFilter(
+    List<StockQuote> quotes,
+    StockFilter filter,
+  ) {
+    var result = quotes;
+
+    // Price range
+    if (filter.minPrice != null || filter.maxPrice != null) {
+      result = result.where((q) {
+        if (filter.minPrice != null && q.price < filter.minPrice!) return false;
+        if (filter.maxPrice != null && q.price > filter.maxPrice!) return false;
+        return true;
+      }).toList();
+    }
+
+    // Change % range
+    if (filter.changeRange != null) {
+      final (lo, hi) = filter.changeRange!;
+      result = result.where((q) => q.changePct >= lo && q.changePct <= hi).toList();
+    }
+
+    // Turnover range
+    if (filter.turnoverRange != null) {
+      final (lo, hi) = filter.turnoverRange!;
+      result = result.where((q) => q.turnover >= lo && q.turnover <= hi).toList();
+    }
+
+    // Board filter based on stock code prefix
+    if (filter.boards != null && filter.boards!.isNotEmpty) {
+      result = result.where((q) {
+        final code = q.code;
+        for (final board in filter.boards!) {
+          switch (board) {
+            case 'main': // 沪深主板: SH 60xxxx, SZ 00xxxx
+              if (code.startsWith('6') || code.startsWith('00')) return true;
+            case 'gem': // 创业板: SZ 30xxxx
+              if (code.startsWith('30')) return true;
+            case 'star': // 科创板: SH 688xxx
+              if (code.startsWith('688')) return true;
+            case 'bse': // 北交所: 8xxxxx
+              if (code.startsWith('8') || code.startsWith('4')) return true;
+          }
+        }
+        return false;
+      }).toList();
+    }
+
+    // Cap at 50 candidates max to keep scoring time reasonable
+    return result.take(50).toList();
   }
 
   Future<List<DailyRecommendation>> _fetchAndScoreForStrategy(

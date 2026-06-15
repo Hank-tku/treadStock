@@ -756,6 +756,17 @@ class $StrategiesTable extends Strategies
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _stockFilterJsonMeta = const VerificationMeta(
+    'stockFilterJson',
+  );
+  @override
+  late final GeneratedColumn<String> stockFilterJson = GeneratedColumn<String>(
+    'stock_filter_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isEnabledMeta = const VerificationMeta(
     'isEnabled',
   );
@@ -837,6 +848,7 @@ class $StrategiesTable extends Strategies
     exitRulesJson,
     entryGroupsJson,
     exitGroupsJson,
+    stockFilterJson,
     isEnabled,
     isDefault,
     createdAt,
@@ -982,6 +994,15 @@ class $StrategiesTable extends Strategies
         ),
       );
     }
+    if (data.containsKey('stock_filter_json')) {
+      context.handle(
+        _stockFilterJsonMeta,
+        stockFilterJson.isAcceptableOrUnknown(
+          data['stock_filter_json']!,
+          _stockFilterJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_enabled')) {
       context.handle(
         _isEnabledMeta,
@@ -1092,6 +1113,10 @@ class $StrategiesTable extends Strategies
         DriftSqlType.string,
         data['${effectivePrefix}exit_groups_json'],
       ),
+      stockFilterJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stock_filter_json'],
+      ),
       isEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_enabled'],
@@ -1138,6 +1163,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
   final String? exitRulesJson;
   final String? entryGroupsJson;
   final String? exitGroupsJson;
+  final String? stockFilterJson;
   final bool isEnabled;
   final bool isDefault;
   final DateTime createdAt;
@@ -1160,6 +1186,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     this.exitRulesJson,
     this.entryGroupsJson,
     this.exitGroupsJson,
+    this.stockFilterJson,
     required this.isEnabled,
     required this.isDefault,
     required this.createdAt,
@@ -1192,6 +1219,9 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     }
     if (!nullToAbsent || exitGroupsJson != null) {
       map['exit_groups_json'] = Variable<String>(exitGroupsJson);
+    }
+    if (!nullToAbsent || stockFilterJson != null) {
+      map['stock_filter_json'] = Variable<String>(stockFilterJson);
     }
     map['is_enabled'] = Variable<bool>(isEnabled);
     map['is_default'] = Variable<bool>(isDefault);
@@ -1229,6 +1259,9 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       exitGroupsJson: exitGroupsJson == null && nullToAbsent
           ? const Value.absent()
           : Value(exitGroupsJson),
+      stockFilterJson: stockFilterJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stockFilterJson),
       isEnabled: Value(isEnabled),
       isDefault: Value(isDefault),
       createdAt: Value(createdAt),
@@ -1261,6 +1294,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       exitRulesJson: serializer.fromJson<String?>(json['exitRulesJson']),
       entryGroupsJson: serializer.fromJson<String?>(json['entryGroupsJson']),
       exitGroupsJson: serializer.fromJson<String?>(json['exitGroupsJson']),
+      stockFilterJson: serializer.fromJson<String?>(json['stockFilterJson']),
       isEnabled: serializer.fromJson<bool>(json['isEnabled']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -1288,6 +1322,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       'exitRulesJson': serializer.toJson<String?>(exitRulesJson),
       'entryGroupsJson': serializer.toJson<String?>(entryGroupsJson),
       'exitGroupsJson': serializer.toJson<String?>(exitGroupsJson),
+      'stockFilterJson': serializer.toJson<String?>(stockFilterJson),
       'isEnabled': serializer.toJson<bool>(isEnabled),
       'isDefault': serializer.toJson<bool>(isDefault),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -1313,6 +1348,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     Value<String?> exitRulesJson = const Value.absent(),
     Value<String?> entryGroupsJson = const Value.absent(),
     Value<String?> exitGroupsJson = const Value.absent(),
+    Value<String?> stockFilterJson = const Value.absent(),
     bool? isEnabled,
     bool? isDefault,
     DateTime? createdAt,
@@ -1343,6 +1379,9 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     exitGroupsJson: exitGroupsJson.present
         ? exitGroupsJson.value
         : this.exitGroupsJson,
+    stockFilterJson: stockFilterJson.present
+        ? stockFilterJson.value
+        : this.stockFilterJson,
     isEnabled: isEnabled ?? this.isEnabled,
     isDefault: isDefault ?? this.isDefault,
     createdAt: createdAt ?? this.createdAt,
@@ -1391,6 +1430,9 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
       exitGroupsJson: data.exitGroupsJson.present
           ? data.exitGroupsJson.value
           : this.exitGroupsJson,
+      stockFilterJson: data.stockFilterJson.present
+          ? data.stockFilterJson.value
+          : this.stockFilterJson,
       isEnabled: data.isEnabled.present ? data.isEnabled.value : this.isEnabled,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -1420,6 +1462,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
           ..write('exitRulesJson: $exitRulesJson, ')
           ..write('entryGroupsJson: $entryGroupsJson, ')
           ..write('exitGroupsJson: $exitGroupsJson, ')
+          ..write('stockFilterJson: $stockFilterJson, ')
           ..write('isEnabled: $isEnabled, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -1447,6 +1490,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
     exitRulesJson,
     entryGroupsJson,
     exitGroupsJson,
+    stockFilterJson,
     isEnabled,
     isDefault,
     createdAt,
@@ -1473,6 +1517,7 @@ class StrategyRow extends DataClass implements Insertable<StrategyRow> {
           other.exitRulesJson == this.exitRulesJson &&
           other.entryGroupsJson == this.entryGroupsJson &&
           other.exitGroupsJson == this.exitGroupsJson &&
+          other.stockFilterJson == this.stockFilterJson &&
           other.isEnabled == this.isEnabled &&
           other.isDefault == this.isDefault &&
           other.createdAt == this.createdAt &&
@@ -1497,6 +1542,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
   final Value<String?> exitRulesJson;
   final Value<String?> entryGroupsJson;
   final Value<String?> exitGroupsJson;
+  final Value<String?> stockFilterJson;
   final Value<bool> isEnabled;
   final Value<bool> isDefault;
   final Value<DateTime> createdAt;
@@ -1520,6 +1566,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     this.exitRulesJson = const Value.absent(),
     this.entryGroupsJson = const Value.absent(),
     this.exitGroupsJson = const Value.absent(),
+    this.stockFilterJson = const Value.absent(),
     this.isEnabled = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1544,6 +1591,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     this.exitRulesJson = const Value.absent(),
     this.entryGroupsJson = const Value.absent(),
     this.exitGroupsJson = const Value.absent(),
+    this.stockFilterJson = const Value.absent(),
     this.isEnabled = const Value.absent(),
     this.isDefault = const Value.absent(),
     required DateTime createdAt,
@@ -1571,6 +1619,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     Expression<String>? exitRulesJson,
     Expression<String>? entryGroupsJson,
     Expression<String>? exitGroupsJson,
+    Expression<String>? stockFilterJson,
     Expression<bool>? isEnabled,
     Expression<bool>? isDefault,
     Expression<DateTime>? createdAt,
@@ -1595,6 +1644,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
       if (exitRulesJson != null) 'exit_rules_json': exitRulesJson,
       if (entryGroupsJson != null) 'entry_groups_json': entryGroupsJson,
       if (exitGroupsJson != null) 'exit_groups_json': exitGroupsJson,
+      if (stockFilterJson != null) 'stock_filter_json': stockFilterJson,
       if (isEnabled != null) 'is_enabled': isEnabled,
       if (isDefault != null) 'is_default': isDefault,
       if (createdAt != null) 'created_at': createdAt,
@@ -1621,6 +1671,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     Value<String?>? exitRulesJson,
     Value<String?>? entryGroupsJson,
     Value<String?>? exitGroupsJson,
+    Value<String?>? stockFilterJson,
     Value<bool>? isEnabled,
     Value<bool>? isDefault,
     Value<DateTime>? createdAt,
@@ -1645,6 +1696,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
       exitRulesJson: exitRulesJson ?? this.exitRulesJson,
       entryGroupsJson: entryGroupsJson ?? this.entryGroupsJson,
       exitGroupsJson: exitGroupsJson ?? this.exitGroupsJson,
+      stockFilterJson: stockFilterJson ?? this.stockFilterJson,
       isEnabled: isEnabled ?? this.isEnabled,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
@@ -1705,6 +1757,9 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
     if (exitGroupsJson.present) {
       map['exit_groups_json'] = Variable<String>(exitGroupsJson.value);
     }
+    if (stockFilterJson.present) {
+      map['stock_filter_json'] = Variable<String>(stockFilterJson.value);
+    }
     if (isEnabled.present) {
       map['is_enabled'] = Variable<bool>(isEnabled.value);
     }
@@ -1745,6 +1800,7 @@ class StrategiesCompanion extends UpdateCompanion<StrategyRow> {
           ..write('exitRulesJson: $exitRulesJson, ')
           ..write('entryGroupsJson: $entryGroupsJson, ')
           ..write('exitGroupsJson: $exitGroupsJson, ')
+          ..write('stockFilterJson: $stockFilterJson, ')
           ..write('isEnabled: $isEnabled, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -3450,6 +3506,7 @@ typedef $$StrategiesTableCreateCompanionBuilder =
       Value<String?> exitRulesJson,
       Value<String?> entryGroupsJson,
       Value<String?> exitGroupsJson,
+      Value<String?> stockFilterJson,
       Value<bool> isEnabled,
       Value<bool> isDefault,
       required DateTime createdAt,
@@ -3475,6 +3532,7 @@ typedef $$StrategiesTableUpdateCompanionBuilder =
       Value<String?> exitRulesJson,
       Value<String?> entryGroupsJson,
       Value<String?> exitGroupsJson,
+      Value<String?> stockFilterJson,
       Value<bool> isEnabled,
       Value<bool> isDefault,
       Value<DateTime> createdAt,
@@ -3569,6 +3627,11 @@ class $$StrategiesTableFilterComposer
 
   ColumnFilters<String> get exitGroupsJson => $composableBuilder(
     column: $table.exitGroupsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stockFilterJson => $composableBuilder(
+    column: $table.stockFilterJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3687,6 +3750,11 @@ class $$StrategiesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get stockFilterJson => $composableBuilder(
+    column: $table.stockFilterJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isEnabled => $composableBuilder(
     column: $table.isEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -3794,6 +3862,11 @@ class $$StrategiesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get stockFilterJson => $composableBuilder(
+    column: $table.stockFilterJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isEnabled =>
       $composableBuilder(column: $table.isEnabled, builder: (column) => column);
 
@@ -3859,6 +3932,7 @@ class $$StrategiesTableTableManager
                 Value<String?> exitRulesJson = const Value.absent(),
                 Value<String?> entryGroupsJson = const Value.absent(),
                 Value<String?> exitGroupsJson = const Value.absent(),
+                Value<String?> stockFilterJson = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -3882,6 +3956,7 @@ class $$StrategiesTableTableManager
                 exitRulesJson: exitRulesJson,
                 entryGroupsJson: entryGroupsJson,
                 exitGroupsJson: exitGroupsJson,
+                stockFilterJson: stockFilterJson,
                 isEnabled: isEnabled,
                 isDefault: isDefault,
                 createdAt: createdAt,
@@ -3907,6 +3982,7 @@ class $$StrategiesTableTableManager
                 Value<String?> exitRulesJson = const Value.absent(),
                 Value<String?> entryGroupsJson = const Value.absent(),
                 Value<String?> exitGroupsJson = const Value.absent(),
+                Value<String?> stockFilterJson = const Value.absent(),
                 Value<bool> isEnabled = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 required DateTime createdAt,
@@ -3930,6 +4006,7 @@ class $$StrategiesTableTableManager
                 exitRulesJson: exitRulesJson,
                 entryGroupsJson: entryGroupsJson,
                 exitGroupsJson: exitGroupsJson,
+                stockFilterJson: stockFilterJson,
                 isEnabled: isEnabled,
                 isDefault: isDefault,
                 createdAt: createdAt,

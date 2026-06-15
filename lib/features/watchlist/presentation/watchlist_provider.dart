@@ -259,3 +259,10 @@ final watchlistProvider =
         scoringService,
       );
     });
+
+/// Derived provider: a Set of all watched stock codes.
+/// Both recommendation and watchlist tabs can ref.watch this for instant sync.
+final watchedCodesProvider = Provider<Set<String>>((ref) {
+  final state = ref.watch(watchlistProvider);
+  return state.items.map((item) => item.stockCode).toSet();
+});

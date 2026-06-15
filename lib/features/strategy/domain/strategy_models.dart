@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'signal_rule.dart';
+import 'stock_filter.dart';
 
 // Domain models for the strategy management feature.
 
@@ -38,6 +39,10 @@ class Strategy {
   final List<RuleGroup>? entryGroups;
   final List<RuleGroup>? exitGroups;
 
+  /// Stock filter for strategy-specific candidate pool.
+  /// When null or inactive, the strategy scans all stocks (default behavior).
+  final StockFilter? stockFilter;
+
   // Computed stats (populated from DB queries, not persisted)
   final StrategyStats? stats;
 
@@ -63,6 +68,7 @@ class Strategy {
     this.exitRules,
     this.entryGroups,
     this.exitGroups,
+    this.stockFilter,
     this.stats,
   });
 
@@ -109,6 +115,7 @@ class Strategy {
     List<SignalRule>? exitRules,
     List<RuleGroup>? entryGroups,
     List<RuleGroup>? exitGroups,
+    StockFilter? stockFilter,
     StrategyStats? stats,
   }) {
     return Strategy(
@@ -133,6 +140,7 @@ class Strategy {
       exitRules: exitRules ?? this.exitRules,
       entryGroups: entryGroups ?? this.entryGroups,
       exitGroups: exitGroups ?? this.exitGroups,
+      stockFilter: stockFilter ?? this.stockFilter,
       stats: stats ?? this.stats,
     );
   }
@@ -162,6 +170,9 @@ class Strategy {
     if (exitRules != null) data['exitRules'] = exitRules!.map((r) => r.toJson()).toList();
     if (entryGroups != null) data['entryGroups'] = entryGroups!.map((g) => g.toJson()).toList();
     if (exitGroups != null) data['exitGroups'] = exitGroups!.map((g) => g.toJson()).toList();
+    if (stockFilter != null && stockFilter!.isActive) {
+      data['stockFilter'] = stockFilter!.toJson();
+    }
     return data;
   }
 
@@ -198,6 +209,9 @@ class Strategy {
           : null,
       exitGroups: json['exitGroups'] != null
           ? (json['exitGroups'] as List).map((e) => RuleGroup.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
+      stockFilter: json['stockFilter'] != null
+          ? StockFilter.fromJson(json['stockFilter'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -716,6 +730,9 @@ class StrategyFormData {
   /// Exit rule groups (OR of ANDs).
   List<RuleGroup> exitGroups;
 
+  /// Stock filter for strategy-specific candidate pool.
+  StockFilter? stockFilter;
+
   StrategyFormData({
     this.name = '',
     this.description = '',
@@ -733,6 +750,7 @@ class StrategyFormData {
     List<SignalRule>? exitRules,
     List<RuleGroup>? entryGroups,
     List<RuleGroup>? exitGroups,
+    this.stockFilter,
   })  : entryRules = entryRules ?? [],
         exitRules = exitRules ?? [],
         entryGroups = entryGroups ?? [],
@@ -757,6 +775,7 @@ class StrategyFormData {
       exitRules: strategy.exitRules?.toList(),
       entryGroups: strategy.entryGroups?.toList(),
       exitGroups: strategy.exitGroups?.toList(),
+      stockFilter: strategy.stockFilter,
     );
   }
 
@@ -779,6 +798,7 @@ class StrategyFormData {
       exitRules: form.exitRules.toList(),
       entryGroups: form.entryGroups.toList(),
       exitGroups: form.exitGroups.toList(),
+      stockFilter: form.stockFilter,
     );
   }
 

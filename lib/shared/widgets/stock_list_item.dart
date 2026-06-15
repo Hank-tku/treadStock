@@ -29,6 +29,8 @@ class StockListItem extends StatelessWidget {
   final StockScore? stockScore;
   final DecisionResult? decisionResult;
   final VoidCallback? onTap;
+  final bool isWatched;
+  final VoidCallback? onWatchToggle;
 
   const StockListItem({
     super.key,
@@ -48,6 +50,8 @@ class StockListItem extends StatelessWidget {
     this.stockScore,
     this.decisionResult,
     this.onTap,
+    this.isWatched = false,
+    this.onWatchToggle,
   });
 
   @override
@@ -113,6 +117,15 @@ class StockListItem extends StatelessWidget {
                     color: StockColors.textPrimary,
                   ),
                 ),
+
+                // Watch/follow button (only if callback provided)
+                if (onWatchToggle != null || isWatched) ...[
+                  const SizedBox(width: 8),
+                  _AnimatedWatchButton(
+                    isWatched: isWatched,
+                    onTap: onWatchToggle,
+                  ),
+                ],
               ],
             ),
 
@@ -169,6 +182,97 @@ class StockListItem extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Animated watch/follow toggle button.
+/// Shows "关注" → "✓ 已关注" with a scale+color transition.
+class _AnimatedWatchButton extends StatefulWidget {
+  final bool isWatched;
+  final VoidCallback? onTap;
+
+  const _AnimatedWatchButton({
+    required this.isWatched,
+    this.onTap,
+  });
+
+  @override
+  State<_AnimatedWatchButton> createState() => _AnimatedWatchButtonState();
+}
+
+class _AnimatedWatchButtonState extends State<_AnimatedWatchButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AppTheme.fastDuration,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOut,
+        reverseCurve: Curves.easeIn,
+      ),
+    );
+
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedWatchButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isWatched && !oldWidget.isWatched) {
+      _controller.forward().then((_) {
+        if (mounted) _controller.reverse();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = widget.isWatched
+        ? StockColors.success.withValues(alpha: 0.12)
+        : StockColors.brand.withValues(alpha: 0.1);
+    final textColor =
+        widget.isWatched ? StockColors.success : StockColors.brand;
+    final label = widget.isWatched ? '✓ 已关注' : '关注';
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedContainer(
+          duration: AppTheme.fastDuration,
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+          child: AnimatedDefaultTextStyle(
+            duration: AppTheme.fastDuration,
+            curve: Curves.easeOut,
+            style: TextStyle(
+              fontSize: 12,
+              color: textColor,
+              fontWeight: FontWeight.w500,
+            ),
+            child: Text(label),
+          ),
         ),
       ),
     );
@@ -241,4 +345,3 @@ chip.DecisionSentiment _toChipSentiment(DecisionSentiment s) {
       return chip.DecisionSentiment.unknown;
   }
 }
-

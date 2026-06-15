@@ -28,6 +28,9 @@ class Strategies extends Table {
   TextColumn get entryGroupsJson => text().nullable()();
   TextColumn get exitGroupsJson => text().nullable()();
 
+  // Stock filter (JSON) — strategy-specific candidate pool filter
+  TextColumn get stockFilterJson => text().nullable()();
+
   // Status
   BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();

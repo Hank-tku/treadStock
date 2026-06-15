@@ -9,6 +9,7 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/cache_banner.dart';
 import '../../../shared/widgets/disclaimer_label.dart';
+import '../../../shared/widgets/toast_helper.dart';
 import '../../analysis/domain/analysis_models.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../strategy/domain/strategy_explanation.dart';
@@ -18,6 +19,7 @@ import '../../strategy/domain/strategy_trust_engine.dart';
 import '../../strategy/presentation/strategy_provider.dart';
 import '../../strategy/presentation/widgets/decision_summary_bar.dart';
 import '../../strategy/presentation/widgets/trust_badge.dart';
+import '../../watchlist/presentation/watchlist_provider.dart';
 
 /// Recommendation list tab (Tab 1).
 /// Design: DESIGN.md Page 1 - Recommend List Page.
@@ -44,6 +46,8 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(strategyRecommendationProvider);
+    // Reactive watched codes — rebuilds automatically when watchlist changes
+    final watchedCodes = ref.watch(watchedCodesProvider);
 
     return Scaffold(
       backgroundColor: StockColors.bgPrimary,
@@ -68,7 +72,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                   ? _buildLoadingList()
                   : state.hasError && state.lastUpdated == null
                   ? _buildErrorState()
-                  : _buildContentList(state),
+                  : _buildContentList(state, watchedCodes),
             ),
           ],
         ),
@@ -162,7 +166,10 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     );
   }
 
-  Widget _buildContentList(StrategyRecommendationState state) {
+  Widget _buildContentList(
+    StrategyRecommendationState state,
+    Set<String> watchedCodes,
+  ) {
     if (state.groups.isEmpty) {
       return EmptyState(
         icon: Icons.inbox_outlined,
@@ -193,6 +200,9 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
               '${group.recommendations.length}只 · 观察阈值 ${group.strategy.recommendThreshold}',
               group.strategy.description,
               stats: group.strategy.stats,
+              newFollowCount: group.recommendations
+                  .where((r) => watchedCodes.contains(r.code))
+                  .length,
             ),
             if (!_collapsedStrategyIds.contains(group.strategy.id))
               if (group.recommendations.isEmpty)
@@ -211,6 +221,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                           strategy: group.strategy,
                           score: item.score!,
                         );
+                  final isWatched = watchedCodes.contains(item.code);
                   return StockListItem(
                     name: item.name,
                     code: item.code,
@@ -223,6 +234,26 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                     scoreReason: insight?.compact ?? item.score?.reason,
                     riskText: '仅供参考',
                     decisionResult: _evaluateDecision(group.strategy, item.score),
+                    isWatched: isWatched,
+                    onWatchToggle: isWatched
+                        ? null
+                        : () async {
+                            final ok = await ref
+                                .read(watchlistProvider.notifier)
+                                .addToWatchlist(
+                                  item.code,
+                                  item.name,
+                                  item.market,
+                                );
+                            if (ok && mounted) {
+                              ToastHelper.showSuccess(
+                                context,
+                                '已添加${item.name}到关注列表',
+                              );
+                              // No setState needed — ref.watch(watchedCodesProvider)
+                              // will auto-rebuild this widget.
+                            }
+                          },
                     onTap: () => _navigateToDetail(
                       context,
                       item.code,
@@ -296,6 +327,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     String meta,
     String description, {
     StrategyStats? stats,
+    int newFollowCount = 0,
   }) {
     final isCollapsed = _collapsedStrategyIds.contains(strategyId);
     return Padding(
@@ -336,6 +368,28 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                   ),
                 ],
                 const SizedBox(width: 4),
+                // Show newly-followed count badge
+                if (newFollowCount > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: StockColors.brand.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    ),
+                    child: Text(
+                      '已关注$newFollowCount',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: StockColors.brand,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 Text(meta, style: AppTextStyles.caption),
               ],
             ),

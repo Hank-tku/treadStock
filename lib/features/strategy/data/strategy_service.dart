@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/strategy_models.dart';
 import '../domain/signal_rule.dart';
+import '../domain/stock_filter.dart';
 import '../../stock/data/kline_cache.dart';
 import 'database.dart';
 
@@ -114,6 +115,10 @@ class StrategyService {
     final Value<String?> exitGroupsVal = form.exitGroups.isNotEmpty
         ? Value(jsonEncode(form.exitGroups.map((g) => g.toJson()).toList()))
         : const Value.absent();
+    final Value<String?> stockFilterVal =
+        (form.stockFilter != null && form.stockFilter!.isActive)
+            ? Value(jsonEncode(form.stockFilter!.toJson()))
+            : const Value.absent();
 
     await _db
         .into(_db.strategies)
@@ -135,6 +140,7 @@ class StrategyService {
             exitRulesJson: exitRulesVal,
             entryGroupsJson: entryGroupsVal,
             exitGroupsJson: exitGroupsVal,
+            stockFilterJson: stockFilterVal,
             isEnabled: const Value(true),
             isDefault: const Value(false),
             createdAt: now,
@@ -163,6 +169,10 @@ class StrategyService {
     final Value<String?> exitGroupsVal = form.exitGroups.isNotEmpty
         ? Value(jsonEncode(form.exitGroups.map((g) => g.toJson()).toList()))
         : const Value.absent();
+    final Value<String?> stockFilterVal =
+        (form.stockFilter != null && form.stockFilter!.isActive)
+            ? Value(jsonEncode(form.stockFilter!.toJson()))
+            : const Value.absent();
 
     await (_db.update(_db.strategies)..where((t) => t.id.equals(id))).write(
       StrategiesCompanion(
@@ -181,6 +191,7 @@ class StrategyService {
         exitRulesJson: exitRulesVal,
         entryGroupsJson: entryGroupsVal,
         exitGroupsJson: exitGroupsVal,
+        stockFilterJson: stockFilterVal,
         updatedAt: Value(now),
       ),
     );
@@ -839,6 +850,16 @@ class StrategyService {
       } catch (_) {}
     }
 
+    // Parse stock filter from JSON
+    StockFilter? stockFilter;
+    if (row.stockFilterJson != null) {
+      try {
+        stockFilter = StockFilter.fromJson(
+          jsonDecode(row.stockFilterJson!) as Map<String, dynamic>,
+        );
+      } catch (_) {}
+    }
+
     return Strategy(
       id: row.id,
       name: row.name,
@@ -856,6 +877,7 @@ class StrategyService {
       exitRules: exitRules,
       entryGroups: entryGroups,
       exitGroups: exitGroups,
+      stockFilter: stockFilter,
       isEnabled: row.isEnabled,
       isDefault: row.isDefault,
       createdAt: row.createdAt,
