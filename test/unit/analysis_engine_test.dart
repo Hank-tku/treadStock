@@ -699,7 +699,6 @@ void main() {
         entryRules: [SignalRule(indicator: 'rsi', condition: 'lt', value: 30)],
       );
 
-      final engine = AnalysisEngine();
       final score = engine.calculateScoreForStrategy(klines, strategy);
       // With strongly declining prices, RSI should be < 30, triggering entry
       expect(score.score, greaterThanOrEqualTo(7));
@@ -715,7 +714,6 @@ void main() {
         createdAt: DateTime(2026), updatedAt: DateTime(2026),
       );
 
-      final engine = AnalysisEngine();
       final score = engine.calculateScoreForStrategy(klines, strategy);
       // Should work exactly like before — no rules, just weighted scoring
       expect(score.score, greaterThanOrEqualTo(1));
@@ -733,9 +731,104 @@ void main() {
         entryRules: [SignalRule(indicator: 'rsi', condition: 'gt', value: 50)],
       );
 
-      final engine = AnalysisEngine();
       final score = engine.calculateScoreForStrategy(klines, strategy);
       expect(score.reason, contains('rsi'));
+    });
+
+    test('rule-based strategy returns all-zero sub-scores (no factor mapping)', () {
+      // Regression guard for A1: previously MACD was mapped to maScore and RSI
+      // to bollScore, which polluted downstream radar/signal displays. Rule
+      // strategies do not use the four-factor weighted model, so all four
+      // sub-scores must be 0 and the reason must be prefixed to signal that.
+      final klines = generateKlines(days: 60);
+      final strategy = Strategy(
+        id: 'test', name: 'Rule Subscore', description: '',
+        maShortPeriod: 20, maLongPeriod: 60, bollPeriod: 20, bollStdDev: 2.0,
+        weightMA: 0.3, weightBoll: 0.3, weightVol: 0.2, weightTrend: 0.2,
+        recommendThreshold: 7, isEnabled: true, isDefault: false,
+        createdAt: DateTime(2026), updatedAt: DateTime(2026),
+        entryRules: [SignalRule(indicator: 'rsi', condition: 'gt', value: 50)],
+      );
+
+      final score = engine.calculateScoreForStrategy(klines, strategy);
+      expect(score.maScore, 0);
+      expect(score.bollScore, 0);
+      expect(score.volScore, 0);
+      expect(score.trendScore, 0);
+      expect(score.reason, startsWith('[规则信号]'));
+    });
+  });
+
+  group('AnalysisEngine prediction', () {
+    test('波段低位样本会给出看涨预测', () {
+      final klines = generateBandLowKlines();
+      final score = engine.calculateScore(klines);
+      final prediction = engine.generatePrediction(
+        klines: klines,
+        score: score,
+        currentPrice: klines.last.close,
+      );
+
+      expect(prediction.direction, PredictionDirection.up);
+      expect(prediction.summary, contains('下一交易日'));
+      expect(prediction.confidence, inInclusiveRange(0.30, 0.85));
+      expect(prediction.rangeText, isNotNull);
+      expect(prediction.targetHigh, greaterThan(prediction.targetLow!));
+    });
+
+    test('高波动但信号不够强时保持中性', () {
+      final klines = <DailyKline>[];
+      for (var i = 0; i < 59; i++) {
+        final close = i.isEven ? 50.0 : 150.0;
+        final open = i == 0 ? close : klines.last.close;
+        klines.add(
+          DailyKline(
+            date: DateTime(2026, 1, 1).add(Duration(days: i)),
+            open: open,
+            close: close,
+            high: (open > close ? open : close) * 1.02,
+            low: (open < close ? open : close) * 0.98,
+            volume: 100000,
+            amount: 5000000000,
+            preClose: i > 0 ? klines[i - 1].close : open,
+          ),
+        );
+      }
+      klines.add(
+        DailyKline(
+          date: DateTime(2026, 1, 1).add(const Duration(days: 59)),
+          open: 120.0,
+          close: 96.0,
+          high: 121.0,
+          low: 95.0,
+          volume: 200000,
+          amount: 5000000000,
+          preClose: klines.last.close,
+        ),
+      );
+
+      final score = engine.calculateScore(klines);
+      final prediction = engine.generatePrediction(
+        klines: klines,
+        score: score,
+        currentPrice: klines.last.close,
+      );
+
+      expect(prediction.direction, PredictionDirection.flat);
+      expect(prediction.summary, contains('下一交易日'));
+      expect(prediction.confidence, inInclusiveRange(0.30, 0.85));
+    });
+
+    test('周五生成的预测会顺延到下周一', () {
+      final prediction = StockPrediction(
+        direction: PredictionDirection.flat,
+        confidence: 0.5,
+        summary: 'test',
+        generatedAt: DateTime(2026, 6, 19), // Friday
+      );
+
+      expect(prediction.targetDate.weekday, DateTime.monday);
+      expect(prediction.targetDate.difference(DateTime(2026, 6, 19)).inDays, 3);
     });
   });
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../stock/data/stock_api_service.dart';
 import '../../analysis/domain/analysis_models.dart';
@@ -33,6 +34,7 @@ class StrategyRecommendationState {
   final List<StrategyRecommendation> groups;
   final bool isLoading;
   final bool hasError;
+  final bool isEmptyData;
   final bool hasEnabledStrategies;
   final String? errorMessage;
   final DateTime? lastUpdated;
@@ -41,15 +43,22 @@ class StrategyRecommendationState {
     this.groups = const [],
     this.isLoading = false,
     this.hasError = false,
+    this.isEmptyData = false,
     this.hasEnabledStrategies = true,
     this.errorMessage,
     this.lastUpdated,
   });
 
+  /// Whether the UI should show an error / empty-data placeholder instead of
+  /// the recommendation list. True when either a hard error occurred or the
+  /// quote source returned no data.
+  bool get showErrorState => hasError || isEmptyData;
+
   StrategyRecommendationState copyWith({
     List<StrategyRecommendation>? groups,
     bool? isLoading,
     bool? hasError,
+    bool? isEmptyData,
     bool? hasEnabledStrategies,
     String? errorMessage,
     DateTime? lastUpdated,
@@ -58,6 +67,7 @@ class StrategyRecommendationState {
       groups: groups ?? this.groups,
       isLoading: isLoading ?? this.isLoading,
       hasError: hasError ?? this.hasError,
+      isEmptyData: isEmptyData ?? this.isEmptyData,
       hasEnabledStrategies: hasEnabledStrategies ?? this.hasEnabledStrategies,
       errorMessage: errorMessage ?? this.errorMessage,
       lastUpdated: lastUpdated ?? this.lastUpdated,
@@ -78,7 +88,11 @@ class StrategyRecommendationNotifier
   ) : super(const StrategyRecommendationState());
 
   Future<void> loadRecommendations() async {
-    state = state.copyWith(isLoading: true, hasError: false);
+    state = state.copyWith(
+      isLoading: true,
+      hasError: false,
+      isEmptyData: false,
+    );
     try {
       await _strategyService.init();
       final enabledStrategies = _strategyService.getEnabledStrategies();
@@ -93,9 +107,11 @@ class StrategyRecommendationNotifier
 
       final quotes = await _apiService.fetchRecommendationCandidates();
       if (quotes.isEmpty) {
+        // Quote source returned empty — distinct from a real load error so the
+        // UI can show a data-source message rather than a network error.
         state = state.copyWith(
           isLoading: false,
-          hasError: true,
+          isEmptyData: true,
           hasEnabledStrategies: true,
           errorMessage: '暂无行情数据',
         );
@@ -180,6 +196,7 @@ class StrategyRecommendationNotifier
                   closePrice: rec.closePrice,
                   changePct: rec.changePct,
                   isBandLow: rec.isBandLow,
+                  prediction: rec.prediction,
                   score: StockScore(
                     score: adjusted,
                     maScore: rec.score!.maScore,
@@ -204,10 +221,13 @@ class StrategyRecommendationNotifier
           ),
         );
 
-        // Record recommendations for hit tracking
+        // Record recommendations for hit tracking.
+        // IMPORTANT: record the displayed (post-adjustment) recommendations so
+        // that recorded scores match what users saw — otherwise hit-rate
+        // statistics are computed against a different score than the UI shows.
         await _strategyService.recordRecommendations(
           strategy.id,
-          recs
+          adjustedRecs
               .map(
                 (r) => (
                   code: r.code,
@@ -336,6 +356,13 @@ class StrategyRecommendationNotifier
       );
       final score = scoreResult.score;
       if (score.score > 0) {
+        // Generate next-session prediction
+        final prediction = _scoringService.generatePrediction(
+          klines: klines,
+          score: score,
+          currentPrice: quote.price,
+        );
+
         return DailyRecommendation(
           code: quote.code,
           name: quote.name,
@@ -347,10 +374,17 @@ class StrategyRecommendationNotifier
           changePct: quote.changePct,
           score: score,
           isBandLow: score.isBandLow,
+          prediction: prediction,
         );
       }
       return null;
-    } catch (_) {
+    } catch (e, st) {
+      // Keep silent (return null) so a single failing stock does not block the
+      // whole recommendation run, but log in debug mode for diagnosability.
+      debugPrint(
+        '[StrategyRecommendation] score failed for ${quote.code} '
+        '(${quote.name}) in strategy ${strategy.id}: $e\n$st',
+      );
       return null;
     }
   }

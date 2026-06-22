@@ -183,7 +183,22 @@ class _MainScaffold extends StatelessWidget {
       body: navigationShell,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: navigationShell.currentIndex,
-        onTap: (index) => navigationShell.goBranch(index),
+        onTap: (index) {
+          if (index == navigationShell.currentIndex) {
+            // Tapping the active tab again scrolls its primary scrollable
+            // back to the top, matching common list-app behavior.
+            final controller = PrimaryScrollController.maybeOf(context);
+            if (controller != null && controller.hasClients) {
+              controller.animateTo(
+                0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+            return;
+          }
+          navigationShell.goBranch(index);
+        },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined, size: 24),

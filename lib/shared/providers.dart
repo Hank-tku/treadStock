@@ -49,12 +49,6 @@ final strategyScoringServiceProvider = Provider<StrategyScoringService>((ref) {
   return StrategyScoringService(analysisEngine);
 });
 
-/// Connectivity state provider.
-final connectivityProvider = StateProvider<bool>((ref) => true);
-
-/// Active tab index provider.
-final activeTabIndexProvider = StateProvider<int>((ref) => 0);
-
 /// Provider for the K-line cache database (singleton).
 final klineCacheProvider = Provider<KlineCacheDatabase>((ref) {
   final db = KlineCacheDatabase();

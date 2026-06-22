@@ -16,9 +16,9 @@ class StockColors {
   static const Color flat = Color(0xFF6B7280);
 
   // ── Score colors ─────────────────────────────────────────────────
-  static const Color scoreHigh = Color(0xFFD93025); // 8-10 strong buy
-  static const Color scoreMid = Color(0xFFD97706); // 5-7 neutral
-  static const Color scoreLow = Color(0xFF0F9D58); // 1-4 risk
+  static const Color scoreHigh = Color(0xFFD93025); // 8-10 strong watch (重点观察)
+  static const Color scoreMid = Color(0xFFD97706); // 5-7 neutral (中性观望)
+  static const Color scoreLow = Color(0xFF0F9D58); // 1-4 risk (风险较高)
 
   // ── Band low tag ─────────────────────────────────────────────────
   static const Color bandLow = Color(0xFFD97706);

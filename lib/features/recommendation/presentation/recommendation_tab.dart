@@ -12,17 +12,46 @@ import '../../../shared/widgets/disclaimer_label.dart';
 import '../../../shared/widgets/toast_helper.dart';
 import '../../analysis/domain/analysis_models.dart';
 import '../../../shared/utils/formatters.dart';
-import '../../strategy/domain/strategy_explanation.dart';
-import '../../strategy/domain/strategy_models.dart';
 import '../../strategy/domain/decision_engine.dart';
-import '../../strategy/domain/strategy_trust_engine.dart';
+import '../../strategy/domain/strategy_models.dart';
 import '../../strategy/presentation/strategy_provider.dart';
-import '../../strategy/presentation/widgets/decision_summary_bar.dart';
-import '../../strategy/presentation/widgets/trust_badge.dart';
 import '../../watchlist/presentation/watchlist_provider.dart';
 
+/// Recommendation filter dimensions.
+enum RecommendFilter {
+  all('全部'),
+  bandLow('波段低位'),
+  focus('重点关注'),
+  watch('观望');
+
+  final String label;
+  const RecommendFilter(this.label);
+}
+
+/// A flattened recommendation item with its strategy context.
+class _FlatItem {
+  final DailyRecommendation rec;
+  final Strategy strategy;
+  final StockScore? score;
+  final DecisionResult decision;
+  final StockPrediction? prediction;
+
+  const _FlatItem({
+    required this.rec,
+    required this.strategy,
+    required this.score,
+    required this.decision,
+    this.prediction,
+  });
+
+  String get code => rec.code;
+  double get sortScore => score?.score.toDouble() ?? 0;
+  bool get isBandLow => rec.isBandLow;
+  bool get isPredictionUp => prediction?.direction == PredictionDirection.up;
+}
+
 /// Recommendation list tab (Tab 1).
-/// Design: DESIGN.md Page 1 - Recommend List Page.
+/// Flat list with dimension switching: 全部 | 波段低位 | 重点关注 | 观望.
 class RecommendationTab extends ConsumerStatefulWidget {
   const RecommendationTab({super.key});
 
@@ -32,21 +61,84 @@ class RecommendationTab extends ConsumerStatefulWidget {
 
 class _RecommendationTabState extends ConsumerState<RecommendationTab> {
   bool _showBanner = true;
-  final Set<String> _collapsedStrategyIds = {};
+  RecommendFilter _activeFilter = RecommendFilter.all;
 
   @override
   void initState() {
     super.initState();
-    // Load recommendations on first build
     Future.microtask(() {
       ref.read(strategyRecommendationProvider.notifier).loadRecommendations();
     });
   }
 
+  /// Flatten all strategy groups into a deduplicated, sorted list.
+  List<_FlatItem> _buildFlatItems(StrategyRecommendationState state) {
+    final byCode = <String, _FlatItem>{};
+
+    for (final group in state.groups) {
+      for (final rec in group.recommendations) {
+        final decision = DecisionEngine.evaluate(
+          strategyScore: (rec.score?.score ?? 0).toDouble(),
+          hitRate: group.strategy.stats?.hitRate ?? 0,
+          sampleSize: group.strategy.stats?.totalRecommendations ?? 0,
+          isEnabled: group.strategy.isEnabled,
+        );
+        final item = _FlatItem(
+          rec: rec,
+          strategy: group.strategy,
+          score: rec.score,
+          decision: decision,
+          prediction: rec.prediction,
+        );
+
+        // Deduplicate: keep the one with the highest score.
+        final existing = byCode[rec.code];
+        if (existing == null || item.sortScore > existing.sortScore) {
+          byCode[rec.code] = item;
+        }
+      }
+    }
+
+    final items = byCode.values.toList();
+    items.sort((a, b) => b.sortScore.compareTo(a.sortScore));
+    return items;
+  }
+
+  /// Count items per filter dimension.
+  Map<RecommendFilter, int> _countByFilter(List<_FlatItem> items) {
+    return {
+      RecommendFilter.all: items.length,
+      RecommendFilter.bandLow:
+          items.where((i) => i.isBandLow).length,
+      RecommendFilter.focus: items
+          .where((i) => i.decision.signal == DecisionSignal.strongWatch)
+          .length,
+      RecommendFilter.watch: items
+          .where((i) => i.decision.signal == DecisionSignal.watch)
+          .length,
+    };
+  }
+
+  List<_FlatItem> _applyFilter(List<_FlatItem> items) {
+    switch (_activeFilter) {
+      case RecommendFilter.all:
+        return items;
+      case RecommendFilter.bandLow:
+        return items.where((i) => i.isBandLow).toList();
+      case RecommendFilter.focus:
+        return items
+            .where((i) => i.decision.signal == DecisionSignal.strongWatch)
+            .toList();
+      case RecommendFilter.watch:
+        return items
+            .where((i) => i.decision.signal == DecisionSignal.watch)
+            .toList();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(strategyRecommendationProvider);
-    // Reactive watched codes — rebuilds automatically when watchlist changes
     final watchedCodes = ref.watch(watchedCodesProvider);
 
     return Scaffold(
@@ -56,23 +148,27 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
         child: Column(
           children: [
             // Title bar
-            _buildTitleBar(state),
+            _buildTitleBar(),
 
-            // Cache/Offline banner
-            if (state.hasError && state.lastUpdated != null && _showBanner)
+            // Cache/Offline banner: show when an error/empty-data occurred but
+            // we still have previously cached groups (lastUpdated != null).
+            if (state.showErrorState &&
+                state.lastUpdated != null &&
+                _showBanner)
               CacheBanner(
                 message: state.errorMessage ?? '数据更新失败，显示缓存数据',
-                timestamp: '数据更新于 ${Formatters.formatTime(state.lastUpdated!)}',
+                timestamp:
+                    '数据更新于 ${Formatters.formatTime(state.lastUpdated!)}',
                 onClose: () => setState(() => _showBanner = false),
               ),
 
-            // List content
+            // Content
             Expanded(
               child: state.isLoading
                   ? _buildLoadingList()
-                  : state.hasError && state.lastUpdated == null
-                  ? _buildErrorState()
-                  : _buildContentList(state, watchedCodes),
+                  : state.showErrorState && state.lastUpdated == null
+                      ? _buildErrorState(state)
+                      : _buildContent(state, watchedCodes),
             ),
           ],
         ),
@@ -80,14 +176,12 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     );
   }
 
-  Widget _buildTitleBar(StrategyRecommendationState state) {
-    final now = DateTime.now();
+  Widget _buildTitleBar() {
+    final state = ref.watch(strategyRecommendationProvider);
+    final predictionTime = state.lastUpdated;
     return Container(
       padding: const EdgeInsets.fromLTRB(
-        AppTheme.pagePadding,
-        12,
-        AppTheme.pagePadding,
-        8,
+        AppTheme.pagePadding, 12, AppTheme.pagePadding, 4,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,28 +191,114 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
             children: [
               const Text('推荐', style: AppTextStyles.h1),
               Text(
-                Formatters.formatDate(now),
+                Formatters.formatDate(DateTime.now()),
                 style: AppTextStyles.caption.copyWith(
                   color: StockColors.textTertiary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 2),
-          const Text(
-            '今日全市场波段分析结果',
-            style: TextStyle(
-              fontFamily: AppTheme.textFont,
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              height: 1.5,
-              color: StockColors.textTertiary,
+          if (predictionTime != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '15:00前预测 · ${Formatters.formatTime(predictionTime)}',
+                style: AppTextStyles.caption.copyWith(
+                  color: StockColors.brand,
+                  fontSize: 11,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
   }
+
+  // ── Dimension filter bar ──────────────────────────────────────
+
+  Widget _buildFilterBar(Map<RecommendFilter, int> counts) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.pagePadding, vertical: 6,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: RecommendFilter.values.map((f) {
+            final active = f == _activeFilter;
+            final count = counts[f] ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => setState(() => _activeFilter = f),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? StockColors.brand
+                        : StockColors.bgSecondary,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    border: active
+                        ? null
+                        : Border.all(
+                            color: StockColors.borderLight,
+                            width: 0.5,
+                          ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        f.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              active ? FontWeight.w600 : FontWeight.w400,
+                          color: active
+                              ? Colors.white
+                              : StockColors.textSecondary,
+                        ),
+                      ),
+                      if (count > 0) ...[
+                        const SizedBox(width: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 0.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : StockColors.bgTertiary,
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusFull),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: active
+                                  ? Colors.white
+                                  : StockColors.textTertiary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  // ── Loading ───────────────────────────────────────────────────
 
   Widget _buildLoadingList() {
     return RefreshIndicator(
@@ -129,15 +309,12 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
-            // Skeleton for section headers
             Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: AppTheme.pagePadding,
-                vertical: 8,
+                horizontal: AppTheme.pagePadding, vertical: 8,
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [_skeletonBox(80, 16), _skeletonBox(40, 16)],
+                children: [_skeletonBox(80, 28), const SizedBox(width: 8)],
               ),
             ),
             StockListSkeleton(count: 8),
@@ -158,15 +335,29 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     );
   }
 
-  Widget _buildErrorState() {
+  // ── Error / Empty ─────────────────────────────────────────────
+
+  Widget _buildErrorState(StrategyRecommendationState state) {
+    // Distinguish quote-source-empty from a real load/network error.
+    // isEmptyData  → 行情源返回空（非网络问题）
+    // hasError     → 请求异常（通常是网络或服务端问题）
+    if (state.isEmptyData) {
+      return EmptyState(
+        icon: Icons.cloud_off,
+        title: '暂无行情数据',
+        subtitle: '行情源暂未返回数据，请稍后下拉刷新',
+      );
+    }
     return EmptyState(
       icon: Icons.signal_wifi_off,
-      title: '暂无推荐数据',
-      subtitle: '检查网络后下拉刷新',
+      title: '数据更新失败',
+      subtitle: '检查网络后下拉刷新，或稍后再试',
     );
   }
 
-  Widget _buildContentList(
+  // ── Main content ──────────────────────────────────────────────
+
+  Widget _buildContent(
     StrategyRecommendationState state,
     Set<String> watchedCodes,
   ) {
@@ -175,10 +366,22 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
         icon: Icons.inbox_outlined,
         title: state.hasEnabledStrategies ? '暂无匹配标的' : '暂无启用策略',
         subtitle: state.hasEnabledStrategies
-            ? '当前策略可能较严格，或行情数据暂不可用。可下拉刷新，或前往策略页降低阈值。'
+            ? '当前策略可能较严格，或行情数据暂不可用。\n可下拉刷新，或前往策略页降低阈值。'
             : '请前往策略管理启用至少一个策略',
       );
     }
+
+    final allItems = _buildFlatItems(state);
+    if (allItems.isEmpty) {
+      return EmptyState(
+        icon: Icons.inbox_outlined,
+        title: '暂无匹配标的',
+        subtitle: '可下拉刷新，或前往策略页调整参数',
+      );
+    }
+
+    final counts = _countByFilter(allItems);
+    final filtered = _applyFilter(allItems);
 
     return RefreshIndicator(
       color: StockColors.brand,
@@ -186,257 +389,73 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
           ref.read(strategyRecommendationProvider.notifier).refresh(),
       child: ListView(
         children: [
-          // Decision summary bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
-            child: _buildDecisionSummaryBar(state),
-          ),
+          // Dimension filter bar
+          _buildFilterBar(counts),
 
-          // Strategy groups
-          for (final group in state.groups) ...[
-            _buildSectionHeader(
-              group.strategy.id,
-              group.strategy.name,
-              '${group.recommendations.length}只 · 观察阈值 ${group.strategy.recommendThreshold}',
-              group.strategy.description,
-              stats: group.strategy.stats,
-              newFollowCount: group.recommendations
-                  .where((r) => watchedCodes.contains(r.code))
-                  .length,
-            ),
-            if (!_collapsedStrategyIds.contains(group.strategy.id))
-              if (group.recommendations.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.pagePadding,
-                    vertical: 10,
-                  ),
-                  child: _buildStrategyEmptyDiagnosis(group.strategy),
-                )
-              else
-                ...group.recommendations.map((item) {
-                  final insight = item.score == null
-                      ? null
-                      : StrategyExplanation.recommendationInsight(
-                          strategy: group.strategy,
-                          score: item.score!,
-                        );
-                  final isWatched = watchedCodes.contains(item.code);
-                  return StockListItem(
-                    name: item.name,
-                    code: item.code,
-                    market: item.market,
-                    price: item.closePrice,
-                    changePct: item.changePct,
-                    score: item.score?.score,
-                    isBandLow: item.isBandLow,
-                    strategyName: group.strategy.name,
-                    scoreReason: insight?.compact ?? item.score?.reason,
-                    riskText: '仅供参考',
-                    decisionResult: _evaluateDecision(group.strategy, item.score),
-                    isWatched: isWatched,
-                    onWatchToggle: isWatched
-                        ? null
-                        : () async {
-                            final ok = await ref
-                                .read(watchlistProvider.notifier)
-                                .addToWatchlist(
-                                  item.code,
-                                  item.name,
-                                  item.market,
-                                );
-                            if (ok && mounted) {
-                              ToastHelper.showSuccess(
-                                context,
-                                '已添加${item.name}到关注列表',
-                              );
-                              // No setState needed — ref.watch(watchedCodesProvider)
-                              // will auto-rebuild this widget.
-                            }
-                          },
-                    onTap: () => _navigateToDetail(
-                      context,
-                      item.code,
-                      item.name,
-                      item.market,
-                      group.strategy.id,
-                      group.strategy.name,
-                    ),
-                  );
-                }),
-          ],
+          // Empty filter result
+          if (filtered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 80),
+              child: EmptyState(
+                icon: Icons.filter_alt_off_outlined,
+                title: '${_activeFilter.label}暂无标的',
+                subtitle: '当前维度没有匹配的标的，可清除筛选查看全部',
+                actionText: _activeFilter == RecommendFilter.all ? null : '清除筛选',
+                onAction: _activeFilter == RecommendFilter.all
+                    ? null
+                    : () => setState(() => _activeFilter = RecommendFilter.all),
+              ),
+            )
+          else
+            // Flat list
+            ...filtered.map((item) {
+              final isWatched = watchedCodes.contains(item.code);
+              return StockListItem(
+                name: item.rec.name,
+                code: item.rec.code,
+                market: item.rec.market,
+                price: item.rec.closePrice,
+                changePct: item.rec.changePct,
+                score: item.score?.score,
+                isBandLow: item.isBandLow,
+                prediction: item.prediction,
+                expectedRange: item.prediction?.rangeText,
+                isWatched: isWatched,
+                onWatchToggle: isWatched
+                    ? null
+                    : () async {
+                        final ok = await ref
+                            .read(watchlistProvider.notifier)
+                            .addToWatchlist(
+                              item.rec.code,
+                              item.rec.name,
+                              item.rec.market,
+                            );
+                        if (ok && mounted) {
+                          ToastHelper.showSuccess(
+                            context,
+                            '已添加${item.rec.name}到关注列表',
+                          );
+                        }
+                      },
+                onTap: () => _navigateToDetail(
+                  context,
+                  item.rec.code,
+                  item.rec.name,
+                  item.rec.market,
+                  item.strategy.id,
+                  item.strategy.name,
+                ),
+              );
+            }),
 
-          // Disclaimer
+          // Footer
           const SizedBox(height: 16),
           const DisclaimerLabel(),
-          const SizedBox(height: 64), // space above tab bar
+          const SizedBox(height: 64),
         ],
       ),
     );
-  }
-
-  Widget _buildStrategyEmptyDiagnosis(Strategy strategy) {
-    final diagnosis = StrategyExplanation.emptyDiagnosis(strategy);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.manage_search_outlined,
-            size: 18,
-            color: StockColors.textTertiary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(diagnosis.title, style: AppTextStyles.body),
-                const SizedBox(height: 2),
-                Text(
-                  diagnosis.body,
-                  style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  diagnosis.actionLabel,
-                  style: AppTextStyles.caption.copyWith(
-                    color: StockColors.brand,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(
-    String strategyId,
-    String title,
-    String meta,
-    String description, {
-    StrategyStats? stats,
-    int newFollowCount = 0,
-  }) {
-    final isCollapsed = _collapsedStrategyIds.contains(strategyId);
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.pagePadding,
-        vertical: 8,
-      ),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            if (isCollapsed) {
-              _collapsedStrategyIds.remove(strategyId);
-            } else {
-              _collapsedStrategyIds.add(strategyId);
-            }
-          });
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(
-                  isCollapsed
-                      ? Icons.keyboard_arrow_right
-                      : Icons.keyboard_arrow_down,
-                  size: 20,
-                  color: StockColors.textTertiary,
-                ),
-                const SizedBox(width: 2),
-                Expanded(child: Text(title, style: AppTextStyles.h3)),
-                if (stats != null) ...[
-                  const SizedBox(width: 4),
-                  TrustBadge(
-                    trustResult: StrategyTrustEngine.evaluate(stats),
-                    isSmall: true,
-                  ),
-                ],
-                const SizedBox(width: 4),
-                // Show newly-followed count badge
-                if (newFollowCount > 0) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: StockColors.brand.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                    ),
-                    child: Text(
-                      '已关注$newFollowCount',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: StockColors.brand,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Text(meta, style: AppTextStyles.caption),
-              ],
-            ),
-            if (description.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(
-                description,
-                style: AppTextStyles.caption.copyWith(
-                  color: StockColors.textTertiary,
-                ),
-                maxLines: isCollapsed ? 1 : 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            if (!isCollapsed) ...[
-              const SizedBox(height: 4),
-              Text(
-                '按该策略观察分排序，只作为学习和观察线索。',
-                style: AppTextStyles.caption.copyWith(
-                  color: StockColors.textTertiary,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  DecisionResult _evaluateDecision(Strategy strategy, StockScore? score) {
-    return DecisionEngine.evaluate(
-      strategyScore: (score?.score ?? 0).toDouble(),
-      hitRate: strategy.stats?.hitRate ?? 0,
-      sampleSize: strategy.stats?.totalRecommendations ?? 0,
-      isEnabled: strategy.isEnabled,
-    );
-  }
-
-  Widget _buildDecisionSummaryBar(StrategyRecommendationState state) {
-    final results = <DecisionResult>[];
-    for (final group in state.groups) {
-      for (final item in group.recommendations) {
-        results.add(_evaluateDecision(group.strategy, item.score));
-      }
-    }
-    if (results.isEmpty) return const SizedBox.shrink();
-    return DecisionSummaryBar.fromResults(results);
   }
 
   void _navigateToDetail(

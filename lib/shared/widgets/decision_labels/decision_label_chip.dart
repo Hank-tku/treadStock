@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// Sentiment-based color mapping for decision labels.
+/// Colors reuse the global StockColors tokens so sentiment chips stay
+/// consistent with A-stock convention (red = up/bullish, green = down/bearish)
+/// and with the rest of the UI.
 class _SentimentColors {
   final Color fg;
   final Color bg;
@@ -12,28 +18,31 @@ class _SentimentColors {
     required this.border,
   });
 
+  // Bullish = A-stock up color (red).
   static const bullish = _SentimentColors(
-    fg: Color(0xFFB45309), // amber-700
-    bg: Color(0xFFFEF3C7), // amber-100
-    border: Color(0xFFF59E0B), // amber-500
+    fg: StockColors.up,
+    bg: StockColors.upBg,
+    border: StockColors.up,
   );
 
+  // Neutral = secondary text on tertiary surface.
   static const neutral = _SentimentColors(
-    fg: Color(0xFF4B5563), // gray-600
-    bg: Color(0xFFF3F4F6), // gray-100
-    border: Color(0xFFD1D5DB), // gray-300
+    fg: StockColors.textSecondary,
+    bg: StockColors.bgTertiary,
+    border: StockColors.border,
   );
 
+  // Bearish = A-stock down color (green).
   static const bearish = _SentimentColors(
-    fg: Color(0xFF059669), // emerald-600
-    bg: Color(0xFFECFDF5), // emerald-50
-    border: Color(0xFF34D399), // emerald-400
+    fg: StockColors.down,
+    bg: StockColors.downBg,
+    border: StockColors.down,
   );
 
   static const unknown = _SentimentColors(
-    fg: Color(0xFF9CA3AF), // gray-400
-    bg: Color(0xFFF9FAFB), // gray-50
-    border: Color(0xFFE5E7EB), // gray-200
+    fg: StockColors.textDisabled,
+    bg: StockColors.bgSecondary,
+    border: StockColors.borderLight,
   );
 }
 
@@ -63,14 +72,13 @@ class DecisionLabelChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: colors.bg,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(AppTheme.radiusXs),
           border: Border.all(color: colors.border, width: 0.5),
         ),
         alignment: Alignment.center,
         child: Text(
           text,
-          style: TextStyle(
-            fontSize: 11,
+          style: AppTextStyles.caption.copyWith(
             fontWeight: FontWeight.w500,
             color: colors.fg,
             height: 1.2,

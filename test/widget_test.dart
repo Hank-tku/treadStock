@@ -14,6 +14,7 @@ import 'package:stockpilot/features/strategy/presentation/strategy_detail_page.d
 import 'package:stockpilot/features/strategy/presentation/strategy_provider.dart';
 import 'package:stockpilot/features/strategy/data/database.dart';
 import 'package:stockpilot/features/strategy/presentation/strategy_knowledge_page.dart';
+import 'package:stockpilot/features/watchlist/data/watchlist_service.dart';
 import 'package:stockpilot/features/stock/data/stock_api_service.dart';
 import 'package:stockpilot/features/stock/domain/stock_models.dart';
 import 'package:stockpilot/shared/providers.dart';
@@ -144,16 +145,24 @@ void main() {
     expect(find.textContaining('满 5 个交易日后再看命中率、极限涨跌和平均差'), findsOneWidget);
   });
 
-  testWidgets('recommendation strategy group can collapse and expand', (
+  testWidgets('recommendation flat list shows items and filter tabs', (
     WidgetTester tester,
   ) async {
     final now = DateTime(2026, 5, 18);
     final strategy = Strategy(
       id: 'strategy-1',
-      name: '测试策略',
-      description: '用于测试折叠',
+      name: '波段低位修复',
+      description: '测试策略',
       createdAt: now,
       updatedAt: now,
+      stats: const StrategyStats(
+        totalRecommendations: 50,
+        hitRate: 0.7,
+        maxGain: 30.0,
+        maxLoss: -5.0,
+        healthScore: 7.0,
+        tradingDaysRun: 30,
+      ),
     );
     final state = StrategyRecommendationState(
       groups: [
@@ -167,14 +176,32 @@ void main() {
               category: 'mid_term',
               closePrice: 12.3,
               changePct: 1.2,
+              isBandLow: true,
               score: StockScore(
                 score: 8,
                 maScore: 8,
                 bollScore: 8,
                 volScore: 8,
                 trendScore: 8,
-                isBandLow: false,
+                isBandLow: true,
                 reason: '测试评分',
+              ),
+            ),
+            DailyRecommendation(
+              code: '600519',
+              name: '贵州茅台',
+              market: 'SH',
+              category: 'mid_term',
+              closePrice: 1680.0,
+              changePct: -0.5,
+              score: StockScore(
+                score: 5,
+                maScore: 5,
+                bollScore: 5,
+                volScore: 5,
+                trendScore: 5,
+                isBandLow: false,
+                reason: '中性',
               ),
             ),
           ],
@@ -185,6 +212,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...testOverrides(),
+          watchlistServiceProvider.overrideWith((ref) {
+            final db = ref.read(appDatabaseProvider);
+            return WatchlistService(db: db, seedDefaults: false);
+          }),
           strategyRecommendationProvider.overrideWith((ref) {
             return _FakeStrategyRecommendationNotifier(state);
           }),
@@ -192,17 +224,41 @@ void main() {
         child: const MaterialApp(home: RecommendationTab()),
       ),
     );
-    await tester.pump();
 
+    // Multiple pumps to let async microtasks and Riverpod settle
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Both stocks appear in "全部" view
     expect(find.text('双环传动'), findsOneWidget);
+    expect(find.text('贵州茅台'), findsOneWidget);
 
-    await tester.tap(find.text('测试策略'));
-    await tester.pump();
-    expect(find.text('双环传动'), findsNothing);
+    // Filter tabs exist. Note: "波段低位" may also appear as a band-low tag
+    // on the matched item, so we assert at least one match for the chip.
+    expect(find.text('全部'), findsWidgets);
+    expect(find.text('波段低位'), findsAtLeastNWidgets(1));
 
-    await tester.tap(find.text('测试策略'));
+    // Switch to 波段低位 filter — only 双环传动 should show.
+    // Tap the filter chip specifically (the band-low tag on the item shares
+    // the same label text, so scope the finder to the GestureDetector chip).
+    await tester.tap(
+      find.ancestor(
+        of: find.text('波段低位'),
+        matching: find.byType(GestureDetector),
+      ).first,
+    );
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('双环传动'), findsOneWidget);
+    expect(find.text('贵州茅台'), findsNothing);
+
+    // Switch back to 全部
+    await tester.tap(find.text('全部').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('双环传动'), findsOneWidget);
+    expect(find.text('贵州茅台'), findsOneWidget);
   });
 }
 
@@ -226,7 +282,9 @@ class _FakeStrategyRecommendationNotifier
   final AppDatabase _db;
 
   @override
-  Future<void> loadRecommendations() async {}
+  Future<void> loadRecommendations() async {
+    // No-op in tests; state is set directly in constructor
+  }
 
   @override
   Future<void> refresh() async {}

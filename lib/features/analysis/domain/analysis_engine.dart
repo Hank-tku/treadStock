@@ -347,7 +347,10 @@ class AnalysisEngine {
       }
     }
 
-    // Build indicator detail string for reason
+    // Build indicator detail string for reason.
+    // Rule-based strategies do not use the four-factor weighted model, so all
+    // sub-scores stay 0 and the reason is prefixed with [规则信号] so that
+    // downstream display can skip factor-based signal extraction.
     final indStr = result.indicatorValues.entries
         .map((e) => '${e.key}: ${e.value.toStringAsFixed(1)}')
         .join(', ');
@@ -357,12 +360,12 @@ class AnalysisEngine {
 
     return StockScore(
       score: score,
-      maScore: result.indicatorValues.containsKey('macd') ? (result.entryTriggered ? 9.0 : 5.0) : 0,
-      bollScore: result.indicatorValues.containsKey('rsi') ? (result.entryTriggered ? 9.0 : 5.0) : 0,
+      maScore: 0,
+      bollScore: 0,
       volScore: 0,
       trendScore: 0,
       isBandLow: result.entryTriggered,
-      reason: reason,
+      reason: '[规则信号] $reason',
     );
   }
 
@@ -526,5 +529,176 @@ class AnalysisEngine {
   String _formatPct(double pct) {
     final prefix = pct >= 0 ? '+' : '';
     return '$prefix${pct.toStringAsFixed(2)}%';
+  }
+
+  // ── Prediction Generation ──────────────────────────────────────
+
+  /// Generate a next-session prediction using TA signals.
+  ///
+  /// Designed to be called before market close (before 15:00) so the user
+  /// has actionable prediction for the next trading day.
+  ///
+  /// Uses: Bollinger position, MA alignment, volume ratio, trend pattern,
+  /// and current score to derive direction, confidence, and target range.
+  StockPrediction generatePrediction({
+    required List<DailyKline> klines,
+    required StockScore score,
+    double? currentPrice,
+  }) {
+    if (klines.length < 20) {
+      return StockPrediction(
+        direction: PredictionDirection.flat,
+        confidence: 0.3,
+        summary: '数据不足，暂无法预测下一交易日走势',
+        generatedAt: DateTime.now(),
+      );
+    }
+
+    final closes = klines.map((k) => k.close).toList();
+    final price = currentPrice ?? klines.last.close;
+    final boll = calculateBollinger(closes);
+    final ma20 = calculateMA(closes, AppConstants.maShortPeriod);
+    final volRatio = _calculateVolRatio(klines);
+    final lastDay = klines.last;
+    final changePct = lastDay.changePct;
+
+    // Support / Resistance levels
+    double? support = boll.currentLower;
+    double? resistance = boll.currentUpper;
+    if (ma20.isNotEmpty) {
+      support ??= ma20.last;
+    }
+
+    // ATR-like range estimation (average of last 5 days true range)
+    double atr = 0;
+    final lookback = klines.length >= 6 ? 5 : klines.length - 1;
+    for (var i = klines.length - lookback; i < klines.length; i++) {
+      if (i < 0) continue;
+      final high = klines[i].high;
+      final low = klines[i].low;
+      final prevClose = i > 0 ? klines[i - 1].close : klines[i].open;
+      final tr = [high - low, (high - prevClose).abs(), (low - prevClose).abs()]
+          .reduce((a, b) => a > b ? a : b);
+      atr += tr;
+    }
+    atr /= lookback > 0 ? lookback : 1;
+
+    // ── Direction logic ──
+    PredictionDirection direction;
+    final reasons = <String>[];
+
+    // Check downside alert (strong bearish signal)
+    final isDownsideAlert = checkDownsideAlert(klines);
+
+    // Band low bounce signal
+    final isBandLowSignal = score.isBandLow || score.bollScore >= 8;
+
+    // Consecutive decline stabilization
+    int declineDays = 0;
+    for (var i = klines.length - 1; i >= max(0, klines.length - 10); i--) {
+      if (klines[i].close < klines[i].open) {
+        declineDays++;
+      } else {
+        break;
+      }
+    }
+
+    // Volume shrinkage at low position (bullish: selling pressure fading)
+    final isVolShrinkAtLow = volRatio < 0.8 && (score.bollScore >= 7);
+
+    if (isDownsideAlert && !isBandLowSignal) {
+      direction = PredictionDirection.down;
+      reasons.add('跌破关键支撑，下一交易日仍有下行压力');
+    } else if (isBandLowSignal && declineDays >= 2) {
+      direction = PredictionDirection.up;
+      reasons.add('波段低位连续回调，下一交易日技术性反弹概率较大');
+    } else if (isVolShrinkAtLow) {
+      direction = PredictionDirection.up;
+      reasons.add('低位缩量企稳，抛压减弱，下一交易日有望反弹');
+    } else if (score.score >= 8 && changePct > 0) {
+      direction = PredictionDirection.up;
+      reasons.add('多头排列，下一交易日趋势有望延续');
+    } else if (score.score <= 3 && changePct < -1) {
+      direction = PredictionDirection.down;
+      reasons.add('技术面偏弱，下一交易日资金可能继续流出');
+    } else {
+      direction = PredictionDirection.flat;
+      if (score.bollScore >= 6 && score.bollScore <= 7) {
+        reasons.add('接近低位区间但信号不明确，下一交易日方向待定');
+      } else {
+        reasons.add('多空信号交织，下一交易日以震荡为主');
+      }
+    }
+
+    // ── Confidence calculation ──
+    double confidence = 0.35; // base
+
+    // Score contribution (max +0.25)
+    confidence += (score.score - 5).clamp(-3, 5) / 5 * 0.25;
+
+    // Volume confirmation (max +0.15)
+    if (direction == PredictionDirection.up && volRatio < 0.8) {
+      confidence += 0.15; // shrinking volume at low = bullish
+    } else if (direction == PredictionDirection.up && volRatio > 1.5 && changePct > 2) {
+      confidence += 0.15; // breakout volume
+    } else if (direction == PredictionDirection.down && volRatio > 1.5 && changePct < -2) {
+      confidence += 0.15; // distribution volume
+    }
+
+    // Trend alignment (max +0.15)
+    if (direction == PredictionDirection.up && score.trendScore >= 7) {
+      confidence += 0.15;
+    } else if (direction == PredictionDirection.down && score.trendScore <= 3) {
+      confidence += 0.15;
+    }
+
+    // Band low bonus for up predictions
+    if (direction == PredictionDirection.up && score.isBandLow) {
+      confidence += 0.05;
+    }
+
+    confidence = confidence.clamp(0.30, 0.85);
+
+    // ── Target range ──
+    double? targetHigh;
+    double? targetLow;
+
+    if (direction == PredictionDirection.up) {
+      targetLow = price - atr * 0.3;
+      targetHigh = price + atr * 0.8;
+      if (resistance != null && targetHigh > resistance) {
+        targetHigh = resistance;
+      }
+    } else if (direction == PredictionDirection.down) {
+      targetLow = price - atr * 0.8;
+      targetHigh = price + atr * 0.3;
+      if (support != null && targetLow < support) {
+        targetLow = support;
+      }
+    } else {
+      // flat: range around current price
+      targetLow = price - atr * 0.4;
+      targetHigh = price + atr * 0.4;
+    }
+
+    // ── Summary text ──
+    final buffer = StringBuffer();
+    buffer.write(reasons.first);
+    if (support != null && resistance != null) {
+      buffer.write('；支撑 ${_formatPrice(support)}');
+      buffer.write('，压力 ${_formatPrice(resistance)}');
+    }
+    buffer.write('；预测区间 ${targetLow.toStringAsFixed(2)}-${targetHigh.toStringAsFixed(2)}');
+
+    return StockPrediction(
+      direction: direction,
+      confidence: confidence,
+      targetHigh: targetHigh,
+      targetLow: targetLow,
+      supportPrice: support,
+      resistancePrice: resistance,
+      summary: buffer.toString(),
+      generatedAt: DateTime.now(),
+    );
   }
 }

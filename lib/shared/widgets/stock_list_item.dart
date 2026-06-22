@@ -23,6 +23,7 @@ class StockListItem extends StatelessWidget {
   final bool isPinned;
   final bool isAlertTriggered;
   final String? expectedRange;
+  final StockPrediction? prediction;
   final String? strategyName;
   final String? scoreReason;
   final String? riskText;
@@ -44,6 +45,7 @@ class StockListItem extends StatelessWidget {
     this.isPinned = false,
     this.isAlertTriggered = false,
     this.expectedRange,
+    this.prediction,
     this.strategyName,
     this.scoreReason,
     this.riskText,
@@ -149,6 +151,7 @@ class StockListItem extends StatelessWidget {
                         DecisionSignalBadge(signal: decisionResult!.signal, isSmall: true),
                       if (isBandLow) const BandLowTag(),
                       _buildDecisionLabelWidget(stockScore),
+                      if (prediction != null) _PredictionTag(prediction: prediction!),
                       if (expectedRange != null)
                         Text(
                           expectedRange!,
@@ -303,7 +306,7 @@ class _StrategySummaryLine extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: StockColors.bgSecondary,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
       ),
       child: Text(
         parts.join(' · '),
@@ -343,5 +346,50 @@ chip.DecisionSentiment _toChipSentiment(DecisionSentiment s) {
       return chip.DecisionSentiment.bearish;
     case DecisionSentiment.unknown:
       return chip.DecisionSentiment.unknown;
+  }
+}
+
+/// Prediction direction chip.
+/// Shows "看涨 68%" / "看跌 55%" / "震荡" with corresponding color.
+class _PredictionTag extends StatelessWidget {
+  final StockPrediction prediction;
+  const _PredictionTag({required this.prediction});
+
+  @override
+  Widget build(BuildContext context) {
+    final tag = prediction.tag;
+    Color bgColor;
+    Color textColor;
+
+    switch (prediction.direction) {
+      case PredictionDirection.up:
+        // A-stock convention: red = up. Reuse global tokens so the prediction
+        // tag stays visually consistent with the inline changePct color.
+        bgColor = StockColors.upBg;
+        textColor = StockColors.up;
+      case PredictionDirection.down:
+        // A-stock convention: green = down.
+        bgColor = StockColors.downBg;
+        textColor = StockColors.down;
+      case PredictionDirection.flat:
+        bgColor = StockColors.bgTertiary;
+        textColor = StockColors.textSecondary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
+        border: Border.all(color: textColor.withValues(alpha: 0.3), width: 0.5),
+      ),
+      child: Text(
+        '${prediction.targetDateLabel} $tag',
+        style: AppTextStyles.caption.copyWith(
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
+    );
   }
 }

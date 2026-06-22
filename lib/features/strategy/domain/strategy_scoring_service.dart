@@ -53,6 +53,19 @@ class StrategyScoringService {
     );
     return results.isEmpty ? null : results.first;
   }
+
+  /// Generate next-session prediction from TA data.
+  StockPrediction generatePrediction({
+    required List<DailyKline> klines,
+    required StockScore score,
+    double? currentPrice,
+  }) {
+    return _analysisEngine.generatePrediction(
+      klines: klines,
+      score: score,
+      currentPrice: currentPrice,
+    );
+  }
 }
 
 class StrategyScoreResult {
@@ -79,6 +92,18 @@ class StrategyScoreResult {
   }
 
   String get learningHint {
+    // Rule-based strategies return all-zero sub-scores (see AnalysisEngine
+    // _evaluateWithRules). Factor-based signal extraction does not apply, so
+    // surface the rule signal description instead to avoid misleading
+    // "均线结构较好/偏弱" output on a rule strategy.
+    final isRuleBased =
+        score.maScore == 0 &&
+        score.bollScore == 0 &&
+        score.volScore == 0 &&
+        score.trendScore == 0;
+    if (isRuleBased) {
+      return '规则策略按入场/出场信号判定，不适用因子分解；下一步：$nextObservation';
+    }
     final strongest = _strongestSignal;
     final weakest = _weakestSignal;
     return '匹配点：$strongest；风险点：$weakest；下一步：$nextObservation';

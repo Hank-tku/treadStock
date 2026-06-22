@@ -416,11 +416,28 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
               children: [
                 SlidableAction(
                   onPressed: (_) async {
+                    // Snapshot before removal so the user can undo.
+                    final snapshot = (
+                      id: item.id,
+                      code: item.stockCode,
+                      name: item.stockName,
+                      market: item.market,
+                    );
                     await notifier.removeFromWatchlist(item.id);
                     if (!mounted) return;
-                    ToastHelper.showSuccess(
+                    ToastHelper.showWithAction(
                       this.context,
                       '已移除${item.stockName}',
+                      actionText: '撤销',
+                      onAction: () async {
+                        await ref
+                            .read(watchlistProvider.notifier)
+                            .addToWatchlist(
+                              snapshot.code,
+                              snapshot.name,
+                              snapshot.market,
+                            );
+                      },
                     );
                   },
                   backgroundColor: StockColors.danger,
@@ -460,8 +477,9 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
     );
   }
 
+  // TODO(stage2): populate once K-line / Bollinger band data is wired into the
+  // watchlist item. Currently returns null, so expected range is never shown.
   String? _formatRange(dynamic item) {
-    // Will be populated when Bollinger band data is fetched
     return null;
   }
 }

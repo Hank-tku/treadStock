@@ -1,5 +1,82 @@
 // Scoring and analysis result models.
 
+// ── Prediction Models ────────────────────────────────────────────
+
+/// Predicted direction for the next trading session.
+enum PredictionDirection {
+  up('看涨'),
+  down('看跌'),
+  flat('震荡');
+
+  final String label;
+  const PredictionDirection(this.label);
+}
+
+/// Next trading day prediction for a stock.
+/// Generated before 15:00 on trading days using current day's TA data,
+/// predicts the direction of the next trading session.
+class StockPrediction {
+  final PredictionDirection direction;
+  final double confidence; // 0.0 - 1.0
+  final double? targetHigh; // predicted high for next trading day
+  final double? targetLow; // predicted low for next trading day
+  final double? supportPrice;
+  final double? resistancePrice;
+  final String summary; // human-readable prediction text (next trading day)
+  final DateTime generatedAt;
+
+  /// Date this prediction targets (the next trading day).
+  /// Generated before 15:00 today → targets tomorrow (or next weekday if Friday).
+  DateTime get targetDate {
+    final t = generatedAt;
+    final d = DateTime(t.year, t.month, t.day);
+    // After 15:00 the data is same-day close; prediction still targets next day
+    if (d.weekday == DateTime.friday) {
+      return d.add(const Duration(days: 3)); // Friday → next Monday
+    } else if (d.weekday == DateTime.saturday) {
+      return d.add(const Duration(days: 2));
+    } else if (d.weekday == DateTime.sunday) {
+      return d.add(const Duration(days: 1));
+    }
+    return d.add(const Duration(days: 1)); // Mon-Thu → next day
+  }
+
+  const StockPrediction({
+    required this.direction,
+    required this.confidence,
+    this.targetHigh,
+    this.targetLow,
+    this.supportPrice,
+    this.resistancePrice,
+    required this.summary,
+    required this.generatedAt,
+  });
+
+  /// Short prediction tag like "看涨 68%"
+  String get tag => '${direction.label} ${(confidence * 100).round()}%';
+
+  /// Target date label, e.g. "明日(6/17)" or "下周一(6/23)"
+  String get targetDateLabel {
+    final d = targetDate;
+    final weekDays = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isTomorrow = d.difference(today).inDays == 1;
+    if (isTomorrow) {
+      return '明日(${d.month}/${d.day})';
+    }
+    return '${weekDays[d.weekday]}(${d.month}/${d.day})';
+  }
+
+  /// Predicted range string like "12.50 - 13.20"
+  String? get rangeText {
+    if (targetLow == null || targetHigh == null) return null;
+    return '${targetLow!.toStringAsFixed(2)} - ${targetHigh!.toStringAsFixed(2)}';
+  }
+}
+
+// ── Scoring Models ───────────────────────────────────────────────
+
 class StockScore {
   final int score; // 1-10
   final double maScore;
@@ -57,6 +134,7 @@ class DailyRecommendation {
   final double changePct;
   final StockScore? score;
   final bool isBandLow;
+  final StockPrediction? prediction; // next-session prediction
 
   const DailyRecommendation({
     required this.code,
@@ -67,6 +145,7 @@ class DailyRecommendation {
     required this.changePct,
     this.score,
     this.isBandLow = false,
+    this.prediction,
   });
 
   String get fullCode => '$code.$market';

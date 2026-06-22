@@ -7,6 +7,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/score_badge.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/disclaimer_label.dart';
 import '../../../shared/widgets/toast_helper.dart';
 import '../../../shared/utils/formatters.dart';
@@ -51,9 +52,11 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   StockScore? _score;
   List<StockNews>? _news;
   bool _isLoading = true;
+  bool _loadError = false;
   bool _newsLoading = true;
   bool _newsError = false;
   bool _alertEnabled = false;
+  bool _isWatched = false;
   double? _ma20;
   double? _ma60;
   StrategyScoreResult? _strategyScore;
@@ -74,8 +77,41 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
     final watchlistService = ref.read(watchlistServiceProvider);
     await watchlistService.init();
     final item = watchlistService.findByCode(widget.code);
-    if (item != null && mounted) {
-      setState(() => _alertEnabled = item.alertEnabled);
+    if (!mounted) return;
+    setState(() {
+      _isWatched = item != null;
+      _alertEnabled = item?.alertEnabled ?? false;
+    });
+  }
+
+  /// Toggle this stock in / out of the watchlist.
+  /// The star icon and the alert switch both depend on watch state, so we
+  /// refresh it here and reload the watchlist provider so other screens stay
+  /// in sync.
+  Future<void> _toggleWatch() async {
+    final watchlistService = ref.read(watchlistServiceProvider);
+    await watchlistService.init();
+    final existing = watchlistService.findByCode(widget.code);
+
+    if (existing != null) {
+      await watchlistService.removeFromWatchlist(existing.id);
+      if (!mounted) return;
+      setState(() {
+        _isWatched = false;
+        _alertEnabled = false;
+      });
+      ref.read(watchlistProvider.notifier).reload();
+      ToastHelper.showSuccess(context, '已取消关注${widget.name}');
+    } else {
+      await watchlistService.addToWatchlist(
+        widget.code,
+        widget.name,
+        widget.market,
+      );
+      if (!mounted) return;
+      setState(() => _isWatched = true);
+      ref.read(watchlistProvider.notifier).reload();
+      ToastHelper.showSuccess(context, '已加入关注${widget.name}');
     }
   }
 
@@ -85,6 +121,10 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
     final strategyService = ref.read(strategyServiceProvider);
     final scoringService = ref.read(strategyScoringServiceProvider);
 
+    setState(() {
+      _isLoading = true;
+      _loadError = false;
+    });
     try {
       // Fetch kline data
       final klines = await apiService.fetchStockKline(
@@ -162,11 +202,15 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           _ma60 = ma60List.isNotEmpty ? ma60List.last : null;
         });
       }
-    } catch (_) {
-      // Score calculation failed, show what we can
+    } catch (e, st) {
+      // K-line / score load failed. Unlike the previous silent swallow, mark
+      // the page as load-error so the UI can surface a retry affordance
+      // instead of showing a blank price section.
+      debugPrint('[StockDetail] load failed for ${widget.code}: $e\n$st');
+      if (mounted) setState(() => _loadError = true);
     }
 
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
 
     // Fetch news in parallel
     _loadNews();
@@ -210,47 +254,55 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             // Navigation bar + header
             _buildHeader(),
 
-            // Price section
-            _isLoading
-                ? const DetailSectionSkeleton(height: 120)
-                : _buildPriceSection(),
+            // When the main data load failed (and we have no klines at all),
+            // surface a retry affordance instead of a blank price section.
+            if (_loadError && _klines == null) ...[
+              _buildLoadErrorState(),
+              const DisclaimerLabel(),
+              const SizedBox(height: 80),
+            ] else ...[
+              // Price section
+              _isLoading
+                  ? const DetailSectionSkeleton(height: 120)
+                  : _buildPriceSection(),
 
-            // Score + indicators section
-            _isLoading
-                ? const DetailSectionSkeleton(height: 80)
-                : _buildScoreSection(),
+              // Score + indicators section
+              _isLoading
+                  ? const DetailSectionSkeleton(height: 80)
+                  : _buildScoreSection(),
 
-            _isLoading ? const SizedBox.shrink() : _buildStrategyScoreSection(),
+              _isLoading ? const SizedBox.shrink() : _buildStrategyScoreSection(),
 
-            // Signal cards
-            _isLoading ? const SizedBox.shrink() : _buildSignalCardsSection(),
+              // Signal cards
+              _isLoading ? const SizedBox.shrink() : _buildSignalCardsSection(),
 
-            // Decision signal card
-            _isLoading ? const SizedBox.shrink() : _buildDecisionSignalOverviewSection(),
+              // Decision signal card
+              _isLoading ? const SizedBox.shrink() : _buildDecisionSignalOverviewSection(),
 
-            // Decision bubble for signal explanation
-            _isLoading ? const SizedBox.shrink() : _buildDecisionBubble(),
+              // Decision bubble for signal explanation
+              _isLoading ? const SizedBox.shrink() : _buildDecisionBubble(),
 
-            // Decision labels
-            _isLoading ? const SizedBox.shrink() : DecisionLabelsPanel(score: _score),
+              // Decision labels
+              _isLoading ? const SizedBox.shrink() : DecisionLabelsPanel(score: _score),
 
-            // Company info section
-            _isLoading
-                ? const DetailSectionSkeleton(height: 80)
-                : _buildCompanyInfoSection(),
+              // Company info section
+              _isLoading
+                  ? const DetailSectionSkeleton(height: 80)
+                  : _buildCompanyInfoSection(),
 
-            // Daily summary section
-            _isLoading
-                ? const DetailSectionSkeleton(height: 80)
-                : _buildSummarySection(),
+              // Daily summary section
+              _isLoading
+                  ? const DetailSectionSkeleton(height: 80)
+                  : _buildSummarySection(),
 
-            // News section
-            const SizedBox(height: 8),
-            _buildNewsSection(),
+              // News section
+              const SizedBox(height: 8),
+              _buildNewsSection(),
 
-            // Disclaimer
-            const DisclaimerLabel(),
-            const SizedBox(height: 80),
+              // Disclaimer
+              const DisclaimerLabel(),
+              const SizedBox(height: 80),
+            ],
           ],
         ),
       ),
@@ -280,21 +332,45 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                   ),
                 ),
                 const Spacer(),
-                // Alert toggle switch
+                // Watch toggle (add / remove from watchlist). Placed before the
+                // alert switch because enabling alerts requires being watched.
+                IconButton(
+                  onPressed: _toggleWatch,
+                  icon: Icon(
+                    _isWatched ? Icons.star_rounded : Icons.star_outline_rounded,
+                    size: 26,
+                    color: _isWatched ? const Color(0xFFF5A623) : StockColors.gray700,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
+                  ),
+                  tooltip: _isWatched ? '取消关注' : '加入关注',
+                ),
+                // Alert toggle switch.
                 Switch(
                   value: _alertEnabled,
                   onChanged: (value) async {
-                    setState(() => _alertEnabled = value);
-
-                    // Persist alert toggle to watchlist service.
                     final watchlistService = ref.read(watchlistServiceProvider);
                     await watchlistService.init();
                     final item = watchlistService.findByCode(widget.code);
-                    if (item != null) {
-                      await watchlistService.toggleAlert(item.id, value);
-                      // Also update provider state so other screens see the change.
-                      ref.read(watchlistProvider.notifier).reload();
+
+                    // Guard: alerts require the stock to be in the watchlist.
+                    // Without this, the switch would visually toggle but the
+                    // flag is never persisted (silent no-op).
+                    if (item == null) {
+                      if (!mounted) return;
+                      setState(() => _alertEnabled = false);
+                      ToastHelper.showError(
+                        context,
+                        '请先加入关注后再开启提醒',
+                      );
+                      return;
                     }
+
+                    setState(() => _alertEnabled = value);
+                    await watchlistService.toggleAlert(item.id, value);
+                    ref.read(watchlistProvider.notifier).reload();
 
                     if (!mounted) return;
 
@@ -328,6 +404,19 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Full-width error state shown when the main data load fails and we have
+  /// no klines to display. Mirrors the news-section error handling by offering
+  /// a retry button (alongside pull-to-refresh).
+  Widget _buildLoadErrorState() {
+    return EmptyState(
+      icon: Icons.cloud_off,
+      title: '数据加载失败',
+      subtitle: '行情数据暂时无法获取，请检查网络后重试',
+      actionText: '重试',
+      onAction: _loadData,
     );
   }
 
