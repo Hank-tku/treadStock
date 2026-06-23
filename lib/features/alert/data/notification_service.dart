@@ -37,12 +37,20 @@ class NotificationService {
     if (_initialized) return;
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings(
+    // DarwinInitializationSettings covers both iOS AND macOS (flutter_local_
+    // notifications 18.x unified them). Passing the same instance to both
+    // iOS and macOS is required — otherwise initialize() throws "macOS
+    // settings must be set when targeting macOS platform" on desktop.
+    const darwin = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    const settings = InitializationSettings(android: android, iOS: ios);
+    const settings = InitializationSettings(
+      android: android,
+      iOS: darwin,
+      macOS: darwin,
+    );
 
     await _plugin.initialize(settings);
     if (Platform.isAndroid) {

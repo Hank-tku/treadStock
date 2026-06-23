@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
@@ -83,7 +84,19 @@ Future<void> _runBackgroundReview() async {
 /// registered tasks by name. iOS background execution is best-effort (the OS
 /// decides when to wake the app), so the foreground timer in app.dart remains
 /// the reliable path on iOS.
+///
+/// **Platform guard**: workmanager only supports Android (and best-effort iOS).
+/// On macOS desktop it has no implementation, so calling it would throw
+/// MissingPluginException and black-screen the app. We skip it entirely on
+/// non-mobile platforms — the foreground Timer in app.dart still drives scans.
 Future<void> initBackgroundAlerts() async {
+  if (!Platform.isAndroid && !Platform.isIOS) {
+    // Desktop platforms (macOS/Windows/Linux) are not supported by workmanager.
+    debugPrint(
+      '[Workmanager] skipped on ${Platform.operatingSystem} (unsupported)',
+    );
+    return;
+  }
   await Workmanager().initialize(callbackDispatcher);
   await Workmanager().registerPeriodicTask(
     kAlertScanTaskName,
