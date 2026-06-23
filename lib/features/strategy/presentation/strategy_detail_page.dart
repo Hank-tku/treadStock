@@ -229,6 +229,21 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                       minWidth: 44,
                       minHeight: 44,
                     ),
+                    tooltip: '编辑',
+                  ),
+                if (strategy != null)
+                  IconButton(
+                    onPressed: () => context.push('/strategy/compare'),
+                    icon: const Icon(
+                      Icons.compare_arrows,
+                      size: 20,
+                      color: StockColors.brand,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    tooltip: '策略对比',
                   ),
                 if (strategy != null)
                   IconButton(
@@ -245,6 +260,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                       minWidth: 44,
                       minHeight: 44,
                     ),
+                    tooltip: '回测',
                   ),
                 if (strategy != null)
                   IconButton(
@@ -261,6 +277,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                       minWidth: 44,
                       minHeight: 44,
                     ),
+                    tooltip: '参数调优',
                   ),
               ],
             ),

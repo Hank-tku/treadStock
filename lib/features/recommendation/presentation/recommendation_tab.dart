@@ -16,6 +16,7 @@ import '../../../shared/utils/formatters.dart';
 import '../../strategy/domain/decision_engine.dart';
 import '../../strategy/domain/strategy_models.dart';
 import '../../strategy/presentation/strategy_provider.dart';
+import '../../dashboard/presentation/dashboard_provider.dart';
 import '../../watchlist/presentation/watchlist_provider.dart';
 
 /// Recommendation filter dimensions.
@@ -67,7 +68,11 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    // Use post-frame callback so the first build completes before we kick
+    // off async data loads; this avoids pending-timer assertions in widget
+    // tests where the tree is disposed right after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(strategyRecommendationProvider.notifier).loadRecommendations();
     });
   }
@@ -141,6 +146,11 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
   Widget build(BuildContext context) {
     final state = ref.watch(strategyRecommendationProvider);
     final watchedCodes = ref.watch(watchedCodesProvider);
+    // Dashboard overview data (merged in from the former Dashboard tab).
+    // We watch it so the header updates when strategy stats load; the
+    // sentiment is computed during loadDashboard (not re-enriched here to
+    // avoid side effects inside build).
+    final overview = ref.watch(dashboardProvider).data;
 
     return Scaffold(
       backgroundColor: context.sc.bgPrimary,
@@ -150,6 +160,11 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
           children: [
             // Title bar
             _buildTitleBar(),
+
+            // Merged overview header: strategy stats + sentiment + review alert.
+            // Always render once the dashboard has attempted a load; while
+            // loading the header shows default/empty values which is fine.
+            _buildOverviewHeader(overview),
 
             // Cache/Offline banner: show when an error/empty-data occurred but
             // we still have previously cached groups (lastUpdated != null).
@@ -211,6 +226,152 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  /// Merged overview header (formerly the Dashboard tab's summary). Shows a
+  /// compact strategy-stats row + market sentiment chip + a review-needed
+  /// banner. Tap a metric navigates to the strategy page.
+  Widget _buildOverviewHeader(DashboardData data) {
+    final sentimentLabel = switch (data.sentiment) {
+      MarketSentiment.strong => '强势',
+      MarketSentiment.neutral => '中性',
+      MarketSentiment.cautious => '谨慎',
+      MarketSentiment.unknown => '暂无',
+    };
+    final sentimentColor = switch (data.sentiment) {
+      MarketSentiment.strong => StockColors.up,
+      MarketSentiment.neutral => context.sc.textSecondary,
+      MarketSentiment.cautious => StockColors.warning,
+      MarketSentiment.unknown => context.sc.textTertiary,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Strategy stats row (3 compact metric cards).
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.pagePadding,
+            vertical: 4,
+          ),
+          child: Row(
+            children: [
+              _buildMetricCard(
+                '${data.enabledStrategies}/${data.totalStrategies}',
+                '启用策略',
+                Icons.lightbulb_outline,
+                StockColors.brand,
+                context.sc.brandLight,
+              ),
+              const SizedBox(width: 8),
+              _buildMetricCard(
+                data.strategiesWithStats > 0
+                    ? '${(data.avgHitRate * 100).toStringAsFixed(0)}%'
+                    : '--',
+                '平均命中率',
+                Icons.track_changes_outlined,
+                data.avgHitRate >= 0.5 ? StockColors.up : StockColors.warning,
+                data.avgHitRate >= 0.5
+                    ? StockColors.upLight
+                    : context.sc.bgWarning,
+              ),
+              const SizedBox(width: 8),
+              _buildMetricCard(
+                sentimentLabel,
+                '市场情绪',
+                Icons.trending_up,
+                sentimentColor,
+                context.sc.bgTertiary,
+              ),
+            ],
+          ),
+        ),
+        // Review-needed banner (only when some strategy needs review).
+        if (data.strategiesNeedingReview.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.pagePadding,
+            ),
+            child: GestureDetector(
+              onTap: () => context.push('/strategies'),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: context.sc.bgWarning,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.assignment_late_outlined,
+                      size: 16,
+                      color: StockColors.warning,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${data.strategiesNeedingReview.length} 个策略建议复盘',
+                        style: AppTextStyles.caption.copyWith(
+                          color: StockColors.warning,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: StockColors.warning,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard(
+    String value,
+    String label,
+    IconData icon,
+    Color iconColor,
+    Color bgColor,
+  ) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 14, color: iconColor),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: AppTextStyles.numberSm.copyWith(
+                color: context.sc.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: AppTextStyles.micro.copyWith(
+                color: context.sc.textTertiary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -689,16 +689,21 @@ Drift schema: v1 -> v2, 新增 3 张表, 自动插入默认策略
 
 ### v2.0 底部 Tab 栏（3 Tab）
 
+> 注：v0.3.0 起，原"看板"tab 已合并入"推荐"tab（推荐页顶部含策略统计/市场情绪/复盘告警 header）。
+
 ```
 App
 ├── Bottom Tab Bar
-│   ├── 推荐 (RecommendTab)     -- /recommend       [改造: 按策略分组]
-│   ├── 关注 (WatchlistTab)     -- /watchlist        [不变]
-│   └── 策略 (StrategyTab)      -- /strategies       [新增]
+│   ├── 推荐 (RecommendationTab) -- /recommend  [含合并后的概览 header + 策略分组列表]
+│   ├── 关注 (WatchlistTab)      -- /watchlist   [不变]
+│   └── 策略 (StrategyTab)       -- /strategies  [新增]
 │
-├── 详情页 (StockDetailPage)    -- /stock/:code      [不变]
-├── 策略详情页 (StrategyDetailPage) -- /strategy/:id  [新增]
-└── 策略编辑页 (StrategyEditPage)   -- /strategy/:id/edit [新增, :id=new 时为创建]
+├── 详情页 (StockDetailPage)         -- /stock/:code        [含 K 线图 + 提醒]
+├── 策略详情页 (StrategyDetailPage)  -- /strategy/:id       [含对比/回测/调优入口]
+├── 策略编辑页 (StrategyEditPage)    -- /strategy/:id/edit  [:id=new 时为创建]
+├── 策略对比页 (StrategyComparePage)  -- /strategy/compare
+├── 策略模板页 (StrategyTemplatePage) -- /strategy/templates
+└── 策略调优页 (StrategyTunerPage)    -- /strategy/:id/tuner
 ```
 
 ### 新增路由

@@ -460,28 +460,48 @@ class StockApiService {
         } else {
           data = json.decode(body) as Map<String, dynamic>;
         }
-      } catch (_) {
+      } catch (e, st) {
+        // JSONP/JSON decode failure — log so a future API change is visible
+        // in debug instead of silently returning an empty news list.
+        debugPrint('[StockApiService] news JSONP decode failed: $e\n$st');
         return [];
       }
 
-      final articles = data['Data']?['cmsArticleWebOld'] as List<dynamic>?;
+      // The Eastmoney search-api wraps results under a top-level "result" key
+      // (NOT "Data" — that was a stale assumption that always returned null).
+      final result = data['result'] as Map<String, dynamic>?;
+      final articles = result?['cmsArticleWebOld'] as List<dynamic>?;
       if (articles == null) return [];
 
       return articles.map((item) {
         final map = item as Map<String, dynamic>;
+        // "date" is a string like "2026-06-21 18:05:00", not a millis int.
+        // Parse defensively: fall back to now on unexpected formats.
+        DateTime parseDate() {
+          final raw = map['date'];
+          if (raw is String) {
+            return DateTime.tryParse(raw) ?? DateTime.now();
+          }
+          if (raw is int) {
+            return DateTime.fromMillisecondsSinceEpoch(raw);
+          }
+          return DateTime.now();
+        }
+
         return StockNews(
           id: (map['id'] ?? map['url'] ?? '').toString(),
           stockCode: stockCode,
           title: map['title'] as String? ?? '',
           source: map['mediaName'] as String? ?? '',
           sourceUrl: map['url'] as String? ?? '',
-          publishedAt: map['date'] != null
-              ? DateTime.fromMillisecondsSinceEpoch(map['date'] as int)
-              : DateTime.now(),
+          publishedAt: parseDate(),
           fetchedAt: DateTime.now(),
         );
       }).toList();
-    } catch (_) {
+    } catch (e, st) {
+      // Network/parse errors: log instead of silently swallowing so a future
+      // API change shows up in debug rather than an inexplicable empty list.
+      debugPrint('[StockApiService] fetchStockNews failed: $e\n$st');
       return [];
     }
   }

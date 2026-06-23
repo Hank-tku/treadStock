@@ -14,6 +14,7 @@ import 'package:stockpilot/features/strategy/presentation/strategy_detail_page.d
 import 'package:stockpilot/features/strategy/presentation/strategy_provider.dart';
 import 'package:stockpilot/features/strategy/data/database.dart';
 import 'package:stockpilot/features/strategy/presentation/strategy_knowledge_page.dart';
+import 'package:stockpilot/features/dashboard/presentation/dashboard_provider.dart';
 import 'package:stockpilot/features/watchlist/data/watchlist_service.dart';
 import 'package:stockpilot/features/stock/data/stock_api_service.dart';
 import 'package:stockpilot/features/stock/domain/stock_models.dart';
@@ -33,6 +34,13 @@ class FakeStockApiService extends StockApiService {
     String stockCode, {
     String market = 'SH',
   }) async => null;
+
+  @override
+  Future<List<DailyKline>> fetchStockKline(
+    String stockCode, {
+    String market = 'SH',
+    int days = 120,
+  }) async => [];
 }
 
 List<Override> testOverrides() {
@@ -42,6 +50,16 @@ List<Override> testOverrides() {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       ref.onDispose(db.close);
       return db;
+    }),
+    // Prevent the merged overview header (auto-loading dashboardProvider)
+    // from triggering real strategy/watchlist loads during app smoke tests.
+    dashboardProvider.overrideWith((ref) {
+      final db = ref.read(appDatabaseProvider);
+      return DashboardNotifier(
+        StrategyService(db: db),
+        WatchlistService(db: db, seedDefaults: false),
+        autoLoad: false,
+      );
     }),
   ];
 }
@@ -220,6 +238,9 @@ void main() {
           strategyRecommendationProvider.overrideWith((ref) {
             return _FakeStrategyRecommendationNotifier(state);
           }),
+          dashboardProvider.overrideWith((ref) {
+            return _FakeDashboardNotifier();
+          }),
         ],
         child: const MaterialApp(home: RecommendationTab()),
       ),
@@ -294,6 +315,18 @@ class _FakeStrategyRecommendationNotifier
     _db.close();
     super.dispose();
   }
+}
+
+class _FakeDashboardNotifier extends DashboardNotifier {
+  _FakeDashboardNotifier()
+      : super(
+          StrategyService(db: AppDatabase.forTesting(NativeDatabase.memory())),
+          WatchlistService(
+            db: AppDatabase.forTesting(NativeDatabase.memory()),
+            seedDefaults: false,
+          ),
+          autoLoad: false,
+        );
 }
 
 class _FakeStrategyDetailNotifier extends StrategyDetailNotifier {

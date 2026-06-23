@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/providers.dart';
-import 'features/dashboard/presentation/dashboard_tab.dart';
 import 'features/onboarding/data/onboarding_service.dart';
 import 'features/onboarding/presentation/onboarding_page.dart';
 import 'features/recommendation/presentation/recommendation_tab.dart';
@@ -31,7 +30,7 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/dashboard',
+    initialLocation: '/recommend',
     debugLogDiagnostics: false,
     redirect: (context, state) async {
       final currentPath = state.matchedLocation;
@@ -54,14 +53,6 @@ class AppRouter {
           return _MainScaffold(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/dashboard',
-                builder: (context, state) => const DashboardTab(),
-              ),
-            ],
-          ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -203,11 +194,6 @@ class _MainScaffold extends StatelessWidget {
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined, size: 24),
-            activeIcon: Icon(Icons.dashboard, size: 24),
-            label: '看板',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.trending_up_outlined, size: 24),
             activeIcon: Icon(Icons.trending_up, size: 24),
             label: '推荐',
@@ -281,9 +267,12 @@ class _StockPilotAppState extends ConsumerState<StockPilotApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // User came back to the app — run a scan immediately. The scheduler
-      // coalesces re-entrant calls and de-duplicates per day.
+      // User came back to the app — run an alert scan immediately. The
+      // scheduler coalesces re-entrant calls and de-duplicates per day.
       _runAlertScan();
+      // Also run the daily review pass; ReviewScheduler de-duplicates by
+      // calendar day so this is cheap when already done today.
+      ref.read(reviewSchedulerProvider).runDailyReview();
     }
   }
 

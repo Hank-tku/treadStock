@@ -10,6 +10,7 @@ import '../features/strategy/domain/strategy_scoring_service.dart';
 import '../features/watchlist/data/watchlist_service.dart';
 import '../features/alert/data/notification_service.dart';
 import '../features/alert/data/alert_scheduler.dart';
+import '../features/alert/data/review_scheduler.dart';
 import '../features/settings/data/theme_prefs_service.dart';
 
 /// Provider for the stock API service (singleton).
@@ -68,6 +69,15 @@ final alertSchedulerProvider = Provider<AlertScheduler>((ref) {
     watchlistService: ref.watch(watchlistServiceProvider),
     apiService: ref.watch(stockApiServiceProvider),
     analysisEngine: ref.watch(analysisEngineProvider),
+    notificationService: ref.watch(notificationServiceProvider),
+  );
+});
+
+/// Provider for the daily review scheduler (singleton). Runs automatic
+/// strategy reviews once per day per enabled strategy.
+final reviewSchedulerProvider = Provider<ReviewScheduler>((ref) {
+  return ReviewScheduler(
+    strategyService: ref.watch(strategyServiceProvider),
     notificationService: ref.watch(notificationServiceProvider),
   );
 });

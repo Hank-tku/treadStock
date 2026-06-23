@@ -100,8 +100,20 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   final StrategyService _strategyService;
   final WatchlistService _watchlistService;
 
-  DashboardNotifier(this._strategyService, this._watchlistService)
-      : super(const DashboardState());
+  DashboardNotifier(
+    this._strategyService,
+    this._watchlistService, {
+    bool autoLoad = true,
+  }) : super(const DashboardState()) {
+    // Auto-load on creation so any screen that watches dashboardProvider
+    // (e.g. the merged overview header in RecommendationTab) gets data without
+    // having to manually call loadDashboard. Tests pass autoLoad: false.
+    if (autoLoad) _init();
+  }
+
+  Future<void> _init() async {
+    await loadDashboard();
+  }
 
   Future<void> loadDashboard() async {
     state = state.copyWith(isLoading: true, hasError: false);

@@ -254,14 +254,21 @@ abstract class WatchlistService {
 }
 ```
 
-### NewsService -- 新闻服务
+### 新闻获取 -- fetchStockNews
+
+新闻通过东方财富 search-api 获取（非独立 NewsService 类），实现于 `StockApiService.fetchStockNews`：
 
 ```dart
-abstract class NewsService {
-  Future<List<StockNews>> getNews(String stockCode, {bool forceRefresh = false});
-  Future<void> clearExpiredNews();
-}
+Future<List<StockNews>> fetchStockNews(String stockCode, {int page = 1, int pageSize = 10});
 ```
+
+- **Endpoint**: `https://search-api-web.eastmoney.com/search/jsonp`
+- **参数**: `cb=jQuery` + `param={...keyword:stockCode, type:["cmsArticleWebOld"]...}`
+- **响应**: JSONP 包裹，剥壳后顶层 `result.cmsArticleWebOld` 为文章数组
+- **字段映射**: `title` / `mediaName`(来源) / `url` / `date`(字符串 "yyyy-MM-dd HH:mm:ss")
+- **缓存**: 无独立 news_cache 表；每次进入详情页实时拉取，失败返回空列表
+
+> 注：早期文档描述的 `NewsService` 抽象与 `news_cache` SQLite 表**未实现**，已从此文档移除。
 
 ---
 
@@ -411,6 +418,7 @@ isBandLow = (boll_score >= 7) AND (ma_score >= 6 OR trend_score >= 7)
 | stock_info_cache | stock_code | 股票基础信息 | 永久 |
 | daily_quote_cache | stock_code + date | 日线行情 + 技术指标 | 关注股 250 天，其他 30 天 |
 | daily_recommendation_cache | date + stock_code | 每日推荐结果 | 最近 30 天 |
-| news_cache | id (URL hash) | 个股新闻 | 每只股票最近 50 条 |
 | user_scores | id (UUID) | 评分记录 | 永久 |
 | daily_summaries | stock_code + date | 每日跟踪摘要 | 最近 90 天 |
+
+> 注：`news_cache` 表未实现，新闻为实时拉取无缓存。

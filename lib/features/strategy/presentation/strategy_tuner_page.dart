@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/toast_helper.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/providers.dart';
+import '../../stock/domain/stock_models.dart';
 import '../domain/strategy_tuner.dart';
 import '../domain/strategy_models.dart';
 import '../domain/backtest_models.dart';
@@ -35,13 +37,90 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
   String? _errorMessage;
   String? _applyingLabel;
 
+  // Stock picker state — used when no stockCode was passed in (the strategy
+  // detail page has no "current stock" context, so tuning must pick one).
+  String? _selectedStockCode;
+  String? _selectedStockName;
+  final _searchCtrl = TextEditingController();
+  List<StockSearchResult> _searchResults = [];
+  bool _searching = false;
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
+    _selectedStockCode =
+        widget.stockCode.isEmpty ? null : widget.stockCode;
+    // Only auto-run when a stock is already chosen; otherwise show the picker.
+    if (_selectedStockCode != null) {
+      Future.microtask(_runTuner);
+    } else {
+      _isLoading = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _searching = false;
+      });
+      return;
+    }
+    setState(() => _searching = true);
+    _debounce = Timer(const Duration(milliseconds: 300), () => _doSearch(query));
+  }
+
+  Future<void> _doSearch(String query) async {
+    try {
+      final apiService = ref.read(stockApiServiceProvider);
+      final results = await apiService.searchStock(query);
+      if (!mounted) return;
+      setState(() {
+        _searchResults = results;
+        _searching = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _searchResults = [];
+        _searching = false;
+      });
+    }
+  }
+
+  void _selectStock(StockSearchResult r) {
+    setState(() {
+      _selectedStockCode = r.code;
+      _selectedStockName = r.name;
+      _searchCtrl.clear();
+      _searchResults = [];
+      _isLoading = true;
+    });
     Future.microtask(_runTuner);
   }
 
+  void _changeStock() {
+    setState(() {
+      _selectedStockCode = null;
+      _selectedStockName = null;
+      _results = null;
+      _errorMessage = null;
+    });
+  }
+
   Future<void> _runTuner() async {
+    final stockCode = _selectedStockCode;
+    if (stockCode == null || stockCode.isEmpty) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -62,12 +141,12 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
       }
 
       // Determine market from stock code
-      final market = _detectMarket(widget.stockCode);
+      final market = _detectMarket(stockCode);
 
       // Fetch kline data
       final apiService = ref.read(stockApiServiceProvider);
       final klines = await apiService.fetchStockKline(
-        widget.stockCode,
+        stockCode,
         market: market,
         days: 250,
       );
@@ -88,7 +167,7 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
         strategy: strategy,
         klines: klines,
         config: const BacktestConfig(),
-        stockCode: widget.stockCode,
+        stockCode: stockCode,
         analysisEngine: analysisEngine,
       );
 
@@ -169,7 +248,89 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
     );
   }
 
+  Widget _buildStockPicker() {
+    return Padding(
+      padding: const EdgeInsets.all(AppTheme.pagePadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: AppTheme.space4),
+          Text(
+            '选择调优标的',
+            style: AppTextStyles.h2.copyWith(color: context.sc.textPrimary),
+          ),
+          const SizedBox(height: AppTheme.space1),
+          Text(
+            '参数调优需要在具体股票的历史K线上回测，请先选择一只股票。',
+            style: AppTextStyles.caption.copyWith(color: context.sc.textTertiary),
+          ),
+          const SizedBox(height: AppTheme.space4),
+          TextField(
+            controller: _searchCtrl,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: '输入股票代码或名称',
+              prefixIcon: const Icon(Icons.search),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+            ),
+            onChanged: _onSearchChanged,
+          ),
+          const SizedBox(height: AppTheme.space3),
+          if (_searching)
+            const Padding(
+              padding: EdgeInsets.all(AppTheme.space4),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else if (_searchResults.isEmpty && _searchCtrl.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.space4),
+              child: Text(
+                '无匹配结果',
+                style: AppTextStyles.caption.copyWith(color: context.sc.textTertiary),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.separated(
+                itemCount: _searchResults.length,
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  color: context.sc.divider,
+                ),
+                itemBuilder: (context, index) {
+                  final r = _searchResults[index];
+                  return ListTile(
+                    title: Text(r.name, style: AppTextStyles.body),
+                    subtitle: Text(r.fullCode, style: AppTextStyles.caption),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => _selectStock(r),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
+    // Stock picker: shown when no stock was passed in (strategy detail page
+    // has no current-stock context). Tuning needs a concrete stock's K-line.
+    if (_selectedStockCode == null) {
+      return _buildStockPicker();
+    }
+
     if (_isLoading) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
@@ -220,14 +381,38 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
 
     return Column(
       children: [
-        // Summary header
+        // Summary header with current stock + change button
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(AppTheme.pagePadding),
           color: context.sc.bgSecondary,
-          child: Text(
-            '共测试 ${results.length} 种参数组合，按收益率降序排列',
-            style: AppTextStyles.caption.copyWith(color: context.sc.textSecondary),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _selectedStockName ?? _selectedStockCode ?? '',
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: context.sc.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '共测试 ${results.length} 种参数组合，按收益率降序排列',
+                      style: AppTextStyles.caption.copyWith(color: context.sc.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _changeStock,
+                icon: const Icon(Icons.swap_horiz, size: 18),
+                label: const Text('换股票'),
+              ),
+            ],
           ),
         ),
         // Results list

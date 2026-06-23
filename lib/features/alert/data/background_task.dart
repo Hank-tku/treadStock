@@ -4,10 +4,14 @@ import 'package:workmanager/workmanager.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/providers.dart';
 import 'alert_scheduler.dart';
+import 'review_scheduler.dart';
 import 'notification_service.dart';
 
 /// workmanager task name registered for periodic background alert scans.
 const String kAlertScanTaskName = 'stockpilot-alert-scan';
+
+/// workmanager task name registered for periodic background daily reviews.
+const String kDailyReviewTaskName = 'stockpilot-daily-review';
 
 /// Top-level callback dispatcher invoked by workmanager from a background
 /// isolate. Because this runs outside the main Riverpod scope, it builds its
@@ -21,6 +25,9 @@ void callbackDispatcher() {
       switch (taskName) {
         case kAlertScanTaskName:
           await _runBackgroundScan();
+          break;
+        case kDailyReviewTaskName:
+          await _runBackgroundReview();
           break;
         default:
           debugPrint('[Workmanager] unknown task: $taskName');
@@ -53,10 +60,27 @@ Future<void> _runBackgroundScan() async {
   }
 }
 
-/// Initialize workmanager and register the periodic alert-scan task.
+Future<void> _runBackgroundReview() async {
+  // Initialize notifications so the "reviews ready" summary can fire.
+  await NotificationService.instance.init();
+
+  final container = ProviderContainer();
+  try {
+    final scheduler = ReviewScheduler(
+      strategyService: container.read(strategyServiceProvider),
+      notificationService: NotificationService.instance,
+    );
+    await scheduler.runDailyReview();
+  } finally {
+    container.dispose();
+  }
+}
+
+/// Initialize workmanager and register the periodic background tasks
+/// (alert scan + daily review).
 ///
 /// Idempotent: safe to call on every app start; workmanager deduplicates the
-/// registered task by name. iOS background execution is best-effort (the OS
+/// registered tasks by name. iOS background execution is best-effort (the OS
 /// decides when to wake the app), so the foreground timer in app.dart remains
 /// the reliable path on iOS.
 Future<void> initBackgroundAlerts() async {
@@ -72,5 +96,14 @@ Future<void> initBackgroundAlerts() async {
     ),
     existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
     backoffPolicy: BackoffPolicy.exponential,
+  );
+  // Daily review: runs at the OS-discretion interval; ReviewScheduler itself
+  // de-duplicates by calendar day so even frequent wakeups only review once.
+  await Workmanager().registerPeriodicTask(
+    kDailyReviewTaskName,
+    kDailyReviewTaskName,
+    frequency: const Duration(hours: 6),
+    constraints: Constraints(networkType: NetworkType.connected),
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
 }
