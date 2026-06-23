@@ -60,6 +60,13 @@ class AppConstants {
   // Background task interval
   static const int backgroundTaskIntervalMinutes = 30;
 
+  // Hit-rate definition: a recommendation counts as a "hit" only if the
+  // actual 5-day change exceeds this threshold (percent). 0.5% roughly
+  // covers A-share round-trip costs (commission + stamp duty ~0.15%) plus a
+  // small positive margin, so trivially green stocks (e.g. +0.01%) no longer
+  // inflate the hit rate.
+  static const double hitRateThresholdPct = 0.5;
+
   // Score weights
   static const double weightMA = 0.30;
   static const double weightBoll = 0.30;

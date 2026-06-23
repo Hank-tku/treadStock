@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/constants/api_constants.dart';
 import '../domain/strategy_models.dart';
 import '../domain/signal_rule.dart';
 import '../domain/stock_filter.dart';
@@ -310,7 +311,10 @@ class StrategyService {
       final changePct =
           ((currentPrice - record.recommendPrice) / record.recommendPrice) *
           100;
-      final isHit = changePct > 0;
+      // A "hit" must clear a small positive threshold (covers trading costs +
+      // avoids trivially green stocks inflating the hit rate). See
+      // AppConstants.hitRateThresholdPct.
+      final isHit = changePct > AppConstants.hitRateThresholdPct;
 
       await (_db.update(
         _db.strategyHitRecords,
@@ -375,7 +379,7 @@ class StrategyService {
 
       final changePct =
           ((day5Close - record.recommendPrice) / record.recommendPrice) * 100;
-      final isHit = changePct > 0;
+      final isHit = changePct > AppConstants.hitRateThresholdPct;
 
       await (_db.update(
         _db.strategyHitRecords,

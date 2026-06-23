@@ -341,6 +341,49 @@ void main() {
     );
 
     test(
+      'backfillActualChanges applies hit-rate threshold (>0.5%), not >0',
+      () async {
+        // Regression: a trivially green stock (e.g. +0.3%) must NOT count as
+        // a hit, while +0.6% should. See AppConstants.hitRateThresholdPct.
+        final strategyId = await insertStrategy();
+        final oldDate = DateTime.now().subtract(const Duration(days: 8));
+        final recommendDate = oldDate.toIso8601String().substring(0, 10);
+
+        // Stock A: recommend 100 → current 100.3 (+0.3%) → miss
+        // Stock B: recommend 100 → current 100.6 (+0.6%) → hit
+        for (final entry in [
+          ('000001', 100.0, 100.3),
+          ('000002', 100.0, 100.6),
+        ]) {
+          final (code, recPrice, _) = entry;
+          await db.into(db.strategyHitRecords).insert(
+            StrategyHitRecordsCompanion.insert(
+              id: const Uuid().v4(),
+              strategyId: strategyId,
+              stockCode: code,
+              stockName: code,
+              recommendDate: recommendDate,
+              recommendScore: 7,
+              recommendPrice: recPrice,
+              createdAt: oldDate,
+            ),
+          );
+        }
+
+        await service.backfillActualChanges({
+          '000001': 100.3,
+          '000002': 100.6,
+        });
+
+        final records = await service.getHitRecords(strategyId);
+        final recA = records.firstWhere((r) => r.stockCode == '000001');
+        final recB = records.firstWhere((r) => r.stockCode == '000002');
+        expect(recA.isHit, isFalse, reason: '+0.3% 低于阈值应判 miss');
+        expect(recB.isHit, isTrue, reason: '+0.6% 超过阈值应判 hit');
+      },
+    );
+
+    test(
       'backfillActualChanges keeps pending records when price is unavailable',
       () async {
         final strategyId = await insertStrategy();
