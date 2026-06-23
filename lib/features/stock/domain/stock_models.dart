@@ -13,6 +13,12 @@ class StockQuote {
   final double preClose;
   final double volume; // in lots (手)
   final double turnover; // percentage
+  // Total market cap in 亿元 (hundred-million CNY). Null when the quote source
+  // does not provide it (e.g. Sina fallback). Used by StockFilter.marketCapRange.
+  final double? marketCap;
+  // Eastmoney industry classification string (e.g. '电子', '银行'). Null on
+  // fallback sources. Used by StockFilter.industries.
+  final String? industry;
 
   const StockQuote({
     required this.code,
@@ -27,6 +33,8 @@ class StockQuote {
     required this.preClose,
     required this.volume,
     required this.turnover,
+    this.marketCap,
+    this.industry,
   });
 
   String get fullCode => '$code.$market';
@@ -45,6 +53,11 @@ class StockQuote {
       lowPrice: _toDouble(json['f16']),
       preClose: _toDouble(json['f18']),
       turnover: _toDouble(json['f8']),
+      // f20 is total market cap in CNY (元); convert to 亿元 (÷1e8).
+      marketCap: (json['f20'] as num?)?.toDouble() == null
+          ? null
+          : (json['f20'] as num).toDouble() / 1e8,
+      industry: json['f100'] as String?,
     );
   }
 
@@ -103,6 +116,8 @@ class StockQuote {
     double? lowPrice,
     double? volume,
     double? turnover,
+    double? marketCap,
+    String? industry,
   }) {
     return StockQuote(
       code: code,
@@ -117,6 +132,8 @@ class StockQuote {
       preClose: preClose,
       volume: volume ?? this.volume,
       turnover: turnover ?? this.turnover,
+      marketCap: marketCap ?? this.marketCap,
+      industry: industry ?? this.industry,
     );
   }
 }

@@ -104,7 +104,7 @@ class StockApiService {
         'fid': 'f3',
         'fs':
             'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:1+t:23,b:MK0021,m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23',
-        'fields': 'f2,f3,f4,f5,f6,f7,f8,f12,f14,f15,f16,f17,f18',
+        'fields': 'f2,f3,f4,f5,f6,f7,f8,f12,f14,f15,f16,f17,f18,f20,f100',
       },
     );
 

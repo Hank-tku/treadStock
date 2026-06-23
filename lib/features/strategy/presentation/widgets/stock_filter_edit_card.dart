@@ -34,8 +34,27 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
   final _minTurnoverCtrl = TextEditingController();
   final _maxTurnoverCtrl = TextEditingController();
 
+  // Market cap range controllers (unit: 亿元)
+  final _minMarketCapCtrl = TextEditingController();
+  final _maxMarketCapCtrl = TextEditingController();
+
   // Board selection
   final _selectedBoards = <String>{};
+
+  // Industry selection (Eastmoney first-level industry names)
+  final _selectedIndustries = <String>{};
+
+  /// Eastmoney first-level industry options offered in the picker. These are
+  /// the common ones; the source (f100) may return names outside this list —
+  /// such stocks simply won't match an industry filter unless their exact
+  /// name is added here.
+  static const _industryOptions = <String>[
+    '银行', '证券', '保险', '房地产',
+    '电子', '半导体', '计算机', '通信',
+    '医药', '医疗器械', '食品饮料', '家电',
+    '汽车', '电力', '钢铁', '化工',
+    '机械', '建筑', '传媒', '商贸零售',
+  ];
 
   @override
   void initState() {
@@ -56,6 +75,11 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
       _minTurnoverCtrl.text = f.turnoverRange!.$1.toStringAsFixed(1);
       _maxTurnoverCtrl.text = f.turnoverRange!.$2.toStringAsFixed(1);
     }
+    if (f.marketCapRange != null) {
+      _minMarketCapCtrl.text = f.marketCapRange!.$1.toStringAsFixed(0);
+      _maxMarketCapCtrl.text = f.marketCapRange!.$2.toStringAsFixed(0);
+    }
+    if (f.industries != null) _selectedIndustries.addAll(f.industries!);
     if (f.boards != null) _selectedBoards.addAll(f.boards!);
   }
 
@@ -63,9 +87,11 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
     final hasPrice = _minPriceCtrl.text.isNotEmpty || _maxPriceCtrl.text.isNotEmpty;
     final hasChange = _minChangeCtrl.text.isNotEmpty || _maxChangeCtrl.text.isNotEmpty;
     final hasTurnover = _minTurnoverCtrl.text.isNotEmpty || _maxTurnoverCtrl.text.isNotEmpty;
+    final hasMarketCap = _minMarketCapCtrl.text.isNotEmpty || _maxMarketCapCtrl.text.isNotEmpty;
+    final hasIndustries = _selectedIndustries.isNotEmpty;
     final hasBoards = _selectedBoards.isNotEmpty;
 
-    if (!hasPrice && !hasChange && !hasTurnover && !hasBoards) {
+    if (!hasPrice && !hasChange && !hasTurnover && !hasMarketCap && !hasIndustries && !hasBoards) {
       widget.onChanged(null);
       return;
     }
@@ -81,6 +107,11 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
           ? (double.tryParse(_minTurnoverCtrl.text) ?? 0.0,
              double.tryParse(_maxTurnoverCtrl.text) ?? 100.0)
           : null,
+      marketCapRange: hasMarketCap
+          ? (double.tryParse(_minMarketCapCtrl.text) ?? 0.0,
+             double.tryParse(_maxMarketCapCtrl.text) ?? double.infinity)
+          : null,
+      industries: hasIndustries ? _selectedIndustries.toList() : null,
       boards: hasBoards ? _selectedBoards.toList() : null,
     );
     widget.onChanged(filter);
@@ -94,6 +125,8 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
     _maxChangeCtrl.dispose();
     _minTurnoverCtrl.dispose();
     _maxTurnoverCtrl.dispose();
+    _minMarketCapCtrl.dispose();
+    _maxMarketCapCtrl.dispose();
     super.dispose();
   }
 
@@ -139,7 +172,10 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
                         _maxChangeCtrl.clear();
                         _minTurnoverCtrl.clear();
                         _maxTurnoverCtrl.clear();
+                        _minMarketCapCtrl.clear();
+                        _maxMarketCapCtrl.clear();
                         _selectedBoards.clear();
+                        _selectedIndustries.clear();
                         _notifyChanged();
                       },
                       child: const Text('清除', style: TextStyle(fontSize: 12)),
@@ -166,6 +202,22 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
 
                   // Turnover range
                   _buildRangeRow('换手率范围（%）', _minTurnoverCtrl, _maxTurnoverCtrl, '最低', '最高'),
+                  const SizedBox(height: 12),
+
+                  // Market cap range (unit: 亿元)
+                  _buildRangeRow('市值范围（亿元）', _minMarketCapCtrl, _maxMarketCapCtrl, '最低', '最高'),
+                  const SizedBox(height: 16),
+
+                  // Industry selection
+                  Text('行业', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: _industryOptions
+                        .map((ind) => _buildIndustryChip(ind))
+                        .toList(),
+                  ),
                   const SizedBox(height: 16),
 
                   // Board selection
@@ -250,6 +302,24 @@ class _StockFilterEditCardState extends State<StockFilterEditCard> {
             _selectedBoards.add(value);
           } else {
             _selectedBoards.remove(value);
+          }
+        });
+        _notifyChanged();
+      },
+    );
+  }
+
+  Widget _buildIndustryChip(String industry) {
+    final selected = _selectedIndustries.contains(industry);
+    return FilterChip(
+      label: Text(industry),
+      selected: selected,
+      onSelected: (on) {
+        setState(() {
+          if (on) {
+            _selectedIndustries.add(industry);
+          } else {
+            _selectedIndustries.remove(industry);
           }
         });
         _notifyChanged();

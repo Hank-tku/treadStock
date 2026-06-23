@@ -109,6 +109,35 @@ void main() {
       expect(quote.fullCode, '601318.SH');
     });
 
+    test('f20 总市值换算为亿元 (÷1e8)', () {
+      // f20 返回元，例如 1.62e11 元 = 1620 亿元
+      final json = {
+        'f12': '601318',
+        'f14': '中国平安',
+        'f20': 162000000000.0,
+      };
+      final quote = StockQuote.fromJson(json);
+      expect(quote.marketCap, closeTo(1620.0, 0.01));
+    });
+
+    test('f100 行业字段正确解析', () {
+      final json = {
+        'f12': '002472',
+        'f14': '双环传动',
+        'f100': '汽车',
+      };
+      final quote = StockQuote.fromJson(json);
+      expect(quote.industry, '汽车');
+    });
+
+    test('缺少 f20/f100 时 marketCap/industry 为 null', () {
+      // Sina 回退路径无这两个字段，必须容忍 null。
+      final json = {'f12': '601318', 'f14': '中国平安'};
+      final quote = StockQuote.fromJson(json);
+      expect(quote.marketCap, isNull);
+      expect(quote.industry, isNull);
+    });
+
     test('copyWith 正确更新指定字段', () {
       const quote = StockQuote(
         code: '601318',

@@ -3,7 +3,9 @@
 /// Each strategy can define its own filter criteria so that different strategies
 /// scan different segments of the market (e.g., large-cap only, tech sector only).
 class StockFilter {
-  /// Market cap range in CNY billions (e.g., [10, 500] = 100亿~5000亿)
+  /// Market cap range in 亿元 (hundred-million CNY).
+  /// e.g. [100, 5000] = 100亿~5000亿. Null means no market-cap filter.
+  /// Source: StockQuote.marketCap (Eastmoney f20 ÷ 1e8).
   final (double, double)? marketCapRange;
 
   /// Industry/board filter (e.g., ['电子', '计算机'])

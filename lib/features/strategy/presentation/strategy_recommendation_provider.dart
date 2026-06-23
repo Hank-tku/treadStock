@@ -291,6 +291,26 @@ class StrategyRecommendationNotifier
       result = result.where((q) => q.turnover >= lo && q.turnover <= hi).toList();
     }
 
+    // Market cap range (in 亿元). When the quote has no market cap data (e.g.
+    // Sina fallback source), the stock is passed through rather than filtered
+    // out — otherwise a fallback path would empty an enabled market-cap filter.
+    if (filter.marketCapRange != null) {
+      final (lo, hi) = filter.marketCapRange!;
+      result = result.where((q) {
+        if (q.marketCap == null) return true;
+        return q.marketCap! >= lo && q.marketCap! <= hi;
+      }).toList();
+    }
+
+    // Industry filter. Same null-passthrough rule as market cap.
+    if (filter.industries != null && filter.industries!.isNotEmpty) {
+      final wanted = filter.industries!.toSet();
+      result = result.where((q) {
+        if (q.industry == null) return true;
+        return wanted.contains(q.industry);
+      }).toList();
+    }
+
     // Board filter based on stock code prefix
     if (filter.boards != null && filter.boards!.isNotEmpty) {
       result = result.where((q) {
