@@ -92,6 +92,28 @@ class $WatchlistItemsTable extends WatchlistItems
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _alertPriceThresholdMeta =
+      const VerificationMeta('alertPriceThreshold');
+  @override
+  late final GeneratedColumn<double> alertPriceThreshold =
+      GeneratedColumn<double>(
+        'alert_price_threshold',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _alertTriggeredDateMeta =
+      const VerificationMeta('alertTriggeredDate');
+  @override
+  late final GeneratedColumn<String> alertTriggeredDate =
+      GeneratedColumn<String>(
+        'alert_triggered_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -123,6 +145,8 @@ class $WatchlistItemsTable extends WatchlistItems
     isPinned,
     sortOrder,
     alertEnabled,
+    alertPriceThreshold,
+    alertTriggeredDate,
     createdAt,
     updatedAt,
   ];
@@ -186,6 +210,24 @@ class $WatchlistItemsTable extends WatchlistItems
         ),
       );
     }
+    if (data.containsKey('alert_price_threshold')) {
+      context.handle(
+        _alertPriceThresholdMeta,
+        alertPriceThreshold.isAcceptableOrUnknown(
+          data['alert_price_threshold']!,
+          _alertPriceThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('alert_triggered_date')) {
+      context.handle(
+        _alertTriggeredDateMeta,
+        alertTriggeredDate.isAcceptableOrUnknown(
+          data['alert_triggered_date']!,
+          _alertTriggeredDateMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -239,6 +281,14 @@ class $WatchlistItemsTable extends WatchlistItems
         DriftSqlType.bool,
         data['${effectivePrefix}alert_enabled'],
       )!,
+      alertPriceThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}alert_price_threshold'],
+      ),
+      alertTriggeredDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alert_triggered_date'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -264,6 +314,8 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
   final bool isPinned;
   final int sortOrder;
   final bool alertEnabled;
+  final double? alertPriceThreshold;
+  final String? alertTriggeredDate;
   final DateTime createdAt;
   final DateTime updatedAt;
   const WatchlistRow({
@@ -274,6 +326,8 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
     required this.isPinned,
     required this.sortOrder,
     required this.alertEnabled,
+    this.alertPriceThreshold,
+    this.alertTriggeredDate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -287,6 +341,12 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
     map['is_pinned'] = Variable<bool>(isPinned);
     map['sort_order'] = Variable<int>(sortOrder);
     map['alert_enabled'] = Variable<bool>(alertEnabled);
+    if (!nullToAbsent || alertPriceThreshold != null) {
+      map['alert_price_threshold'] = Variable<double>(alertPriceThreshold);
+    }
+    if (!nullToAbsent || alertTriggeredDate != null) {
+      map['alert_triggered_date'] = Variable<String>(alertTriggeredDate);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -301,6 +361,12 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
       isPinned: Value(isPinned),
       sortOrder: Value(sortOrder),
       alertEnabled: Value(alertEnabled),
+      alertPriceThreshold: alertPriceThreshold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alertPriceThreshold),
+      alertTriggeredDate: alertTriggeredDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alertTriggeredDate),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -319,6 +385,12 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
       isPinned: serializer.fromJson<bool>(json['isPinned']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       alertEnabled: serializer.fromJson<bool>(json['alertEnabled']),
+      alertPriceThreshold: serializer.fromJson<double?>(
+        json['alertPriceThreshold'],
+      ),
+      alertTriggeredDate: serializer.fromJson<String?>(
+        json['alertTriggeredDate'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -334,6 +406,8 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
       'isPinned': serializer.toJson<bool>(isPinned),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'alertEnabled': serializer.toJson<bool>(alertEnabled),
+      'alertPriceThreshold': serializer.toJson<double?>(alertPriceThreshold),
+      'alertTriggeredDate': serializer.toJson<String?>(alertTriggeredDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -347,6 +421,8 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
     bool? isPinned,
     int? sortOrder,
     bool? alertEnabled,
+    Value<double?> alertPriceThreshold = const Value.absent(),
+    Value<String?> alertTriggeredDate = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => WatchlistRow(
@@ -357,6 +433,12 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
     isPinned: isPinned ?? this.isPinned,
     sortOrder: sortOrder ?? this.sortOrder,
     alertEnabled: alertEnabled ?? this.alertEnabled,
+    alertPriceThreshold: alertPriceThreshold.present
+        ? alertPriceThreshold.value
+        : this.alertPriceThreshold,
+    alertTriggeredDate: alertTriggeredDate.present
+        ? alertTriggeredDate.value
+        : this.alertTriggeredDate,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -371,6 +453,12 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
       alertEnabled: data.alertEnabled.present
           ? data.alertEnabled.value
           : this.alertEnabled,
+      alertPriceThreshold: data.alertPriceThreshold.present
+          ? data.alertPriceThreshold.value
+          : this.alertPriceThreshold,
+      alertTriggeredDate: data.alertTriggeredDate.present
+          ? data.alertTriggeredDate.value
+          : this.alertTriggeredDate,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -386,6 +474,8 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
           ..write('isPinned: $isPinned, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('alertEnabled: $alertEnabled, ')
+          ..write('alertPriceThreshold: $alertPriceThreshold, ')
+          ..write('alertTriggeredDate: $alertTriggeredDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -401,6 +491,8 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
     isPinned,
     sortOrder,
     alertEnabled,
+    alertPriceThreshold,
+    alertTriggeredDate,
     createdAt,
     updatedAt,
   );
@@ -415,6 +507,8 @@ class WatchlistRow extends DataClass implements Insertable<WatchlistRow> {
           other.isPinned == this.isPinned &&
           other.sortOrder == this.sortOrder &&
           other.alertEnabled == this.alertEnabled &&
+          other.alertPriceThreshold == this.alertPriceThreshold &&
+          other.alertTriggeredDate == this.alertTriggeredDate &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -427,6 +521,8 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
   final Value<bool> isPinned;
   final Value<int> sortOrder;
   final Value<bool> alertEnabled;
+  final Value<double?> alertPriceThreshold;
+  final Value<String?> alertTriggeredDate;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -438,6 +534,8 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
     this.isPinned = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.alertEnabled = const Value.absent(),
+    this.alertPriceThreshold = const Value.absent(),
+    this.alertTriggeredDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -450,6 +548,8 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
     this.isPinned = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.alertEnabled = const Value.absent(),
+    this.alertPriceThreshold = const Value.absent(),
+    this.alertTriggeredDate = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -466,6 +566,8 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
     Expression<bool>? isPinned,
     Expression<int>? sortOrder,
     Expression<bool>? alertEnabled,
+    Expression<double>? alertPriceThreshold,
+    Expression<String>? alertTriggeredDate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -478,6 +580,10 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
       if (isPinned != null) 'is_pinned': isPinned,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (alertEnabled != null) 'alert_enabled': alertEnabled,
+      if (alertPriceThreshold != null)
+        'alert_price_threshold': alertPriceThreshold,
+      if (alertTriggeredDate != null)
+        'alert_triggered_date': alertTriggeredDate,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -492,6 +598,8 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
     Value<bool>? isPinned,
     Value<int>? sortOrder,
     Value<bool>? alertEnabled,
+    Value<double?>? alertPriceThreshold,
+    Value<String?>? alertTriggeredDate,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -504,6 +612,8 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
       isPinned: isPinned ?? this.isPinned,
       sortOrder: sortOrder ?? this.sortOrder,
       alertEnabled: alertEnabled ?? this.alertEnabled,
+      alertPriceThreshold: alertPriceThreshold ?? this.alertPriceThreshold,
+      alertTriggeredDate: alertTriggeredDate ?? this.alertTriggeredDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -534,6 +644,14 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
     if (alertEnabled.present) {
       map['alert_enabled'] = Variable<bool>(alertEnabled.value);
     }
+    if (alertPriceThreshold.present) {
+      map['alert_price_threshold'] = Variable<double>(
+        alertPriceThreshold.value,
+      );
+    }
+    if (alertTriggeredDate.present) {
+      map['alert_triggered_date'] = Variable<String>(alertTriggeredDate.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -556,6 +674,8 @@ class WatchlistItemsCompanion extends UpdateCompanion<WatchlistRow> {
           ..write('isPinned: $isPinned, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('alertEnabled: $alertEnabled, ')
+          ..write('alertPriceThreshold: $alertPriceThreshold, ')
+          ..write('alertTriggeredDate: $alertTriggeredDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -3217,6 +3337,8 @@ typedef $$WatchlistItemsTableCreateCompanionBuilder =
       Value<bool> isPinned,
       Value<int> sortOrder,
       Value<bool> alertEnabled,
+      Value<double?> alertPriceThreshold,
+      Value<String?> alertTriggeredDate,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -3230,6 +3352,8 @@ typedef $$WatchlistItemsTableUpdateCompanionBuilder =
       Value<bool> isPinned,
       Value<int> sortOrder,
       Value<bool> alertEnabled,
+      Value<double?> alertPriceThreshold,
+      Value<String?> alertTriggeredDate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -3276,6 +3400,16 @@ class $$WatchlistItemsTableFilterComposer
 
   ColumnFilters<bool> get alertEnabled => $composableBuilder(
     column: $table.alertEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get alertPriceThreshold => $composableBuilder(
+    column: $table.alertPriceThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alertTriggeredDate => $composableBuilder(
+    column: $table.alertTriggeredDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3334,6 +3468,16 @@ class $$WatchlistItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get alertPriceThreshold => $composableBuilder(
+    column: $table.alertPriceThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get alertTriggeredDate => $composableBuilder(
+    column: $table.alertTriggeredDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3374,6 +3518,16 @@ class $$WatchlistItemsTableAnnotationComposer
 
   GeneratedColumn<bool> get alertEnabled => $composableBuilder(
     column: $table.alertEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get alertPriceThreshold => $composableBuilder(
+    column: $table.alertPriceThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get alertTriggeredDate => $composableBuilder(
+    column: $table.alertTriggeredDate,
     builder: (column) => column,
   );
 
@@ -3424,6 +3578,8 @@ class $$WatchlistItemsTableTableManager
                 Value<bool> isPinned = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> alertEnabled = const Value.absent(),
+                Value<double?> alertPriceThreshold = const Value.absent(),
+                Value<String?> alertTriggeredDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3435,6 +3591,8 @@ class $$WatchlistItemsTableTableManager
                 isPinned: isPinned,
                 sortOrder: sortOrder,
                 alertEnabled: alertEnabled,
+                alertPriceThreshold: alertPriceThreshold,
+                alertTriggeredDate: alertTriggeredDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -3448,6 +3606,8 @@ class $$WatchlistItemsTableTableManager
                 Value<bool> isPinned = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> alertEnabled = const Value.absent(),
+                Value<double?> alertPriceThreshold = const Value.absent(),
+                Value<String?> alertTriggeredDate = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -3459,6 +3619,8 @@ class $$WatchlistItemsTableTableManager
                 isPinned: isPinned,
                 sortOrder: sortOrder,
                 alertEnabled: alertEnabled,
+                alertPriceThreshold: alertPriceThreshold,
+                alertTriggeredDate: alertTriggeredDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

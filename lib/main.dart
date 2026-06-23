@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/constants/api_constants.dart';
+import 'features/alert/data/background_task.dart';
+import 'features/alert/data/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +14,17 @@ void main() async {
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+
+  // Initialize local notifications + request permission for downside/price
+  // alerts. Permission prompts the user on iOS / Android 13+; older Android
+  // grants at install. Failure is non-fatal — alerts simply stay silent.
+  await NotificationService.instance.init();
+  await NotificationService.instance.requestPermissions();
+
+  // Register the periodic background alert scan. On iOS this is best-effort
+  // (the OS may not wake the app reliably); the foreground timer in app.dart
+  // remains the reliable path there.
+  await initBackgroundAlerts();
 
   // Check first-launch risk disclaimer.
   final prefs = await SharedPreferences.getInstance();

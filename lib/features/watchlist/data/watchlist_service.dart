@@ -172,6 +172,84 @@ class WatchlistService {
     _cache[index] = _cache[index].copyWith(alertEnabled: enabled);
   }
 
+  /// Set or clear the user-configured price alert threshold for a stock.
+  /// Pass `null` to clear the threshold (disables price-based alerts while
+  /// keeping the technical downside-alert check active).
+  Future<void> setAlertThreshold(String stockCode, double? threshold) async {
+    final index = _cache.indexWhere((item) => item.stockCode == stockCode);
+    if (index < 0) return;
+
+    final now = DateTime.now();
+    await (_db.update(_db.watchlistItems)
+          ..where((t) => t.stockCode.equals(stockCode)))
+        .write(
+      WatchlistItemsCompanion(
+        alertPriceThreshold: Value(threshold),
+        updatedAt: Value(now),
+      ),
+    );
+
+    // copyWith cannot represent "set to null", so rebuild explicitly.
+    final item = _cache[index];
+    _cache[index] = WatchlistItem(
+      id: item.id,
+      stockCode: item.stockCode,
+      stockName: item.stockName,
+      market: item.market,
+      isPinned: item.isPinned,
+      sortOrder: item.sortOrder,
+      alertEnabled: item.alertEnabled,
+      alertPriceThreshold: threshold,
+      alertTriggeredDate: item.alertTriggeredDate,
+      createdAt: item.createdAt,
+      updatedAt: now,
+      currentPrice: item.currentPrice,
+      currentChangePct: item.currentChangePct,
+      currentScore: item.currentScore,
+      isAlertTriggered: item.isAlertTriggered,
+      supportPrice: item.supportPrice,
+      resistancePrice: item.resistancePrice,
+    );
+  }
+
+  /// Mark that an alert fired for this stock on the given ISO date, for
+  /// once-per-day de-duplication. Updates both DB and cache.
+  Future<void> markAlertTriggered(String stockCode, String isoDate) async {
+    final index = _cache.indexWhere((item) => item.stockCode == stockCode);
+    if (index < 0) return;
+
+    final now = DateTime.now();
+    await (_db.update(_db.watchlistItems)
+          ..where((t) => t.stockCode.equals(stockCode)))
+        .write(
+      WatchlistItemsCompanion(
+        alertTriggeredDate: Value(isoDate),
+        updatedAt: Value(now),
+      ),
+    );
+
+    final item = _cache[index];
+    _cache[index] = WatchlistItem(
+      id: item.id,
+      stockCode: item.stockCode,
+      stockName: item.stockName,
+      market: item.market,
+      isPinned: item.isPinned,
+      sortOrder: item.sortOrder,
+      alertEnabled: item.alertEnabled,
+      alertPriceThreshold: item.alertPriceThreshold,
+      alertTriggeredDate: isoDate,
+      createdAt: item.createdAt,
+      updatedAt: now,
+      currentPrice: item.currentPrice,
+      currentChangePct: item.currentChangePct,
+      currentScore: item.currentScore,
+      isAlertTriggered: true,
+      supportPrice: item.supportPrice,
+      resistancePrice: item.resistancePrice,
+    );
+  }
+
   bool isWatched(String stockCode) {
     return _cache.any((item) => item.stockCode == stockCode);
   }
@@ -202,6 +280,17 @@ class WatchlistService {
     _cache[index] = _cache[index].copyWith(currentScore: score);
   }
 
+  /// Update the in-memory alert-triggered flag for a watchlist item.
+  ///
+  /// This drives the bell icon in the watchlist list. It is memory-only —
+  /// persistent de-dup state lives in `alertTriggeredDate` (written via
+  /// [markAlertTriggered]). Pass `false` to clear a stale bell.
+  void setAlertTriggered(String stockCode, bool triggered) {
+    final index = _cache.indexWhere((item) => item.stockCode == stockCode);
+    if (index < 0) return;
+    _cache[index] = _cache[index].copyWith(isAlertTriggered: triggered);
+  }
+
   /// Convert a Drift DB row to domain WatchlistItem.
   WatchlistItem _rowToDomain(WatchlistRow row) {
     return WatchlistItem(
@@ -212,6 +301,8 @@ class WatchlistService {
       isPinned: row.isPinned,
       sortOrder: row.sortOrder,
       alertEnabled: row.alertEnabled,
+      alertPriceThreshold: row.alertPriceThreshold,
+      alertTriggeredDate: row.alertTriggeredDate,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );

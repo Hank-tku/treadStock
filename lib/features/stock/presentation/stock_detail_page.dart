@@ -9,6 +9,7 @@ import '../../../shared/widgets/score_badge.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/disclaimer_label.dart';
+import 'kline_chart/stock_kline_chart.dart';
 import '../../../shared/widgets/toast_helper.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../stock/domain/stock_models.dart';
@@ -57,6 +58,10 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   bool _newsError = false;
   bool _alertEnabled = false;
   bool _isWatched = false;
+  final TextEditingController _alertThresholdController =
+      TextEditingController();
+  int _klineDays = 120;
+  bool _klineLoading = false;
   double? _ma20;
   double? _ma60;
   StrategyScoreResult? _strategyScore;
@@ -82,6 +87,36 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       _isWatched = item != null;
       _alertEnabled = item?.alertEnabled ?? false;
     });
+    _syncThresholdController(item?.alertPriceThreshold);
+  }
+
+  void _syncThresholdController(double? threshold) {
+    _alertThresholdController.text =
+        threshold == null ? '' : threshold.toStringAsFixed(2);
+  }
+
+  /// Save the price-threshold field. Empty / invalid input clears the
+  /// threshold (disables price-based alerts, keeps the technical check).
+  Future<void> _saveAlertThreshold() async {
+    final raw = _alertThresholdController.text.trim();
+    double? parsed;
+    if (raw.isNotEmpty) {
+      parsed = double.tryParse(raw);
+      if (parsed == null || parsed <= 0) {
+        if (!mounted) return;
+        ToastHelper.showError(context, '请输入有效的正数价格');
+        return;
+      }
+    }
+    final watchlistService = ref.read(watchlistServiceProvider);
+    await watchlistService.init();
+    await watchlistService.setAlertThreshold(widget.code, parsed);
+    if (!mounted) return;
+    ref.read(watchlistProvider.notifier).reload();
+    ToastHelper.showSuccess(
+      context,
+      parsed == null ? '已清除价格提醒' : '已设置价格提醒 ¥${parsed.toStringAsFixed(2)}',
+    );
   }
 
   /// Toggle this stock in / out of the watchlist.
@@ -234,12 +269,132 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
     }
   }
 
+  /// Re-fetch K-line data for a different period (60/120/250 days) without
+  /// recomputing scores. Used by the chart's period switcher. Failures are
+  /// surfaced as a toast but never block the page — the previous period's
+  /// data stays visible.
+  Future<void> _fetchKlines(int days) async {
+    if (_klineLoading) return;
+    final apiService = ref.read(stockApiServiceProvider);
+    setState(() => _klineLoading = true);
+    try {
+      final klines = await apiService.fetchStockKline(
+        widget.code,
+        market: widget.market,
+        days: days,
+      );
+      if (!mounted) return;
+      setState(() {
+        _klines = klines;
+        _klineDays = days;
+      });
+    } catch (e, st) {
+      debugPrint('[StockDetail] _fetchKlines($days) failed: $e\n$st');
+      if (!mounted) return;
+      ToastHelper.showError(context, 'K线数据加载失败，请稍后重试');
+    } finally {
+      if (mounted) setState(() => _klineLoading = false);
+    }
+  }
+
+  Widget _buildKlineSection() {
+    const periods = [
+      (60, '60天'),
+      (120, '120天'),
+      (250, '250天'),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.pagePadding,
+        vertical: 4,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Period switcher row.
+          Row(
+            children: periods.map((p) {
+              final selected = _klineDays == p.$1;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: _klineLoading
+                      ? null
+                      : () => _fetchKlines(p.$1),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? StockColors.brand
+                          : StockColors.bgSecondary,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                      border: Border.all(
+                        color: selected
+                            ? StockColors.brand
+                            : StockColors.border,
+                      ),
+                    ),
+                    child: Text(
+                      p.$2,
+                      style: AppTextStyles.caption.copyWith(
+                        color: selected
+                            ? Colors.white
+                            : StockColors.textSecondary,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          // Chart area: fixed height (k_chart needs bounded height inside a
+          // ListView). Stack a loading overlay over the previous chart while a
+          // period switch is in flight so the UI does not collapse.
+          Stack(
+            children: [
+              if (_klines != null && _klines!.isNotEmpty)
+                StockKlineChart(klines: _klines!)
+              else
+                const SizedBox(height: StockKlineChart.defaultHeight),
+              if (_klineLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: StockColors.bgPrimary.withValues(alpha: 0.6),
+                    alignment: Alignment.center,
+                    child: const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: StockColors.brand,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _launchUrl(String url) async {
     if (url.isEmpty) return;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  @override
+  void dispose() {
+    _alertThresholdController.dispose();
+    super.dispose();
   }
 
   @override
@@ -265,6 +420,11 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
               _isLoading
                   ? const DetailSectionSkeleton(height: 120)
                   : _buildPriceSection(),
+
+              // K-line chart section (candles + MA + BOLL + volume).
+              _isLoading
+                  ? const DetailSectionSkeleton(height: StockKlineChart.defaultHeight)
+                  : _buildKlineSection(),
 
               // Score + indicators section
               _isLoading
@@ -401,8 +561,64 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 ],
               ),
             ),
+            // Price-threshold alert config — only when watched & alert on.
+            // Lets the user set a "notify when price drops at or below X".
+            if (_isWatched && _alertEnabled) _buildAlertThresholdRow(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAlertThresholdRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.pagePadding,
+        8,
+        AppTheme.pagePadding,
+        4,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _alertThresholdController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                hintText: '价格提醒（选填）',
+                prefixText: '¥ ',
+                prefixStyle: AppTextStyles.body.copyWith(
+                  color: StockColors.textSecondary,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  borderSide: const BorderSide(color: StockColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  borderSide: const BorderSide(color: StockColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  borderSide: const BorderSide(color: StockColors.brand),
+                ),
+              ),
+              style: AppTextStyles.body,
+              onSubmitted: (_) => _saveAlertThreshold(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: _saveAlertThreshold,
+            child: const Text('保存'),
+          ),
+        ],
       ),
     );
   }

@@ -420,6 +420,73 @@ class AnalysisEngine {
     return false;
   }
 
+  /// Evaluate downside alert and return a structured result with the trigger
+  /// reason and reference support/resistance levels.
+  ///
+  /// This is the rich counterpart to [checkDownsideAlert]; the bool method is
+  /// kept for backward compatibility (it is consumed by generatePrediction).
+  /// The scheduling layer and UI use this method so notifications and the
+  /// bell icon can show *why* the alert fired.
+  DownsideAlertResult evaluateDownsideAlert(List<DailyKline> klines) {
+    if (klines.length < 21) return DownsideAlertResult.empty;
+
+    final closes = klines.map((k) => k.close).toList();
+    final ma20 = calculateMA(closes, AppConstants.maShortPeriod);
+    final ma60 = calculateMA(closes, AppConstants.maLongPeriod);
+    final boll = calculateBollinger(closes);
+    final volRatio = _calculateVolRatio(klines);
+    final lastDay = klines.last;
+    final changePct = lastDay.changePct;
+
+    final support = boll.currentLower ?? (ma20.isNotEmpty ? ma20.last : null);
+    final resistance = boll.currentUpper ?? (ma60.isNotEmpty ? ma60.last : null);
+
+    // Condition 1: Price below MA20 and daily drop > 2%
+    if (ma20.isNotEmpty && lastDay.close < ma20.last && changePct < -2) {
+      return DownsideAlertResult(
+        triggered: true,
+        reason: '跌破MA20且日跌超2%',
+        supportPrice: support,
+        resistancePrice: resistance,
+      );
+    }
+
+    // Condition 2: Price below Bollinger lower band
+    if (boll.currentLower != null && lastDay.close < boll.currentLower!) {
+      return DownsideAlertResult(
+        triggered: true,
+        reason: '跌破布林下轨',
+        supportPrice: support,
+        resistancePrice: resistance,
+      );
+    }
+
+    // Condition 3: 3 consecutive down days with volume increase on 3rd day
+    if (klines.length >= 3 && volRatio > 1.3) {
+      bool threeDown = true;
+      for (var i = klines.length - 3; i < klines.length; i++) {
+        if (klines[i].close >= klines[i].open) {
+          threeDown = false;
+          break;
+        }
+      }
+      if (threeDown) {
+        return DownsideAlertResult(
+          triggered: true,
+          reason: '连续3日放量下跌',
+          supportPrice: support,
+          resistancePrice: resistance,
+        );
+      }
+    }
+
+    return DownsideAlertResult(
+      triggered: false,
+      supportPrice: support,
+      resistancePrice: resistance,
+    );
+  }
+
   /// Generate daily tracking summary.
   DailySummary generateSummary(List<DailyKline> klines, String stockCode) {
     if (klines.isEmpty) {

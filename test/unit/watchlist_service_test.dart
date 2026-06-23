@@ -303,4 +303,64 @@ void main() {
       expect(list.first.isPinned, isTrue);
     });
   });
+
+  // =========================================================================
+  // Alert price threshold + per-day de-dup (F006 wiring)
+  // =========================================================================
+  group('alert threshold & de-dup', () {
+    test('setAlertThreshold persists and reflects in getWatchlist', () async {
+      await service.addToWatchlist('601318', '中国平安', 'SH');
+      await service.setAlertThreshold('601318', 12.5);
+
+      final item = service.findByCode('601318');
+      expect(item, isNotNull);
+      expect(item!.alertPriceThreshold, 12.5);
+    });
+
+    test('setAlertThreshold(null) clears the threshold', () async {
+      await service.addToWatchlist('601318', '中国平安', 'SH');
+      await service.setAlertThreshold('601318', 12.5);
+      await service.setAlertThreshold('601318', null);
+
+      final item = service.findByCode('601318');
+      expect(item, isNotNull);
+      expect(item!.alertPriceThreshold, isNull);
+    });
+
+    test('markAlertTriggered persists date and sets in-memory bell', () async {
+      await service.addToWatchlist('601318', '中国平安', 'SH');
+      await service.markAlertTriggered('601318', '2026-06-22');
+
+      // Reload from DB to confirm persistence.
+      final item = service.findByCode('601318');
+      expect(item, isNotNull);
+      expect(item!.alertTriggeredDate, '2026-06-22');
+      expect(item.isAlertTriggered, true);
+    });
+
+    test('toggleAlert flips alertEnabled and persists', () async {
+      await service.addToWatchlist('601318', '中国平安', 'SH');
+      final id = service.findByCode('601318')!.id;
+
+      await service.toggleAlert(id, false);
+      expect(service.findByCode('601318')!.alertEnabled, false);
+
+      await service.toggleAlert(id, true);
+      expect(service.findByCode('601318')!.alertEnabled, true);
+    });
+
+    test('threshold survives reload via init', () async {
+      await service.addToWatchlist('601318', '中国平安', 'SH');
+      await service.setAlertThreshold('601318', 9.8);
+      await service.markAlertTriggered('601318', '2026-06-22');
+
+      // Simulate app restart: new service instance on the same DB.
+      final reopened = WatchlistService(db: db, seedDefaults: false);
+      await reopened.init();
+      final item = reopened.findByCode('601318');
+      expect(item, isNotNull);
+      expect(item!.alertPriceThreshold, 9.8);
+      expect(item.alertTriggeredDate, '2026-06-22');
+    });
+  });
 }

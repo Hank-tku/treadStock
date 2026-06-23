@@ -218,6 +218,22 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
             bestStrategy?.score ?? _analysisEngine.calculateScore(klines);
         _watchlistService.updateQuote(code, quote.price, quote.changePct);
         _watchlistService.updateScore(code, score);
+        // Evaluate downside alert so the bell icon reflects the current
+        // technical state. The scheduler's runScan is the authority for
+        // actually firing notifications + persistence; this call keeps the
+        // bell accurate on plain refreshes too.
+        final item = _watchlistService.findByCode(code);
+        if (item != null && item.alertEnabled) {
+          final alertResult = _analysisEngine.evaluateDownsideAlert(klines);
+          final priceHit = item.alertPriceThreshold != null &&
+              quote.price <= item.alertPriceThreshold!;
+          _watchlistService.setAlertTriggered(
+            code,
+            alertResult.triggered || priceHit,
+          );
+        } else {
+          _watchlistService.setAlertTriggered(code, false);
+        }
         final updated = Map<String, StrategyScoreResult>.from(
           state.bestStrategies,
         );

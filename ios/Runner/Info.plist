@@ -61,5 +61,17 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<!-- Background modes: let iOS opportunistically wake the app to run the
+	     alert scan. iOS does not guarantee wakeups, so foreground scanning
+	     remains the reliable path. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.stockpilot.stockpilot.alertscan</string>
+	</array>
 </dict>
 </plist>

@@ -7,6 +7,8 @@ import '../features/strategy/data/database.dart';
 import '../features/strategy/data/strategy_service.dart';
 import '../features/strategy/domain/strategy_scoring_service.dart';
 import '../features/watchlist/data/watchlist_service.dart';
+import '../features/alert/data/notification_service.dart';
+import '../features/alert/data/alert_scheduler.dart';
 
 /// Provider for the stock API service (singleton).
 final stockApiServiceProvider = Provider<StockApiService>((ref) {
@@ -47,6 +49,25 @@ final strategyServiceProvider = Provider<StrategyService>((ref) {
 final strategyScoringServiceProvider = Provider<StrategyScoringService>((ref) {
   final analysisEngine = ref.watch(analysisEngineProvider);
   return StrategyScoringService(analysisEngine);
+});
+
+/// Provider for the local notifications service (singleton).
+/// The service is initialized lazily; callers should `await init()` once at
+/// startup (see main.dart) but it also self-initializes on first use.
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService.instance;
+});
+
+/// Provider for the alert scheduler (singleton). Ties watchlist, market data,
+/// analysis engine and notifications together. The foreground timer in
+/// app.dart and the background workmanager callback both call runScan().
+final alertSchedulerProvider = Provider<AlertScheduler>((ref) {
+  return AlertScheduler(
+    watchlistService: ref.watch(watchlistServiceProvider),
+    apiService: ref.watch(stockApiServiceProvider),
+    analysisEngine: ref.watch(analysisEngineProvider),
+    notificationService: ref.watch(notificationServiceProvider),
+  );
 });
 
 /// Provider for the K-line cache database (singleton).

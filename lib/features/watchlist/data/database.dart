@@ -15,7 +15,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -25,6 +25,21 @@ class AppDatabase extends _$AppDatabase {
           await customStatement(
             'CREATE INDEX IF NOT EXISTS idx_watchlist_stock_code ON watchlist_items (stock_code);',
           );
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          // Additive migrations only — never drop columns, so existing
+          // watchlist data is preserved across upgrades.
+          if (from < 2) {
+            // v2: alert price threshold + per-day de-dup marker.
+            await m.addColumn(
+              watchlistItems,
+              watchlistItems.alertPriceThreshold,
+            );
+            await m.addColumn(
+              watchlistItems,
+              watchlistItems.alertTriggeredDate,
+            );
+          }
         },
       );
 }

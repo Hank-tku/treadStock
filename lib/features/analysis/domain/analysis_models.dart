@@ -125,6 +125,28 @@ class BollingerBands {
   double? get currentLower => lower.isNotEmpty ? lower.last : null;
 }
 
+/// Structured result of a downside-alert evaluation.
+///
+/// `checkDownsideAlert` returns a plain bool for backward compatibility; this
+/// richer result is produced by `evaluateDownsideAlert` and carries the reason
+/// plus reference support/resistance levels so the notification and UI can
+/// show context instead of a bare flag.
+class DownsideAlertResult {
+  final bool triggered;
+  final String reason;
+  final double? supportPrice;
+  final double? resistancePrice;
+
+  const DownsideAlertResult({
+    required this.triggered,
+    this.reason = '',
+    this.supportPrice,
+    this.resistancePrice,
+  });
+
+  static const DownsideAlertResult empty = DownsideAlertResult(triggered: false);
+}
+
 class DailyRecommendation {
   final String code;
   final String name;
@@ -189,6 +211,10 @@ class WatchlistItem {
   final bool isPinned;
   final int sortOrder;
   final bool alertEnabled;
+  // User-configured price alert threshold (persisted). Null = no price alert.
+  final double? alertPriceThreshold;
+  // ISO date "YYYY-MM-DD" of the last fired alert (persisted, de-dup per day).
+  final String? alertTriggeredDate;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -208,6 +234,8 @@ class WatchlistItem {
     this.isPinned = false,
     this.sortOrder = 0,
     this.alertEnabled = true,
+    this.alertPriceThreshold,
+    this.alertTriggeredDate,
     required this.createdAt,
     required this.updatedAt,
     this.currentPrice,
@@ -224,6 +252,8 @@ class WatchlistItem {
     bool? isPinned,
     int? sortOrder,
     bool? alertEnabled,
+    double? alertPriceThreshold,
+    String? alertTriggeredDate,
     double? currentPrice,
     double? currentChangePct,
     StockScore? currentScore,
@@ -239,6 +269,8 @@ class WatchlistItem {
       isPinned: isPinned ?? this.isPinned,
       sortOrder: sortOrder ?? this.sortOrder,
       alertEnabled: alertEnabled ?? this.alertEnabled,
+      alertPriceThreshold: alertPriceThreshold ?? this.alertPriceThreshold,
+      alertTriggeredDate: alertTriggeredDate ?? this.alertTriggeredDate,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
       currentPrice: currentPrice ?? this.currentPrice,

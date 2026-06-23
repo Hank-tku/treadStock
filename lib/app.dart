@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
+import 'shared/providers.dart';
 import 'features/dashboard/presentation/dashboard_tab.dart';
 import 'features/onboarding/data/onboarding_service.dart';
 import 'features/onboarding/presentation/onboarding_page.dart';
@@ -236,7 +238,53 @@ class StockPilotApp extends ConsumerStatefulWidget {
   ConsumerState<StockPilotApp> createState() => _StockPilotAppState();
 }
 
-class _StockPilotAppState extends ConsumerState<StockPilotApp> {
+class _StockPilotAppState extends ConsumerState<StockPilotApp>
+    with WidgetsBindingObserver {
+  Timer? _foregroundAlertTimer;
+  Timer? _startupAlertTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Observe lifecycle so we can run an alert scan when the user returns to
+    // the app, in addition to the periodic foreground timer below.
+    WidgetsBinding.instance.addObserver(this);
+
+    // Periodic foreground alert scan. The background workmanager task is the
+    // primary mechanism; this timer ensures alerts still fire reasonably
+    // promptly while the app is in the foreground.
+    _foregroundAlertTimer = Timer.periodic(
+      const Duration(minutes: 30),
+      (_) => _runAlertScan(),
+    );
+    // Kick off one scan shortly after startup so a recently-triggered
+    // condition surfaces quickly.
+    _startupAlertTimer = Timer(const Duration(seconds: 15), _runAlertScan);
+  }
+
+  @override
+  void dispose() {
+    _foregroundAlertTimer?.cancel();
+    _startupAlertTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // User came back to the app — run a scan immediately. The scheduler
+      // coalesces re-entrant calls and de-duplicates per day.
+      _runAlertScan();
+    }
+  }
+
+  void _runAlertScan() {
+    // Fire and forget; AlertScheduler swallows per-stock errors and logs them.
+    ref.read(alertSchedulerProvider).runScan();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(

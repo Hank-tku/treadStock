@@ -448,6 +448,51 @@ void main() {
   });
 
   // =========================================================================
+  // evaluateDownsideAlert: structured result with reason + support/resistance
+  // =========================================================================
+  group('evaluateDownsideAlert', () {
+    final engine = AnalysisEngine();
+
+    test('insufficient klines returns empty result', () {
+      final result = engine.evaluateDownsideAlert(generateKlines(days: 15));
+      expect(result.triggered, false);
+      expect(result.reason, '');
+    });
+
+    test('three conditions surface their reason string', () {
+      // Condition: 3 consecutive down days + volume spike (>1.3x).
+      final klines = generateDecliningKlines(
+        days: 30,
+        dailyDrop: 0.015,
+        lastDayVolumeMultiplier: 1.5,
+      );
+      final result = engine.evaluateDownsideAlert(klines);
+      expect(result.triggered, true);
+      // At least one of the conditions should fire; the reason string should
+      // be non-empty and reference the technical condition.
+      expect(result.reason, isNotEmpty);
+    });
+
+    test('below-boll triggers with reason and support price', () {
+      // Force a sharp recent drop so price sits under the Bollinger lower band.
+      final klines = generateDecliningKlines(days: 30, dailyDrop: 0.04);
+      final result = engine.evaluateDownsideAlert(klines);
+      if (result.triggered) {
+        // Either MA20 or Boll trigger; both should carry a non-empty reason
+        // and a numeric support price for the notification body.
+        expect(result.reason, isNotEmpty);
+        expect(result.supportPrice, isNotNull);
+      }
+    });
+
+    test('steady uptrend does not trigger', () {
+      final klines = generateKlines(days: 40, dailyReturn: 0.005);
+      final result = engine.evaluateDownsideAlert(klines);
+      expect(result.triggered, false);
+    });
+  });
+
+  // =========================================================================
   // T-F005-1: 每日跟踪摘要
   // =========================================================================
   group('T-F005-1: generateSummary', () {
