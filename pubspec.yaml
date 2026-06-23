@@ -78,6 +78,22 @@ dev_dependencies:
 
   # Mock testing
   mockito: ^5.4.5
+  msix: ^3.17.0
 
 flutter:
   uses-material-design: true
+
+# MSIX packaging config (Windows installer).
+# Note: MSIX is unsigned (no paid code-signing cert). Users install via
+# PowerShell `Add-AppxPackage` with Developer Mode enabled.
+msix_config:
+  display_name: 股势 TrendStock
+  publisher_display_name: StockPilot
+  identity_name: Hank-tku.StockPilot
+  publisher: CN=StockPilot
+  msix_version: 0.1.3.0
+  architecture: x64
+  capabilities: internetClient
+  logo_path: windows/runner/resources/app_icon.ico
+  icons_background_color: transparent
+  languages: zh-cn, en-us
