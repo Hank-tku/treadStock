@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -94,7 +95,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     final style = ref.watch(investmentStyleProvider);
 
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: SafeArea(
         child: Column(
           children: [
@@ -109,7 +110,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     '跳过',
                     style: TextStyle(
                       fontSize: 14,
-                      color: StockColors.textTertiary,
+                      color: context.sc.textTertiary,
                     ),
                   ),
                 ),
@@ -141,7 +142,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     width: isActive ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: isActive ? StockColors.brand : StockColors.gray300,
+                      color: isActive ? StockColors.brand : context.sc.gray300,
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     ),
                   );
@@ -165,7 +166,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           Text(
             '你的投资风格？',
             style: AppTextStyles.h1.copyWith(
-              color: StockColors.textPrimary,
+              color: context.sc.textPrimary,
               fontFamily: AppTheme.textFont,
             ),
           ),
@@ -174,7 +175,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             '选择最接近你的投资偏好',
             style: TextStyle(
               fontSize: 14,
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
               height: 1.5,
             ),
           ),
@@ -220,7 +221,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           Text(
             '准备就绪！',
             style: AppTextStyles.h1.copyWith(
-              color: StockColors.textPrimary,
+              color: context.sc.textPrimary,
               fontFamily: AppTheme.textFont,
             ),
           ),
@@ -229,7 +230,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             '欢迎来到股势 TrendStock',
             style: TextStyle(
               fontSize: 15,
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
               height: 1.5,
             ),
           ),
@@ -239,9 +240,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(AppTheme.space5),
               decoration: BoxDecoration(
-                color: StockColors.brandLight,
+                color: context.sc.brandLight,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                border: Border.all(color: StockColors.borderLight),
+                border: Border.all(color: context.sc.borderLight),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,7 +252,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: StockColors.textPrimary,
+                      color: context.sc.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -259,7 +260,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     info.description,
                     style: TextStyle(
                       fontSize: 13,
-                      color: StockColors.textSecondary,
+                      color: context.sc.textSecondary,
                       height: 1.5,
                     ),
                   ),
@@ -312,7 +313,7 @@ class _StyleCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space3),
       child: Material(
-        color: isSelected ? StockColors.brandLight : StockColors.bgCard,
+        color: isSelected ? context.sc.brandLight : context.sc.bgCard,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -323,7 +324,7 @@ class _StyleCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               border: Border.all(
-                color: isSelected ? StockColors.brand : StockColors.border,
+                color: isSelected ? StockColors.brand : context.sc.border,
                 width: isSelected ? 1.5 : 1,
               ),
             ),
@@ -340,7 +341,7 @@ class _StyleCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? StockColors.brand : StockColors.textPrimary,
+                          color: isSelected ? StockColors.brand : context.sc.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -348,7 +349,7 @@ class _StyleCard extends StatelessWidget {
                         info.subtitle,
                         style: TextStyle(
                           fontSize: 13,
-                          color: StockColors.textTertiary,
+                          color: context.sc.textTertiary,
                         ),
                       ),
                     ],
@@ -426,7 +427,7 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
           Text(
             '已为你匹配策略',
             style: AppTextStyles.h1.copyWith(
-              color: StockColors.textPrimary,
+              color: context.sc.textPrimary,
               fontFamily: AppTheme.textFont,
             ),
           ),
@@ -438,9 +439,9 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppTheme.space6),
                     decoration: BoxDecoration(
-                      color: StockColors.bgCard,
+                      color: context.sc.bgCard,
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                      border: Border.all(color: StockColors.border),
+                      border: Border.all(color: context.sc.border),
                       boxShadow: [
                         BoxShadow(
                           color: StockColors.shadowMd,
@@ -461,7 +462,7 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
-                            color: StockColors.textPrimary,
+                            color: context.sc.textPrimary,
                           ),
                         ),
                         const SizedBox(height: AppTheme.space2),
@@ -470,7 +471,7 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
-                            color: StockColors.textSecondary,
+                            color: context.sc.textSecondary,
                             height: 1.6,
                           ),
                         ),

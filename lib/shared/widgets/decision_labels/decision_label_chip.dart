@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
@@ -25,12 +26,12 @@ class _SentimentColors {
     border: StockColors.up,
   );
 
-  // Neutral = secondary text on tertiary surface.
-  static const neutral = _SentimentColors(
-    fg: StockColors.textSecondary,
-    bg: StockColors.bgTertiary,
-    border: StockColors.border,
-  );
+  // Neutral = secondary text on tertiary surface (theme-dependent).
+  static _SentimentColors neutral(BuildContext context) => _SentimentColors(
+        fg: context.sc.textSecondary,
+        bg: context.sc.bgTertiary,
+        border: context.sc.border,
+      );
 
   // Bearish = A-stock down color (green).
   static const bearish = _SentimentColors(
@@ -39,11 +40,11 @@ class _SentimentColors {
     border: StockColors.down,
   );
 
-  static const unknown = _SentimentColors(
-    fg: StockColors.textDisabled,
-    bg: StockColors.bgSecondary,
-    border: StockColors.borderLight,
-  );
+  static _SentimentColors unknown(BuildContext context) => _SentimentColors(
+        fg: context.sc.textDisabled,
+        bg: context.sc.bgSecondary,
+        border: context.sc.borderLight,
+      );
 }
 
 /// A single decision label chip.
@@ -62,7 +63,7 @@ class DecisionLabelChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _sentimentColorsOf(sentiment);
+    final colors = _sentimentColorsOf(context, sentiment);
 
     return Tooltip(
       message: detail ?? text,
@@ -92,15 +93,15 @@ class DecisionLabelChip extends StatelessWidget {
 /// Sentiment enum shared with DecisionLabel, but kept here for widget use.
 enum DecisionSentiment { bullish, neutral, bearish, unknown }
 
-_SentimentColors _sentimentColorsOf(DecisionSentiment s) {
+_SentimentColors _sentimentColorsOf(BuildContext context, DecisionSentiment s) {
   switch (s) {
     case DecisionSentiment.bullish:
       return _SentimentColors.bullish;
     case DecisionSentiment.neutral:
-      return _SentimentColors.neutral;
+      return _SentimentColors.neutral(context);
     case DecisionSentiment.bearish:
       return _SentimentColors.bearish;
     case DecisionSentiment.unknown:
-      return _SentimentColors.unknown;
+      return _SentimentColors.unknown(context);
   }
 }

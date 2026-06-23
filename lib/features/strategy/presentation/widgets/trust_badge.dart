@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/strategy_trust_engine.dart';
 
@@ -94,7 +94,7 @@ class TrustDescriptionText extends StatelessWidget {
           child: Text(
             trustResult.description,
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
         ),

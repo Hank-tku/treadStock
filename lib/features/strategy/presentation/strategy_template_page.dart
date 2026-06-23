@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -120,7 +121,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title,
         style: AppTextStyles.h2.copyWith(
-          color: StockColors.textPrimary,
+          color: context.sc.textPrimary,
         ),
       ),
     );
@@ -143,9 +144,9 @@ class _LearningGoalCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppTheme.space3),
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: StockColors.bgPrimary,
+        color: context.sc.bgPrimary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: StockColors.border),
+        border: Border.all(color: context.sc.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +164,7 @@ class _LearningGoalCard extends StatelessWidget {
                 child: Text(
                   goal.title,
                   style: AppTextStyles.h3.copyWith(
-                    color: StockColors.textPrimary,
+                    color: context.sc.textPrimary,
                   ),
                 ),
               ),
@@ -175,7 +176,7 @@ class _LearningGoalCard extends StatelessWidget {
           Text(
             goal.subtitle,
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
           const SizedBox(height: AppTheme.space3),
@@ -205,7 +206,7 @@ class _LearningGoalCard extends StatelessWidget {
               onPressed: onApply,
               style: ElevatedButton.styleFrom(
                 backgroundColor: StockColors.brand,
-                foregroundColor: StockColors.textOnPrimary,
+                foregroundColor: context.sc.textOnPrimary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   vertical: AppTheme.space3,
@@ -246,9 +247,9 @@ class _ClassicTemplateCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppTheme.space3),
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: StockColors.bgPrimary,
+        color: context.sc.bgPrimary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: StockColors.border),
+        border: Border.all(color: context.sc.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +267,7 @@ class _ClassicTemplateCard extends StatelessWidget {
                 child: Text(
                   template.name,
                   style: AppTextStyles.h3.copyWith(
-                    color: StockColors.textPrimary,
+                    color: context.sc.textPrimary,
                   ),
                 ),
               ),
@@ -278,7 +279,7 @@ class _ClassicTemplateCard extends StatelessWidget {
           Text(
             template.description,
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
 
@@ -295,14 +296,14 @@ class _ClassicTemplateCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: StockColors.bgTertiary,
+                    color: context.sc.bgTertiary,
                     borderRadius:
                         BorderRadius.circular(AppTheme.radiusXs),
                   ),
                   child: Text(
                     cap,
                     style: AppTextStyles.caption.copyWith(
-                      color: StockColors.textTertiary,
+                      color: context.sc.textTertiary,
                     ),
                   ),
                 );
@@ -319,7 +320,7 @@ class _ClassicTemplateCard extends StatelessWidget {
               onPressed: onApply,
               style: ElevatedButton.styleFrom(
                 backgroundColor: StockColors.brand,
-                foregroundColor: StockColors.textOnPrimary,
+                foregroundColor: context.sc.textOnPrimary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   vertical: AppTheme.space3,
@@ -368,7 +369,7 @@ class _InfoRow extends StatelessWidget {
         Text(
           '$label：',
           style: AppTextStyles.caption.copyWith(
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -376,7 +377,7 @@ class _InfoRow extends StatelessWidget {
           child: Text(
             content,
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
         ),

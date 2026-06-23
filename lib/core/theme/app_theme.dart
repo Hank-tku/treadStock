@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_semantic_colors.dart';
 
 /// StockPilot app theme.
 /// Design: DESIGN.md v2.0 Typography + Spacing + Border Radius + Shadow
@@ -50,26 +51,34 @@ class AppTheme {
   static const double sectionSpacing = 24;
 
   // ── Light theme ──────────────────────────────────────────────────
-  static ThemeData get light {
+  static ThemeData get light =>
+      _buildTheme(SemanticColors.light, Brightness.light);
+
+  // ── Dark theme ───────────────────────────────────────────────────
+  static ThemeData get dark =>
+      _buildTheme(SemanticColors.dark, Brightness.dark);
+
+  static ThemeData _buildTheme(SemanticColors sc, Brightness brightness) {
     return ThemeData(
-      brightness: Brightness.light,
+      brightness: brightness,
+      extensions: <ThemeExtension<dynamic>>[sc],
       colorScheme: ColorScheme(
-        brightness: Brightness.light,
+        brightness: brightness,
         primary: StockColors.brand,
         onPrimary: Colors.white,
-        surface: StockColors.bgPrimary,
-        onSurface: StockColors.textPrimary,
+        surface: sc.bgPrimary,
+        onSurface: sc.textPrimary,
         error: StockColors.error,
         onError: Colors.white,
         secondary: StockColors.brand,
         onSecondary: Colors.white,
-        outline: StockColors.border,
-        outlineVariant: StockColors.divider,
+        outline: sc.border,
+        outlineVariant: sc.divider,
       ),
-      scaffoldBackgroundColor: StockColors.bgPrimary,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: StockColors.bgPrimary,
-        foregroundColor: StockColors.textPrimary,
+      scaffoldBackgroundColor: sc.bgPrimary,
+      appBarTheme: AppBarTheme(
+        backgroundColor: sc.bgPrimary,
+        foregroundColor: sc.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
@@ -77,19 +86,19 @@ class AppTheme {
           fontFamily: textFont,
           fontSize: 22,
           fontWeight: FontWeight.w700,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
           height: 1.3,
           letterSpacing: -0.2,
         ),
       ),
-      textTheme: const TextTheme(
+      textTheme: TextTheme(
         // Display
         displayLarge: TextStyle(
           fontFamily: numberFont,
           fontSize: 40,
           fontWeight: FontWeight.w800,
           height: 1.15,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
           letterSpacing: -0.5,
         ),
         displayMedium: TextStyle(
@@ -97,7 +106,7 @@ class AppTheme {
           fontSize: 32,
           fontWeight: FontWeight.w700,
           height: 1.2,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
           letterSpacing: -0.5,
         ),
         displaySmall: TextStyle(
@@ -105,7 +114,7 @@ class AppTheme {
           fontSize: 28,
           fontWeight: FontWeight.w700,
           height: 1.2,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
         ),
         // Headings
         headlineMedium: TextStyle(
@@ -113,7 +122,7 @@ class AppTheme {
           fontSize: 22,
           fontWeight: FontWeight.w700,
           height: 1.3,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
           letterSpacing: -0.2,
         ),
         headlineSmall: TextStyle(
@@ -121,14 +130,14 @@ class AppTheme {
           fontSize: 17,
           fontWeight: FontWeight.w600,
           height: 1.4,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
         ),
         titleMedium: TextStyle(
           fontFamily: textFont,
           fontSize: 15,
           fontWeight: FontWeight.w600,
           height: 1.4,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
         ),
         // Body
         bodyLarge: TextStyle(
@@ -136,21 +145,21 @@ class AppTheme {
           fontSize: 16,
           fontWeight: FontWeight.w400,
           height: 1.6,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
         ),
         bodyMedium: TextStyle(
           fontFamily: textFont,
           fontSize: 14,
           fontWeight: FontWeight.w400,
           height: 1.5,
-          color: StockColors.textPrimary,
+          color: sc.textPrimary,
         ),
         bodySmall: TextStyle(
           fontFamily: textFont,
           fontSize: 12,
           fontWeight: FontWeight.w400,
           height: 1.4,
-          color: StockColors.textTertiary,
+          color: sc.textTertiary,
         ),
         // Label
         labelLarge: TextStyle(
@@ -160,30 +169,30 @@ class AppTheme {
           color: StockColors.brand,
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: StockColors.bgPrimary,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: sc.bgPrimary,
         selectedItemColor: StockColors.brand,
-        unselectedItemColor: StockColors.gray500,
+        unselectedItemColor: sc.gray500,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: TextStyle(
+        selectedLabelStyle: const TextStyle(
           fontFamily: textFont,
           fontSize: 11,
           fontWeight: FontWeight.w500,
         ),
-        unselectedLabelStyle: TextStyle(
+        unselectedLabelStyle: const TextStyle(
           fontFamily: textFont,
           fontSize: 11,
           fontWeight: FontWeight.w400,
         ),
         elevation: 0,
       ),
-      dividerTheme: const DividerThemeData(
-        color: StockColors.border,
+      dividerTheme: DividerThemeData(
+        color: sc.border,
         thickness: 1,
         space: 0,
       ),
       cardTheme: CardThemeData(
-        color: StockColors.bgPrimary,
+        color: sc.bgPrimary,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: const RoundedRectangleBorder(
@@ -195,25 +204,25 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) {
             return Colors.white;
           }
-          return StockColors.gray400;
+          return sc.gray400;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return StockColors.brand;
           }
-          return StockColors.gray200;
+          return sc.gray200;
         }),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: StockColors.toastBg,
+        backgroundColor: sc.toastBg,
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(radiusMd)),
         ),
-        contentTextStyle: const TextStyle(
+        contentTextStyle: TextStyle(
           fontFamily: textFont,
           fontSize: 14,
-          color: Colors.white,
+          color: sc.textOnPrimary,
         ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(

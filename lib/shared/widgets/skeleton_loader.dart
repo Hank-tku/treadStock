@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -10,16 +10,16 @@ class StockListItemSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: StockColors.bgTertiary,
-      highlightColor: StockColors.gray100,
+      baseColor: context.sc.bgTertiary,
+      highlightColor: context.sc.gray100,
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.listItemPaddingH,
           vertical: AppTheme.listItemPaddingV,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: StockColors.border, width: 1),
+            bottom: BorderSide(color: context.sc.border, width: 1),
           ),
         ),
         child: Column(
@@ -27,19 +27,19 @@ class StockListItemSkeleton extends StatelessWidget {
           children: [
             Row(
               children: [
-                _buildSkeletonBox(28, 20), // score badge
+                _buildSkeletonBox(context, 28, 20), // score badge
                 const SizedBox(width: 6),
-                _buildSkeletonBox(80, 16), // name
+                _buildSkeletonBox(context, 80, 16), // name
                 const Spacer(),
-                _buildSkeletonBox(50, 14), // price
+                _buildSkeletonBox(context, 50, 14), // price
               ],
             ),
             const SizedBox(height: 4),
             Row(
               children: [
-                _buildSkeletonBox(80, 12), // code
+                _buildSkeletonBox(context, 80, 12), // code
                 const Spacer(),
-                _buildSkeletonBox(60, 14), // change%
+                _buildSkeletonBox(context, 60, 14), // change%
               ],
             ),
           ],
@@ -48,12 +48,12 @@ class StockListItemSkeleton extends StatelessWidget {
     );
   }
 
-  Widget _buildSkeletonBox(double width, double height) {
+  Widget _buildSkeletonBox(BuildContext context, double width, double height) {
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: StockColors.bgTertiary,
+        color: context.sc.bgTertiary,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -84,13 +84,13 @@ class DetailSectionSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: StockColors.bgTertiary,
-      highlightColor: StockColors.gray100,
+      baseColor: context.sc.bgTertiary,
+      highlightColor: context.sc.gray100,
       child: Container(
         height: height,
         margin: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
         decoration: BoxDecoration(
-          color: StockColors.bgTertiary,
+          color: context.sc.bgTertiary,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
       ),
@@ -105,8 +105,8 @@ class NewsItemSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: StockColors.bgTertiary,
-      highlightColor: StockColors.gray100,
+      baseColor: context.sc.bgTertiary,
+      highlightColor: context.sc.gray100,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.pagePadding,
@@ -115,21 +115,21 @@ class NewsItemSkeleton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildBox(MediaQuery.of(context).size.width * 0.7, 16),
+            _buildBox(context, MediaQuery.of(context).size.width * 0.7, 16),
             const SizedBox(height: 8),
-            _buildBox(120, 12),
+            _buildBox(context, 120, 12),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBox(double width, double height) {
+  Widget _buildBox(BuildContext context, double width, double height) {
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: StockColors.bgTertiary,
+        color: context.sc.bgTertiary,
         borderRadius: BorderRadius.circular(2),
       ),
     );

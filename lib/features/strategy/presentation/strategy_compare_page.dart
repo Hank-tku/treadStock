@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -32,7 +33,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
     final listState = ref.watch(strategyListProvider);
 
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 20),
@@ -80,11 +81,11 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
             horizontal: AppTheme.pagePadding,
             vertical: AppTheme.space3,
           ),
-          color: StockColors.bgSecondary,
+          color: context.sc.bgSecondary,
           child: Text(
             '选择 $_minSelect–$_maxSelect 个策略进行对比（已选 ${_selectedIds.length}）',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
         ),
@@ -140,7 +141,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
                   Text(
                     strategy.name,
                     style: AppTextStyles.bodyLg.copyWith(
-                      color: StockColors.textPrimary,
+                      color: context.sc.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -151,7 +152,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
                     Text(
                       strategy.description,
                       style: AppTextStyles.caption.copyWith(
-                        color: StockColors.textTertiary,
+                        color: context.sc.textTertiary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -170,7 +171,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
               decoration: BoxDecoration(
                 color: strategy.isEnabled
                     ? StockColors.upBg
-                    : StockColors.bgTertiary,
+                    : context.sc.bgTertiary,
                 borderRadius: BorderRadius.circular(AppTheme.radiusXs),
               ),
               child: Text(
@@ -178,7 +179,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
                 style: AppTextStyles.caption.copyWith(
                   color: strategy.isEnabled
                       ? StockColors.up
-                      : StockColors.textTertiary,
+                      : context.sc.textTertiary,
                   fontSize: 10,
                 ),
               ),
@@ -264,9 +265,9 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
     return Container(
       margin: const EdgeInsets.only(top: AppTheme.space4),
       decoration: BoxDecoration(
-        color: StockColors.bgPrimary,
+        color: context.sc.bgPrimary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: StockColors.border),
+        border: Border.all(color: context.sc.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,8 +275,8 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
           // Table header
           Container(
             padding: const EdgeInsets.all(AppTheme.space4),
-            decoration: const BoxDecoration(
-              color: StockColors.bgSecondary,
+            decoration: BoxDecoration(
+              color: context.sc.bgSecondary,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(AppTheme.radiusMd),
                 topRight: Radius.circular(AppTheme.radiusMd),
@@ -298,7 +299,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
                       s.name,
                       style: AppTextStyles.caption.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: StockColors.textPrimary,
+                        color: context.sc.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 1,
@@ -329,9 +330,9 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
         horizontal: AppTheme.space4,
         vertical: AppTheme.space3,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: StockColors.divider, width: 0.5),
+          top: BorderSide(color: context.sc.divider, width: 0.5),
         ),
       ),
       child: Row(
@@ -343,7 +344,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
             child: Text(
               row.labelShort ?? row.label,
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textSecondary,
+                color: context.sc.textSecondary,
               ),
             ),
           ),
@@ -356,7 +357,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
                 child: Text(
                   value,
                   style: AppTextStyles.numberSm.copyWith(
-                    color: color ?? StockColors.textPrimary,
+                    color: color ?? context.sc.textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -380,10 +381,10 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
         AppTheme.pagePadding,
         AppTheme.space4,
       ),
-      decoration: const BoxDecoration(
-        color: StockColors.bgPrimary,
+      decoration: BoxDecoration(
+        color: context.sc.bgPrimary,
         border: Border(
-          top: BorderSide(color: StockColors.divider),
+          top: BorderSide(color: context.sc.divider),
         ),
       ),
       child: SafeArea(
@@ -411,9 +412,9 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: StockColors.brand,
-                  foregroundColor: StockColors.textOnPrimary,
-                  disabledBackgroundColor: StockColors.bgTertiary,
-                  disabledForegroundColor: StockColors.textDisabled,
+                  foregroundColor: context.sc.textOnPrimary,
+                  disabledBackgroundColor: context.sc.bgTertiary,
+                  disabledForegroundColor: context.sc.textDisabled,
                   shape: RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.circular(AppTheme.radiusMd),
@@ -472,7 +473,7 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
             Text(
               message ?? '策略数据加载失败',
               style: AppTextStyles.body.copyWith(
-                color: StockColors.textSecondary,
+                color: context.sc.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -502,20 +503,20 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.compare_arrows_outlined,
-                size: 48, color: StockColors.gray400),
+            Icon(Icons.compare_arrows_outlined,
+                size: 48, color: context.sc.gray400),
             const SizedBox(height: AppTheme.space3),
             Text(
               '暂无策略可对比',
               style: AppTextStyles.bodyLg.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
             const SizedBox(height: AppTheme.space2),
             Text(
               '请先创建至少 2 个策略',
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
@@ -52,7 +53,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
             .enrichWithRecommendations(dashState.data, recState);
 
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -95,20 +96,20 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
               Text(
                 _formatDate(now),
                 style: AppTextStyles.caption.copyWith(
-                  color: StockColors.textTertiary,
+                  color: context.sc.textTertiary,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             '策略概览与市场观察',
             style: TextStyle(
               fontFamily: AppTheme.textFont,
               fontSize: 13,
               fontWeight: FontWeight.w400,
               height: 1.5,
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
         ],
@@ -121,8 +122,8 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Shimmer.fromColors(
-        baseColor: StockColors.bgTertiary,
-        highlightColor: StockColors.gray100,
+        baseColor: context.sc.bgTertiary,
+        highlightColor: context.sc.gray100,
         child: Column(
           children: [
             // Sentiment card skeleton
@@ -163,7 +164,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
           horizontal: AppTheme.pagePadding, vertical: 4),
       height: height,
       decoration: BoxDecoration(
-        color: StockColors.bgTertiary,
+        color: context.sc.bgTertiary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
     );
@@ -174,7 +175,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: StockColors.bgTertiary,
+        color: context.sc.bgTertiary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
     );
@@ -186,13 +187,13 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.cloud_off_outlined,
-              size: 48, color: StockColors.textDisabled),
+          Icon(Icons.cloud_off_outlined,
+              size: 48, color: context.sc.textDisabled),
           const SizedBox(height: 12),
           Text(
             message ?? '数据加载失败',
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
           const SizedBox(height: 16),
@@ -278,7 +279,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
                 const SizedBox(height: 2),
                 Text(desc,
                     style: AppTextStyles.caption
-                        .copyWith(color: StockColors.textSecondary)),
+                        .copyWith(color: context.sc.textSecondary)),
               ],
             ),
           ),
@@ -319,7 +320,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
           Icons.remove_outlined,
           '信号中等',
           StockColors.warning,
-          StockColors.bgWarning,
+          context.sc.bgWarning,
           '今日有 $total 只标的进入观察范围。'
         );
       case MarketSentiment.cautious:
@@ -334,8 +335,8 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
         return (
           Icons.help_outline,
           '暂无信号',
-          StockColors.gray500,
-          StockColors.bgTertiary,
+          context.sc.gray500,
+          context.sc.bgTertiary,
           '未启用策略或数据未加载，请检查策略设置。'
         );
     }
@@ -352,7 +353,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
             '启用策略',
             Icons.lightbulb_outline,
             StockColors.brand,
-            StockColors.brandLight,
+            context.sc.brandLight,
           ),
           const SizedBox(width: 8),
           _buildMetricCard(
@@ -372,7 +373,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
             '平均命中率',
             Icons.track_changes_outlined,
             data.avgHitRate >= 0.5 ? StockColors.up : StockColors.warning,
-            data.avgHitRate >= 0.5 ? StockColors.upLight : StockColors.bgWarning,
+            data.avgHitRate >= 0.5 ? StockColors.upLight : context.sc.bgWarning,
           ),
         ],
       ),
@@ -401,14 +402,14 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
             Text(
               value,
               style: AppTextStyles.numberSm.copyWith(
-                color: StockColors.textPrimary,
+                color: context.sc.textPrimary,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: AppTextStyles.micro.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
           ],
@@ -424,7 +425,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
           AppTheme.pagePadding, 12, AppTheme.pagePadding, 0),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: StockColors.bgWarning,
+        color: context.sc.bgWarning,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: StockColors.warning.withValues(alpha: 0.2)),
       ),
@@ -437,7 +438,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
             child: Text(
               '$count 个策略超过 30 天未复盘',
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.cacheBannerText,
+                color: context.sc.cacheBannerText,
               ),
             ),
           ),
@@ -516,25 +517,25 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
           horizontal: AppTheme.pagePadding, vertical: 8),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
         children: [
-          const Icon(Icons.search_off_outlined,
-              size: 32, color: StockColors.textDisabled),
+          Icon(Icons.search_off_outlined,
+              size: 32, color: context.sc.textDisabled),
           const SizedBox(height: 8),
           Text(
             '今日暂无观察结果',
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '下拉刷新或前往推荐页查看详情',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
         ],
@@ -590,9 +591,9 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: StockColors.bgSecondary,
+          color: context.sc.bgSecondary,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: StockColors.borderLight),
+          border: Border.all(color: context.sc.borderLight),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,7 +605,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
             )),
             const SizedBox(height: 2),
             Text(subtitle, style: AppTextStyles.micro.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             )),
           ],
         ),

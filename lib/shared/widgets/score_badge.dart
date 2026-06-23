@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
@@ -16,12 +17,14 @@ class ScoreBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (score == null) {
       return _buildContainer(
+        context,
         width: 76,
         child: const Text('暂无评分', style: AppTextStyles.caption),
       );
     }
 
     return _buildContainer(
+      context,
       width: 96,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -51,13 +54,13 @@ class ScoreBadge extends StatelessWidget {
     );
   }
 
-  Widget _buildContainer({required double width, required Widget child}) {
+  Widget _buildContainer(BuildContext context, {required double width, required Widget child}) {
     final bgColor = score == null
-        ? StockColors.gray200
+        ? context.sc.gray200
         : getScoreBgColor(score);
     final textColor = score == null
-        ? StockColors.textTertiary
-        : StockColors.textOnPrimary;
+        ? context.sc.textTertiary
+        : context.sc.textOnPrimary;
 
     return Container(
       width: this.width ?? width,
@@ -67,7 +70,7 @@ class ScoreBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: score == null
-              ? StockColors.gray300
+              ? context.sc.gray300
               : getScoreColor(score).withValues(alpha: 0.18),
         ),
       ),
@@ -90,17 +93,17 @@ class ScoreBadgeLoading extends StatelessWidget {
       width: 56,
       height: 20,
       decoration: BoxDecoration(
-        color: StockColors.gray200,
+        color: context.sc.gray200,
         borderRadius: BorderRadius.circular(4),
       ),
       alignment: Alignment.center,
-      child: const Text(
+      child: Text(
         '...',
         style: TextStyle(
           fontFamily: AppTheme.numberFont,
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: StockColors.textTertiary,
+          color: context.sc.textTertiary,
         ),
       ),
     );

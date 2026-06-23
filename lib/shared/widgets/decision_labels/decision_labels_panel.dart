@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/analysis/domain/analysis_models.dart';
@@ -44,7 +44,7 @@ class DecisionLabelsPanel extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -57,7 +57,7 @@ class DecisionLabelsPanel extends StatelessWidget {
               Text(
                 _summaryText(labels),
                 style: AppTextStyles.caption.copyWith(
-                  color: StockColors.textTertiary,
+                  color: context.sc.textTertiary,
                 ),
               ),
             ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -15,14 +16,14 @@ class BacktestResultPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: ListView(
         children: [
           _buildHeader(context),
-          _buildHealthBanner(),
-          _buildCoreStats(),
-          _buildPerformanceGrid(),
-          if (result.trades.isNotEmpty) _buildTradeList(),
+          _buildHealthBanner(context),
+          _buildCoreStats(context),
+          _buildPerformanceGrid(context),
+          if (result.trades.isNotEmpty) _buildTradeList(context),
           const DisclaimerLabel(),
           const SizedBox(height: 40),
         ],
@@ -42,10 +43,10 @@ class BacktestResultPage extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () => context.pop(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios,
                     size: 20,
-                    color: StockColors.gray700,
+                    color: context.sc.gray700,
                   ),
                   constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                 ),
@@ -68,7 +69,7 @@ class BacktestResultPage extends StatelessWidget {
                     Text(
                       _dateRange,
                       style: AppTextStyles.caption.copyWith(
-                        color: StockColors.textTertiary,
+                        color: context.sc.textTertiary,
                       ),
                     ),
                   ],
@@ -89,8 +90,8 @@ class BacktestResultPage extends StatelessWidget {
 
   String _two(int n) => n.toString().padLeft(2, '0');
 
-  Widget _buildHealthBanner() {
-    final color = _healthColor;
+  Widget _buildHealthBanner(BuildContext context) {
+    final color = _healthColor(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(AppTheme.pagePadding, 12, AppTheme.pagePadding, 0),
       padding: const EdgeInsets.all(12),
@@ -112,7 +113,7 @@ class BacktestResultPage extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '共 ${result.totalTrades} 笔交易，处理 ${result.barsProcessed} 根K线',
-                    style: AppTextStyles.caption.copyWith(color: StockColors.textSecondary),
+                    style: AppTextStyles.caption.copyWith(color: context.sc.textSecondary),
                   ),
                 ],
               ],
@@ -123,8 +124,8 @@ class BacktestResultPage extends StatelessWidget {
     );
   }
 
-  Color get _healthColor {
-    if (result.totalTrades == 0) return StockColors.textTertiary;
+  Color _healthColor(BuildContext context) {
+    if (result.totalTrades == 0) return context.sc.textTertiary;
     if (result.winRate >= 0.6 && result.profitFactor >= 1.5) return StockColors.success;
     if (result.winRate >= 0.45 && result.profitFactor >= 1.0) return StockColors.warning;
     return StockColors.danger;
@@ -137,13 +138,13 @@ class BacktestResultPage extends StatelessWidget {
     return Icons.trending_down;
   }
 
-  Widget _buildCoreStats() {
+  Widget _buildCoreStats(BuildContext context) {
     if (result.totalTrades == 0) {
       return Padding(
         padding: const EdgeInsets.all(AppTheme.pagePadding),
         child: Text(
           '回测期间无交易产生，策略条件未触发。',
-          style: AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+          style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
         ),
       );
     }
@@ -151,11 +152,11 @@ class BacktestResultPage extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(AppTheme.pagePadding, 12, AppTheme.pagePadding, 0),
       child: Row(
         children: [
-          _statCard('胜率', _pct(result.winRate), _winRateColor),
+          _statCard(context, '胜率', _pct(result.winRate), _winRateColor),
           const SizedBox(width: 8),
-          _statCard('总收益', '${result.totalReturnPct.toStringAsFixed(1)}%', _returnColor),
+          _statCard(context, '总收益', '${result.totalReturnPct.toStringAsFixed(1)}%', _returnColor(context)),
           const SizedBox(width: 8),
-          _statCard('最大回撤', '${result.maxDrawdownPct.toStringAsFixed(1)}%', StockColors.danger),
+          _statCard(context, '最大回撤', '${result.maxDrawdownPct.toStringAsFixed(1)}%', StockColors.danger),
         ],
       ),
     );
@@ -167,20 +168,20 @@ class BacktestResultPage extends StatelessWidget {
     return StockColors.danger;
   }
 
-  Color get _returnColor {
+  Color _returnColor(BuildContext context) {
     if (result.totalReturnPct > 0) return StockColors.up;
     if (result.totalReturnPct < 0) return StockColors.down;
-    return StockColors.textPrimary;
+    return context.sc.textPrimary;
   }
 
   String _pct(double v) => '${(v * 100).toStringAsFixed(1)}%';
 
-  Widget _statCard(String label, String value, Color valueColor) {
+  Widget _statCard(BuildContext context, String label, String value, Color valueColor) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: StockColors.bgSecondary,
+          color: context.sc.bgSecondary,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Column(
@@ -194,14 +195,14 @@ class BacktestResultPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPerformanceGrid() {
+  Widget _buildPerformanceGrid(BuildContext context) {
     if (result.totalTrades == 0) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(AppTheme.pagePadding, 12, AppTheme.pagePadding, 0),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -209,38 +210,38 @@ class BacktestResultPage extends StatelessWidget {
         children: [
           const Text('详细指标', style: AppTextStyles.h3),
           const SizedBox(height: 8),
-          _gridRow('盈利次数', '${result.winCount}'),
-          _gridRow('亏损次数', '${result.loseCount}'),
-          _gridRow('盈亏比', result.profitFactor.toStringAsFixed(2)),
-          _gridRow('年均收益', '${result.annualizedReturn.toStringAsFixed(1)}%'),
-          _gridRow('平均持仓', '${result.avgHoldingDays.toStringAsFixed(1)} 天'),
-          _gridRow('夏普比率', result.sharpeRatio.toStringAsFixed(2)),
-          _gridRow('最大连赢', '${result.maxConsecutiveWins} 次'),
-          _gridRow('最大连亏', '${result.maxConsecutiveLosses} 次'),
-          _gridRow('平均盈利', '+${result.avgWinPct.toStringAsFixed(1)}%'),
-          _gridRow('平均亏损', '${result.avgLossPct.toStringAsFixed(1)}%'),
-          _gridRow('最佳交易', '+${result.bestTradePct.toStringAsFixed(1)}%'),
-          _gridRow('最差交易', '${result.worstTradePct.toStringAsFixed(1)}%'),
-          _gridRow('净利(元)', result.totalNetProfit.toStringAsFixed(0)),
+          _gridRow(context, '盈利次数', '${result.winCount}'),
+          _gridRow(context, '亏损次数', '${result.loseCount}'),
+          _gridRow(context, '盈亏比', result.profitFactor.toStringAsFixed(2)),
+          _gridRow(context, '年均收益', '${result.annualizedReturn.toStringAsFixed(1)}%'),
+          _gridRow(context, '平均持仓', '${result.avgHoldingDays.toStringAsFixed(1)} 天'),
+          _gridRow(context, '夏普比率', result.sharpeRatio.toStringAsFixed(2)),
+          _gridRow(context, '最大连赢', '${result.maxConsecutiveWins} 次'),
+          _gridRow(context, '最大连亏', '${result.maxConsecutiveLosses} 次'),
+          _gridRow(context, '平均盈利', '+${result.avgWinPct.toStringAsFixed(1)}%'),
+          _gridRow(context, '平均亏损', '${result.avgLossPct.toStringAsFixed(1)}%'),
+          _gridRow(context, '最佳交易', '+${result.bestTradePct.toStringAsFixed(1)}%'),
+          _gridRow(context, '最差交易', '${result.worstTradePct.toStringAsFixed(1)}%'),
+          _gridRow(context, '净利(元)', result.totalNetProfit.toStringAsFixed(0)),
         ],
       ),
     );
   }
 
-  Widget _gridRow(String label, String value) {
+  Widget _gridRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.caption.copyWith(color: StockColors.textSecondary)),
+          Text(label, style: AppTextStyles.caption.copyWith(color: context.sc.textSecondary)),
           Text(value, style: AppTextStyles.body),
         ],
       ),
     );
   }
 
-  Widget _buildTradeList() {
+  Widget _buildTradeList(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -254,12 +255,12 @@ class BacktestResultPage extends StatelessWidget {
             ],
           ),
         ),
-        ...result.trades.take(30).map(_buildTradeItem),
+        ...result.trades.take(30).map((t) => _buildTradeItem(context, t)),
       ],
     );
   }
 
-  Widget _buildTradeItem(BacktestTrade trade) {
+  Widget _buildTradeItem(BuildContext context, BacktestTrade trade) {
     final color = trade.isWin ? StockColors.up : StockColors.down;
     final icon = trade.isWin ? Icons.arrow_upward : Icons.arrow_downward;
     final exitLabel = switch (trade.exitReason) {
@@ -277,7 +278,7 @@ class BacktestResultPage extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: Row(
@@ -302,7 +303,7 @@ class BacktestResultPage extends StatelessWidget {
                 ),
                 Text(
                   '${trade.shares}股 · $exitLabel · ${trade.exitBarIndex - trade.entryBarIndex}天',
-                  style: AppTextStyles.caption.copyWith(color: StockColors.textTertiary, fontSize: 11),
+                  style: AppTextStyles.caption.copyWith(color: context.sc.textTertiary, fontSize: 11),
                 ),
               ],
             ),

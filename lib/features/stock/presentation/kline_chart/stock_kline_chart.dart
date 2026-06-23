@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:k_chart_plus/k_chart_plus.dart';
 import 'package:k_chart_plus/chart_translations.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -65,7 +66,7 @@ class _StockKlineChartState extends State<StockKlineChart> {
       ..bgColor = Colors.transparent
       ..upColor = StockColors.up
       ..dnColor = StockColors.down
-      ..volColor = StockColors.textTertiary
+      ..volColor = context.sc.textTertiary
       // Volume bars reuse the up/down palette.
       ..nowPriceUpColor = StockColors.up
       ..nowPriceDnColor = StockColors.down
@@ -74,14 +75,14 @@ class _StockKlineChartState extends State<StockKlineChart> {
       ..ma5Color = StockColors.brand
       ..ma30Color = StockColors.warning
       // Bollinger band lines in muted tones.
-      ..kLineColor = StockColors.textSecondary
+      ..kLineColor = context.sc.textSecondary
       // Grid + crosshair in border tones.
-      ..gridColor = StockColors.border
-      ..hCrossColor = StockColors.textSecondary
+      ..gridColor = context.sc.border
+      ..hCrossColor = context.sc.textSecondary
       ..selectFillColor = StockColors.up.withValues(alpha: 0.1)
       ..selectBorderColor = StockColors.up
-      ..infoWindowTitleColor = StockColors.textPrimary
-      ..infoWindowNormalColor = StockColors.textSecondary
+      ..infoWindowTitleColor = context.sc.textPrimary
+      ..infoWindowNormalColor = context.sc.textSecondary
       ..infoWindowUpColor = StockColors.up
       ..infoWindowDnColor = StockColors.down;
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
@@ -67,9 +68,9 @@ class StockListItem extends StatelessWidget {
           horizontal: AppTheme.listItemPaddingH,
           vertical: AppTheme.listItemPaddingV,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: StockColors.border, width: 1),
+            bottom: BorderSide(color: context.sc.border, width: 1),
           ),
         ),
         child: Column(
@@ -116,7 +117,7 @@ class StockListItem extends StatelessWidget {
                 Text(
                   price > 0 ? '¥${price.toStringAsFixed(2)}' : '--',
                   style: AppTextStyles.numberSm.copyWith(
-                    color: StockColors.textPrimary,
+                    color: context.sc.textPrimary,
                   ),
                 ),
 
@@ -156,7 +157,7 @@ class StockListItem extends StatelessWidget {
                         Text(
                           expectedRange!,
                           style: AppTextStyles.caption.copyWith(
-                            color: StockColors.textSecondary,
+                            color: context.sc.textSecondary,
                           ),
                         ),
                     ],
@@ -305,12 +306,12 @@ class _StrategySummaryLine extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusXs),
       ),
       child: Text(
         parts.join(' · '),
-        style: AppTextStyles.caption.copyWith(color: StockColors.textSecondary),
+        style: AppTextStyles.caption.copyWith(color: context.sc.textSecondary),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
@@ -372,8 +373,8 @@ class _PredictionTag extends StatelessWidget {
         bgColor = StockColors.downBg;
         textColor = StockColors.down;
       case PredictionDirection.flat:
-        bgColor = StockColors.bgTertiary;
-        textColor = StockColors.textSecondary;
+        bgColor = context.sc.bgTertiary;
+        textColor = context.sc.textSecondary;
     }
 
     return Container(

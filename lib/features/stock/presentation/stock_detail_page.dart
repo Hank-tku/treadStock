@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -329,12 +330,12 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                     decoration: BoxDecoration(
                       color: selected
                           ? StockColors.brand
-                          : StockColors.bgSecondary,
+                          : context.sc.bgSecondary,
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                       border: Border.all(
                         color: selected
                             ? StockColors.brand
-                            : StockColors.border,
+                            : context.sc.border,
                       ),
                     ),
                     child: Text(
@@ -342,7 +343,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                       style: AppTextStyles.caption.copyWith(
                         color: selected
                             ? Colors.white
-                            : StockColors.textSecondary,
+                            : context.sc.textSecondary,
                         fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                       ),
                     ),
@@ -364,7 +365,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
               if (_klineLoading)
                 Positioned.fill(
                   child: Container(
-                    color: StockColors.bgPrimary.withValues(alpha: 0.6),
+                    color: context.sc.bgPrimary.withValues(alpha: 0.6),
                     alignment: Alignment.center,
                     child: const SizedBox(
                       width: 24,
@@ -400,7 +401,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: RefreshIndicator(
         color: StockColors.brand,
         onRefresh: _loadData,
@@ -481,10 +482,10 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
               children: [
                 IconButton(
                   onPressed: () => context.pop(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios,
                     size: 20,
-                    color: StockColors.gray700,
+                    color: context.sc.gray700,
                   ),
                   constraints: const BoxConstraints(
                     minWidth: 44,
@@ -499,7 +500,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                   icon: Icon(
                     _isWatched ? Icons.star_rounded : Icons.star_outline_rounded,
                     size: 26,
-                    color: _isWatched ? const Color(0xFFF5A623) : StockColors.gray700,
+                    color: _isWatched ? const Color(0xFFF5A623) : context.sc.gray700,
                   ),
                   constraints: const BoxConstraints(
                     minWidth: 44,
@@ -594,15 +595,15 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 hintText: '价格提醒（选填）',
                 prefixText: '¥ ',
                 prefixStyle: AppTextStyles.body.copyWith(
-                  color: StockColors.textSecondary,
+                  color: context.sc.textSecondary,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  borderSide: const BorderSide(color: StockColors.border),
+                  borderSide: BorderSide(color: context.sc.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  borderSide: const BorderSide(color: StockColors.border),
+                  borderSide: BorderSide(color: context.sc.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -722,7 +723,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: StockColors.bgSecondary,
+                color: context.sc.bgSecondary,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
               child: Column(
@@ -743,7 +744,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: StockColors.bgSecondary,
+                color: context.sc.bgSecondary,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
               child: Column(
@@ -785,7 +786,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       ),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Row(
@@ -801,7 +802,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 Text(
                   '该标的评分：${score?.toString() ?? '--'} · $reason',
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textSecondary,
+                    color: context.sc.textSecondary,
                   ),
                 ),
               ],
@@ -862,7 +863,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       ),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Row(
@@ -879,14 +880,14 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 Text(
                   strategyScore.displayReason,
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textSecondary,
+                    color: context.sc.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '策略数：${allScores.length} · 信号强度 ${(signalScore * 100).toStringAsFixed(0)}%',
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textTertiary,
+                    color: context.sc.textTertiary,
                   ),
                 ),
               ],
@@ -944,7 +945,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       margin: const EdgeInsets.all(AppTheme.pagePadding),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -972,7 +973,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           Text(
             label,
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
           const Spacer(),
@@ -992,7 +993,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       margin: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -1004,7 +1005,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             Text(
               summary.summaryText,
               style: AppTextStyles.bodyLg.copyWith(
-                color: StockColors.textSecondary,
+                color: context.sc.textSecondary,
                 height: 1.6,
               ),
             )
@@ -1012,7 +1013,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             Text(
               '数据不足，暂无摘要',
               style: AppTextStyles.body.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
         ],
@@ -1048,9 +1049,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
         else if (_news == null || _news!.isEmpty)
           Padding(
             padding: const EdgeInsets.all(AppTheme.pagePadding),
-            child: const Text(
+            child: Text(
               '暂无相关新闻',
-              style: TextStyle(fontSize: 13, color: StockColors.gray500),
+              style: TextStyle(fontSize: 13, color: context.sc.gray500),
             ),
           )
         else
@@ -1064,11 +1065,11 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       padding: const EdgeInsets.all(AppTheme.pagePadding),
       child: Column(
         children: [
-          const Icon(Icons.wifi_off, size: 32, color: StockColors.gray400),
+          Icon(Icons.wifi_off, size: 32, color: context.sc.gray400),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '新闻加载失败',
-            style: TextStyle(fontSize: 13, color: StockColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: context.sc.textSecondary),
           ),
           const SizedBox(height: 4),
           GestureDetector(
@@ -1107,7 +1108,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
               '${news.source.isNotEmpty ? news.source : ""}  ${Formatters.formatRelativeTime(news.publishedAt)}',
               style: AppTextStyles.caption,
             ),
-            const Divider(height: 16, color: StockColors.border),
+            Divider(height: 16, color: context.sc.border),
           ],
         ),
       ),

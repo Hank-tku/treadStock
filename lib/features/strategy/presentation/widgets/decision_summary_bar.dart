@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/decision_engine.dart';
@@ -55,33 +55,33 @@ class DecisionSummaryBar extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Row(
         children: [
-          _buildCount(
+          _buildCount(context, 
             color: DecisionEngine.signalColor(DecisionSignal.strongWatch),
             bg: DecisionEngine.signalBgColor(DecisionSignal.strongWatch),
             label: '强烈关注',
             count: strongWatchCount,
           ),
-          _buildDivider(),
-          _buildCount(
+          _buildDivider(context),
+          _buildCount(context, 
             color: DecisionEngine.signalColor(DecisionSignal.watch),
             bg: DecisionEngine.signalBgColor(DecisionSignal.watch),
             label: '可以关注',
             count: watchCount,
           ),
-          _buildDivider(),
-          _buildCount(
+          _buildDivider(context),
+          _buildCount(context, 
             color: DecisionEngine.signalColor(DecisionSignal.observe),
             bg: DecisionEngine.signalBgColor(DecisionSignal.observe),
             label: '继续观望',
             count: observeCount,
           ),
-          _buildDivider(),
-          _buildCount(
+          _buildDivider(context),
+          _buildCount(context, 
             color: DecisionEngine.signalColor(DecisionSignal.notRecommended),
             bg: DecisionEngine.signalBgColor(DecisionSignal.notRecommended),
             label: '暂不建议',
@@ -92,7 +92,7 @@ class DecisionSummaryBar extends StatelessWidget {
     );
   }
 
-  Widget _buildCount({
+  Widget _buildCount(BuildContext context, {
     required Color color,
     required Color bg,
     required String label,
@@ -122,7 +122,7 @@ class DecisionSummaryBar extends StatelessWidget {
           Text(
             label,
             style: AppTextStyles.micro.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -131,11 +131,11 @@ class DecisionSummaryBar extends StatelessWidget {
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildDivider(BuildContext context) {
     return Container(
       width: 0.5,
       height: 16,
-      color: StockColors.border,
+      color: context.sc.border,
     );
   }
 }

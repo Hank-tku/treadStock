@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
+import 'package:stockpilot/features/settings/presentation/theme_switcher_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -91,20 +93,36 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
         state.hasSearchError;
 
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: Column(
         children: [
-          // Title
-          const Padding(
-            padding: EdgeInsets.fromLTRB(
+          // Title + theme switcher
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
               AppTheme.pagePadding,
               12,
               AppTheme.pagePadding,
               8,
             ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('关注', style: AppTextStyles.h1),
+            child: Row(
+              children: [
+                Text('关注', style: AppTextStyles.h1),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => showThemeSwitcherSheet(context),
+                  icon: Icon(
+                    Icons.dark_mode_outlined,
+                    size: 22,
+                    color: context.sc.textTertiary,
+                  ),
+                  tooltip: '主题',
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
             ),
           ),
 
@@ -137,8 +155,8 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 border: Border.all(
                   color: _isSearchFocused
-                      ? StockColors.borderActive
-                      : StockColors.borderFocus,
+                      ? context.sc.borderActive
+                      : context.sc.borderFocus,
                   width: 1,
                 ),
                 boxShadow: _isSearchFocused
@@ -158,28 +176,28 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
                 autocorrect: false,
                 enableSuggestions: false,
                 keyboardType: TextInputType.text,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: StockColors.textPrimary,
+                  color: context.sc.textPrimary,
                 ),
                 decoration: InputDecoration(
                   hintText: '搜索股票代码或名称',
                   hintStyle: TextStyle(
                     fontSize: 14,
-                    color: StockColors.gray400,
+                    color: context.sc.gray400,
                   ),
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.search,
                     size: 20,
-                    color: StockColors.gray500,
+                    color: context.sc.gray500,
                   ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? GestureDetector(
                           onTap: _clearSearch,
-                          child: const Icon(
+                          child: Icon(
                             Icons.close,
                             size: 18,
-                            color: StockColors.gray500,
+                            color: context.sc.gray500,
                           ),
                         )
                       : null,
@@ -225,7 +243,7 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
         alignment: Alignment.center,
         child: Text(
           state.searchError ?? '搜索服务暂不可用，请稍后重试',
-          style: AppTextStyles.body.copyWith(color: StockColors.gray500),
+          style: AppTextStyles.body.copyWith(color: context.sc.gray500),
         ),
       );
     }
@@ -235,18 +253,18 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
         alignment: Alignment.center,
-        child: const Text(
+        child: Text(
           '未找到匹配股票',
-          style: TextStyle(fontSize: 13, color: StockColors.gray500),
+          style: TextStyle(fontSize: 13, color: context.sc.gray500),
         ),
       );
     }
 
     return ListView.separated(
       itemCount: results.length + 1,
-      separatorBuilder: (context, index) => const Divider(
+      separatorBuilder: (context, index) => Divider(
         height: 1,
-        color: StockColors.border,
+        color: context.sc.border,
         indent: AppTheme.pagePadding,
         endIndent: AppTheme.pagePadding,
       ),
@@ -262,7 +280,7 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
             child: Text(
               '点击关注即可添加到关注列表',
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
           );
@@ -287,9 +305,9 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
               horizontal: AppTheme.pagePadding,
               vertical: 12,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: StockColors.border, width: 1),
+                bottom: BorderSide(color: context.sc.border, width: 1),
               ),
             ),
             child: Row(
@@ -404,7 +422,7 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
                     );
                   },
                   backgroundColor: item.isPinned
-                      ? StockColors.gray500
+                      ? context.sc.gray500
                       : StockColors.pin,
                   foregroundColor: Colors.white,
                   label: item.isPinned ? '取消置顶' : '置顶',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -11,7 +12,7 @@ class StrategyKnowledgePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
@@ -86,9 +87,9 @@ class _CreateGoalCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: StockColors.border),
+        border: Border.all(color: context.sc.border),
       ),
       child: Row(
         children: [
@@ -103,7 +104,7 @@ class _CreateGoalCard extends StatelessWidget {
                 Text(
                   '选择一个观察目标，生成策略后回到推荐页查看今天是否有线索。',
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textSecondary,
+                    color: context.sc.textSecondary,
                   ),
                 ),
               ],
@@ -179,7 +180,7 @@ class _StepLine extends StatelessWidget {
             child: Text(
               text,
               style: AppTextStyles.body.copyWith(
-                color: StockColors.textSecondary,
+                color: context.sc.textSecondary,
               ),
             ),
           ),
@@ -198,7 +199,7 @@ class _ComparisonCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -209,19 +210,19 @@ class _ComparisonCard extends StatelessWidget {
           Text(
             '同一只股票在不同策略下得分不同，是学习策略的入口。',
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
-          _buildCompareRow('低位修复分高', '说明它更接近低位观察区，重点看是否企稳。'),
-          _buildCompareRow('趋势延续分高', '说明它更符合顺势观察，重点看趋势是否保持。'),
-          _buildCompareRow('两个策略都低', '说明当前不适合强行观察，可以先放弃。'),
+          _buildCompareRow(context, '低位修复分高', '说明它更接近低位观察区，重点看是否企稳。'),
+          _buildCompareRow(context, '趋势延续分高', '说明它更符合顺势观察，重点看趋势是否保持。'),
+          _buildCompareRow(context, '两个策略都低', '说明当前不适合强行观察，可以先放弃。'),
         ],
       ),
     );
   }
 
-  static Widget _buildCompareRow(String label, String body) {
+  static Widget _buildCompareRow(BuildContext context, String label, String body) {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Row(
@@ -238,7 +239,7 @@ class _ComparisonCard extends StatelessWidget {
             child: Text(
               body,
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
           ),
@@ -260,7 +261,7 @@ class _KnowledgeCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -271,7 +272,7 @@ class _KnowledgeCard extends StatelessWidget {
           Text(
             body,
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
         ],

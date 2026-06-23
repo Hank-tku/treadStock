@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_colors.dart';
 
 /// Cache/Offline banner shown when network is unavailable.
@@ -19,7 +20,7 @@ class CacheBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 32,
-      color: StockColors.bgWarning,
+      color: context.sc.bgWarning,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
@@ -32,9 +33,9 @@ class CacheBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: StockColors.cacheBannerText,
+                color: context.sc.cacheBannerText,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -42,18 +43,18 @@ class CacheBanner extends StatelessWidget {
           if (timestamp != null)
             Text(
               timestamp!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: StockColors.gray500,
+                color: context.sc.gray500,
               ),
             ),
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onClose,
-            child: const Icon(
+            child: Icon(
               Icons.close,
               size: 16,
-              color: StockColors.gray500,
+              color: context.sc.gray500,
             ),
           ),
         ],

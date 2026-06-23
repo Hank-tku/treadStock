@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -112,14 +113,14 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios,
             size: 20,
-            color: StockColors.gray700,
+            color: context.sc.gray700,
           ),
         ),
         title: Text(_isEdit ? '编辑策略' : '创建策略'),
@@ -197,7 +198,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
               _showAdvancedSettings
                   ? Icons.keyboard_arrow_down
                   : Icons.keyboard_arrow_right,
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
             const SizedBox(width: 4),
             const Text('高级参数', style: AppTextStyles.h3),
@@ -205,7 +206,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
             Text(
               _showAdvancedSettings ? '收起' : '可选',
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
           ],
@@ -221,7 +222,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         Text(
           '新手可以先使用系统生成的参数，运行几天后再根据复盘结果微调。',
           style: AppTextStyles.caption.copyWith(
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
           ),
         ),
         const SizedBox(height: 16),
@@ -303,7 +304,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         _buildSection('信号规则'),
         Text(
           '开启后，策略将使用信号规则替代加权评分模式进行判断。',
-          style: AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
+          style: AppTextStyles.caption.copyWith(color: context.sc.textTertiary),
         ),
         const SizedBox(height: 12),
         StockFilterEditCard(
@@ -350,7 +351,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
             Text(
               '${rules.length} 条规则',
               style:
-                  AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
+                  AppTextStyles.caption.copyWith(color: context.sc.textTertiary),
             ),
           ],
         ),
@@ -359,7 +360,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
           Text(
             '暂无规则，点击下方添加',
             style:
-                AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
+                AppTextStyles.caption.copyWith(color: context.sc.textTertiary),
           )
         else
           ...rules.asMap().entries.map(
@@ -396,7 +397,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Row(
@@ -405,8 +406,8 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
             child: Text('$indLabel $condLabel $valueText', style: AppTextStyles.body),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline,
-                size: 18, color: StockColors.textTertiary),
+            icon: Icon(Icons.delete_outline,
+                size: 18, color: context.sc.textTertiary),
             onPressed: () {
               final newRules = List<SignalRule>.from(rules)..removeAt(index);
               onChanged(newRules);
@@ -425,7 +426,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         Text(
           '根据当前可用行情与日K字段生成策略草稿，生成后可继续编辑参数。',
           style: AppTextStyles.caption.copyWith(
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
           ),
         ),
         const SizedBox(height: 12),
@@ -442,7 +443,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         Text(
           '先选择一个你能理解的观察目标，系统会生成可编辑的策略草稿。',
           style: AppTextStyles.caption.copyWith(
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
           ),
         ),
         const SizedBox(height: 12),
@@ -459,10 +460,10 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
       decoration: BoxDecoration(
         color: isSelected
             ? StockColors.brand.withValues(alpha: 0.06)
-            : StockColors.bgSecondary,
+            : context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
-          color: isSelected ? StockColors.brand : StockColors.border,
+          color: isSelected ? StockColors.brand : context.sc.border,
           width: isSelected ? 1.5 : 1,
         ),
       ),
@@ -475,7 +476,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
               Icon(
                 isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
                 size: 20,
-                color: isSelected ? StockColors.brand : StockColors.gray400,
+                color: isSelected ? StockColors.brand : context.sc.gray400,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -487,7 +488,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
                     Text(
                       goal.subtitle,
                       style: AppTextStyles.body.copyWith(
-                        color: StockColors.textSecondary,
+                        color: context.sc.textSecondary,
                       ),
                     ),
                   ],
@@ -512,13 +513,13 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 15, color: StockColors.textTertiary),
+        Icon(icon, size: 15, color: context.sc.textTertiary),
         const SizedBox(width: 5),
         Expanded(
           child: Text(
             text,
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
         ),
@@ -534,7 +535,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         Text(
           '复制规则到任意大模型生成策略 JSON，再粘贴回来导入。App 不会调用模型或上传数据。',
           style: AppTextStyles.caption.copyWith(
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
           ),
         ),
         const SizedBox(height: 12),
@@ -578,10 +579,10 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
-          color: isSelected ? StockColors.brand : StockColors.border,
+          color: isSelected ? StockColors.brand : context.sc.border,
           width: isSelected ? 1.5 : 1,
         ),
       ),
@@ -600,7 +601,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
                     Text(
                       template.description,
                       style: AppTextStyles.body.copyWith(
-                        color: StockColors.textSecondary,
+                        color: context.sc.textSecondary,
                       ),
                     ),
                   ],
@@ -626,14 +627,14 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
           Text(
             '字段：${template.requiredFields.join(' / ')}',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             template.apiSource,
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
         ],
@@ -710,7 +711,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
       children: [
         Text(
           label,
-          style: AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+          style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
         ),
         const SizedBox(height: 4),
         TextField(
@@ -741,7 +742,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
           child: Text(
             label,
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
         ),
@@ -774,7 +775,7 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
             child: Text(
               label,
               style: AppTextStyles.body.copyWith(
-                color: StockColors.textSecondary,
+                color: context.sc.textSecondary,
               ),
             ),
           ),

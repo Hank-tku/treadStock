@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stockpilot/core/theme/app_colors.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:stockpilot/core/theme/app_text_styles.dart';
 import 'package:stockpilot/core/theme/app_theme.dart';
 
@@ -156,7 +157,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
           Text(
             '可多选，至少选1个。这些指标将用于筛选和评估标的。',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
@@ -199,7 +200,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
           Text(
             '根据选中的指标调整参数。点击"推荐值"可恢复默认。',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
@@ -253,7 +254,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
               child: Text(
                 '请先选择至少一个指标',
                 style: AppTextStyles.body.copyWith(
-                  color: StockColors.textTertiary,
+                  color: context.sc.textTertiary,
                 ),
               ),
             ),
@@ -276,7 +277,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -299,7 +300,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
             min: min,
             max: max,
             activeColor: StockColors.brand,
-            inactiveColor: StockColors.gray200,
+            inactiveColor: context.sc.gray200,
             onChanged: onChanged,
           ),
           GestureDetector(
@@ -337,11 +338,11 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
               hintText: '输入策略名称',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                borderSide: const BorderSide(color: StockColors.border),
+                borderSide: BorderSide(color: context.sc.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                borderSide: const BorderSide(color: StockColors.border),
+                borderSide: BorderSide(color: context.sc.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -360,7 +361,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: StockColors.bgSecondary,
+              color: context.sc.bgSecondary,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
             child: Column(
@@ -429,9 +430,9 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
         AppTheme.pagePadding,
         16,
       ),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: StockColors.border)),
-        color: StockColors.bgPrimary,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: context.sc.border)),
+        color: context.sc.bgPrimary,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -448,7 +449,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
                 decoration: BoxDecoration(
                   color: isActive
                       ? StockColors.brand
-                      : StockColors.gray300,
+                      : context.sc.gray300,
                   borderRadius: BorderRadius.circular(4),
                 ),
               );
@@ -458,7 +459,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
           Text(
             '${_currentStep + 1}/3',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
           const SizedBox(height: 12),
@@ -486,7 +487,7 @@ class _StrategyCreationGuideState extends State<StrategyCreationGuide> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: StockColors.brand,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: StockColors.gray300,
+                    disabledBackgroundColor: context.sc.gray300,
                     minimumSize: const Size.fromHeight(44),
                     shape: RoundedRectangleBorder(
                       borderRadius:
@@ -529,10 +530,10 @@ class _IndicatorCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? StockColors.brand.withValues(alpha: 0.08)
-              : StockColors.bgSecondary,
+              : context.sc.bgSecondary,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? StockColors.brand : StockColors.border,
+            color: selected ? StockColors.brand : context.sc.border,
             width: selected ? 1.5 : 1.0,
           ),
         ),
@@ -544,7 +545,7 @@ class _IndicatorCard extends StatelessWidget {
                 Icon(
                   type.icon,
                   size: 20,
-                  color: selected ? StockColors.brand : StockColors.gray500,
+                  color: selected ? StockColors.brand : context.sc.gray500,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -552,7 +553,7 @@ class _IndicatorCard extends StatelessWidget {
                     type.label,
                     style: AppTextStyles.body.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: selected ? StockColors.brand : StockColors.textPrimary,
+                      color: selected ? StockColors.brand : context.sc.textPrimary,
                     ),
                   ),
                 ),
@@ -568,7 +569,7 @@ class _IndicatorCard extends StatelessWidget {
             Text(
               type.description,
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
           ],

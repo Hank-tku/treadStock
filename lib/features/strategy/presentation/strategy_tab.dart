@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -33,7 +34,7 @@ class _StrategyTabState extends ConsumerState<StrategyTab> {
     final state = ref.watch(strategyListProvider);
 
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -174,7 +175,7 @@ class _StrategyCard extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: StockColors.bgSecondary,
+          color: context.sc.bgSecondary,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Column(
@@ -219,7 +220,7 @@ class _StrategyCard extends StatelessWidget {
               Text(
                 strategy.description,
                 style: AppTextStyles.caption.copyWith(
-                  color: StockColors.textTertiary,
+                  color: context.sc.textTertiary,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -242,7 +243,7 @@ class _StrategyCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: StockColors.bgWarning,
+                  color: context.sc.bgWarning,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -256,7 +257,7 @@ class _StrategyCard extends StatelessWidget {
                     Text(
                       '建议进行复盘',
                       style: AppTextStyles.caption.copyWith(
-                        color: StockColors.cacheBannerText,
+                        color: context.sc.cacheBannerText,
                       ),
                     ),
                   ],
@@ -294,7 +295,7 @@ class _StrategyCardSkeleton extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: const Column(

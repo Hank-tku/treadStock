@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -27,7 +28,7 @@ class BacktestSummaryCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -68,7 +69,7 @@ class BacktestSummaryCard extends StatelessWidget {
                     Text(
                       '命中率',
                       style: AppTextStyles.caption.copyWith(
-                        color: StockColors.textTertiary,
+                        color: context.sc.textTertiary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -79,7 +80,7 @@ class BacktestSummaryCard extends StatelessWidget {
                         height: 6,
                         child: LinearProgressIndicator(
                           value: stats.evaluatedCount > 0 ? hitRatePct : 0,
-                          backgroundColor: StockColors.gray200,
+                          backgroundColor: context.sc.gray200,
                           valueColor: AlwaysStoppedAnimation<Color>(barColor),
                         ),
                       ),
@@ -96,6 +97,7 @@ class BacktestSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatItem(
+                  context,
                   '总信号数',
                   '${stats.totalRecommendations}',
                 ),
@@ -103,10 +105,11 @@ class BacktestSummaryCard extends StatelessWidget {
               Container(
                 width: 1,
                 height: 24,
-                color: StockColors.divider,
+                color: context.sc.divider,
               ),
               Expanded(
                 child: _buildStatItem(
+                  context,
                   '命中数',
                   '${stats.hitCount}',
                 ),
@@ -114,10 +117,11 @@ class BacktestSummaryCard extends StatelessWidget {
               Container(
                 width: 1,
                 height: 24,
-                color: StockColors.divider,
+                color: context.sc.divider,
               ),
               Expanded(
                 child: _buildStatItem(
+                  context,
                   '平均涨幅',
                   stats.avgChangeDisplay,
                 ),
@@ -130,7 +134,7 @@ class BacktestSummaryCard extends StatelessWidget {
           Text(
             '基于近 ${stats.tradingDaysRun} 个交易日的数据',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
               fontSize: 11,
             ),
           ),
@@ -139,20 +143,20 @@ class BacktestSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
+  Widget _buildStatItem(BuildContext context, String label, String value) {
     return Column(
       children: [
         Text(
           value,
           style: AppTextStyles.numberSm.copyWith(
-            color: StockColors.textPrimary,
+            color: context.sc.textPrimary,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
           style: AppTextStyles.micro.copyWith(
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
           ),
         ),
       ],

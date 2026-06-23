@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -48,7 +49,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: ListView(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).padding.bottom + 80,
@@ -77,7 +78,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
               children: [
                 IconButton(
                   onPressed: () => context.pop(),
-                  icon: const Icon(Icons.arrow_back_ios, size: 20, color: StockColors.gray700),
+                  icon: Icon(Icons.arrow_back_ios, size: 20, color: context.sc.gray700),
                   constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                 ),
                 const Spacer(),
@@ -108,7 +109,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
       margin: const EdgeInsets.fromLTRB(AppTheme.pagePadding, 16, AppTheme.pagePadding, 0),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -120,7 +121,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
             controller: _searchController,
             decoration: InputDecoration(
               hintText: '输入股票代码或名称搜索',
-              hintStyle: AppTextStyles.caption.copyWith(color: StockColors.textTertiary),
+              hintStyle: AppTextStyles.caption.copyWith(color: context.sc.textTertiary),
               prefixIcon: const Icon(Icons.search, size: 20),
               suffixIcon: _isSearching
                   ? const SizedBox(
@@ -130,7 +131,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
                     )
                   : null,
               filled: true,
-              fillColor: StockColors.bgPrimary,
+              fillColor: context.sc.bgPrimary,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 borderSide: BorderSide.none,
@@ -164,7 +165,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
                   const Spacer(),
                   GestureDetector(
                     onTap: () => setState(() => _selectedStock = null),
-                    child: const Icon(Icons.close, size: 16, color: StockColors.textTertiary),
+                    child: Icon(Icons.close, size: 16, color: context.sc.textTertiary),
                   ),
                 ],
               ),
@@ -190,7 +191,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
           children: [
             Text(result.name, style: AppTextStyles.body),
             const Spacer(),
-            Text(result.fullCode, style: AppTextStyles.caption.copyWith(color: StockColors.textTertiary)),
+            Text(result.fullCode, style: AppTextStyles.caption.copyWith(color: context.sc.textTertiary)),
           ],
         ),
       ),
@@ -202,7 +203,7 @@ class _BacktestConfigPageState extends ConsumerState<BacktestConfigPage> {
       margin: const EdgeInsets.fromLTRB(AppTheme.pagePadding, 12, AppTheme.pagePadding, 0),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(

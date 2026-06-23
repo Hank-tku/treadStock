@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -17,16 +18,16 @@ class SignalCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!card.isActionable) {
-      return _buildNeutralCard();
+      return _buildNeutralCard(context);
     }
 
-    return _buildSignalCard();
+    return _buildSignalCard(context);
   }
 
   /// Active signal card — colored border + indicator highlights.
-  Widget _buildSignalCard() {
-    final color = _signalColor;
-    final bgColor = _signalBgColor;
+  Widget _buildSignalCard(BuildContext context) {
+    final color = _signalColor(context);
+    final bgColor = _signalBgColor(context);
 
     return Container(
       margin: const EdgeInsets.symmetric(
@@ -49,23 +50,23 @@ class SignalCardWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header row: type tag + strength + strategy name
-                _buildHeader(color),
+                _buildHeader(context, color),
                 const SizedBox(height: 8),
                 // Headline
                 Text(card.headline, style: AppTextStyles.bodyLg),
                 const SizedBox(height: 6),
                 // Indicator highlights row
                 if (card.highlights.isNotEmpty) ...[
-                  _buildHighlights(),
+                  _buildHighlights(context),
                   const SizedBox(height: 8),
                 ],
                 // Rule pass rate bar
                 if (card.totalRuleCount > 0) ...[
-                  _buildPassRateBar(color),
+                  _buildPassRateBar(context, color),
                   const SizedBox(height: 8),
                 ],
                 // Suggestion
-                _buildSuggestion(),
+                _buildSuggestion(context),
               ],
             ),
           ),
@@ -75,7 +76,7 @@ class SignalCardWidget extends StatelessWidget {
   }
 
   /// Neutral / no-signal card — minimal display.
-  Widget _buildNeutralCard() {
+  Widget _buildNeutralCard(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: AppTheme.pagePadding,
@@ -83,7 +84,7 @@ class SignalCardWidget extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -94,13 +95,13 @@ class SignalCardWidget extends StatelessWidget {
               Icon(
                 Icons.info_outline,
                 size: 16,
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
               const SizedBox(width: 6),
               Text(
                 card.headline,
                 style: AppTextStyles.body.copyWith(
-                  color: StockColors.textSecondary,
+                  color: context.sc.textSecondary,
                 ),
               ),
             ],
@@ -110,7 +111,7 @@ class SignalCardWidget extends StatelessWidget {
             Text(
               card.detail,
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ),
           ],
@@ -119,7 +120,7 @@ class SignalCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(Color color) {
+  Widget _buildHeader(BuildContext context, Color color) {
     return Row(
       children: [
         // Signal type tag
@@ -145,7 +146,7 @@ class SignalCardWidget extends StatelessWidget {
           child: Text(
             card.strategyName,
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -156,13 +157,13 @@ class SignalCardWidget extends StatelessWidget {
           Icon(
             Icons.chevron_right,
             size: 18,
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
           ),
       ],
     );
   }
 
-  Widget _buildHighlights() {
+  Widget _buildHighlights(BuildContext context) {
     return Wrap(
       spacing: 6,
       runSpacing: 6,
@@ -189,7 +190,7 @@ class SignalCardWidget extends StatelessWidget {
               Text(
                 '${h.value} ${h.status}',
                 style: AppTextStyles.micro.copyWith(
-                  color: StockColors.textSecondary,
+                  color: context.sc.textSecondary,
                 ),
               ),
             ],
@@ -199,7 +200,7 @@ class SignalCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildPassRateBar(Color color) {
+  Widget _buildPassRateBar(BuildContext context, Color color) {
     final rate = card.passRate;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,7 +210,7 @@ class SignalCardWidget extends StatelessWidget {
             Text(
               '规则匹配',
               style: AppTextStyles.caption.copyWith(
-                color: StockColors.textSecondary,
+                color: context.sc.textSecondary,
               ),
             ),
             const SizedBox(width: 6),
@@ -229,7 +230,7 @@ class SignalCardWidget extends StatelessWidget {
             height: 4,
             child: LinearProgressIndicator(
               value: rate,
-              backgroundColor: StockColors.gray200,
+              backgroundColor: context.sc.gray200,
               valueColor: AlwaysStoppedAnimation(color),
               minHeight: 4,
             ),
@@ -239,21 +240,21 @@ class SignalCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildSuggestion() {
+  Widget _buildSuggestion(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           Icons.lightbulb_outline,
           size: 14,
-          color: StockColors.textTertiary,
+          color: context.sc.textTertiary,
         ),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
             card.suggestion,
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
         ),
@@ -263,21 +264,21 @@ class SignalCardWidget extends StatelessWidget {
 
   // ── Color helpers ──────────────────────────────────────────────────
 
-  Color get _signalColor {
+  Color _signalColor(BuildContext context) {
     return switch (card.type) {
       SignalType.entry => StockColors.up,
       SignalType.exit => StockColors.down,
       SignalType.watch => StockColors.warning,
-      SignalType.neutral => StockColors.gray400,
+      SignalType.neutral => context.sc.gray400,
     };
   }
 
-  Color get _signalBgColor {
+  Color _signalBgColor(BuildContext context) {
     return switch (card.type) {
       SignalType.entry => StockColors.upLight,
       SignalType.exit => StockColors.downLight,
-      SignalType.watch => StockColors.bgWarning,
-      SignalType.neutral => StockColors.bgSecondary,
+      SignalType.watch => context.sc.bgWarning,
+      SignalType.neutral => context.sc.bgSecondary,
     };
   }
 }
@@ -295,7 +296,7 @@ class SignalCardLoading extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -308,7 +309,7 @@ class SignalCardLoading extends StatelessWidget {
                 width: 60,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: StockColors.gray200,
+                  color: context.sc.gray200,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -317,7 +318,7 @@ class SignalCardLoading extends StatelessWidget {
                 width: 80,
                 height: 14,
                 decoration: BoxDecoration(
-                  color: StockColors.gray200,
+                  color: context.sc.gray200,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -329,7 +330,7 @@ class SignalCardLoading extends StatelessWidget {
             width: 200,
             height: 16,
             decoration: BoxDecoration(
-              color: StockColors.gray200,
+              color: context.sc.gray200,
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -341,7 +342,7 @@ class SignalCardLoading extends StatelessWidget {
                 width: 70,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: StockColors.gray200,
+                  color: context.sc.gray200,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -350,7 +351,7 @@ class SignalCardLoading extends StatelessWidget {
                 width: 70,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: StockColors.gray200,
+                  color: context.sc.gray200,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -359,7 +360,7 @@ class SignalCardLoading extends StatelessWidget {
                 width: 70,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: StockColors.gray200,
+                  color: context.sc.gray200,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -371,7 +372,7 @@ class SignalCardLoading extends StatelessWidget {
             width: double.infinity,
             height: 4,
             decoration: BoxDecoration(
-              color: StockColors.gray200,
+              color: context.sc.gray200,
               borderRadius: BorderRadius.circular(2),
             ),
           ),

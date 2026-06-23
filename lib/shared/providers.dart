@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/stock/data/stock_api_service.dart';
 import '../features/stock/data/kline_cache.dart';
@@ -9,6 +10,7 @@ import '../features/strategy/domain/strategy_scoring_service.dart';
 import '../features/watchlist/data/watchlist_service.dart';
 import '../features/alert/data/notification_service.dart';
 import '../features/alert/data/alert_scheduler.dart';
+import '../features/settings/data/theme_prefs_service.dart';
 
 /// Provider for the stock API service (singleton).
 final stockApiServiceProvider = Provider<StockApiService>((ref) {
@@ -83,4 +85,38 @@ final cachedStockApiServiceProvider = Provider<CachedStockApiService>((ref) {
   final api = ref.watch(stockApiServiceProvider);
   final cache = ref.watch(klineCacheProvider);
   return CachedStockApiService(api: api, cache: cache);
+});
+
+// ── Theme ──────────────────────────────────────────────────────────
+
+/// Singleton provider for the theme-mode persistence service.
+final themePrefsServiceProvider = Provider<ThemePrefsService>((ref) {
+  return ThemePrefsService();
+});
+
+/// Holds the app's [ThemeMode] and persists user changes.
+///
+/// Initialized from [ThemePrefsService] (defaults to [ThemeMode.system]).
+/// Calling [ThemeModeNotifier.set] updates both the in-memory state and the
+/// persisted preference so the choice survives app restarts.
+class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  ThemeModeNotifier(this._prefs) : super(ThemeMode.system);
+
+  final ThemePrefsService _prefs;
+
+  /// Load the persisted theme mode into state. Called once at startup.
+  Future<void> init() async {
+    state = await _prefs.getThemeMode();
+  }
+
+  Future<void> set(ThemeMode mode) async {
+    state = mode;
+    await _prefs.setThemeMode(mode);
+  }
+}
+
+/// App theme mode state. Watch this in MaterialApp's `themeMode`.
+final themeModeProvider =
+    StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+  return ThemeModeNotifier(ref.watch(themePrefsServiceProvider));
 });

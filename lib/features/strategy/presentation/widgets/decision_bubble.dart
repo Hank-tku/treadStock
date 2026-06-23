@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -65,7 +65,7 @@ class _DecisionBubbleState extends State<DecisionBubble> {
                 child: Text(
                   widget.summaryText,
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textSecondary,
+                    color: context.sc.textSecondary,
                     height: 1.4,
                   ),
                 ),
@@ -81,7 +81,7 @@ class _DecisionBubbleState extends State<DecisionBubble> {
                           ? Icons.expand_less
                           : Icons.help_outline,
                       size: 14,
-                      color: StockColors.textTertiary,
+                      color: context.sc.textTertiary,
                     ),
                   ),
                 ),
@@ -102,7 +102,7 @@ class _DecisionBubbleState extends State<DecisionBubble> {
                       child: Text(
                         widget.detailText,
                         style: AppTextStyles.caption.copyWith(
-                          color: StockColors.textTertiary,
+                          color: context.sc.textTertiary,
                           height: 1.4,
                           fontSize: 11,
                         ),

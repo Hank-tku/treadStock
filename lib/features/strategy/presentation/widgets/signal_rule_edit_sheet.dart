@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -129,7 +130,7 @@ class _SignalRuleEditSheetState extends State<SignalRuleEditSheet> {
           // Indicator selector
           Text(
             '指标',
-            style: AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+            style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
           ),
           const SizedBox(height: 4),
           _buildDropdown(
@@ -142,7 +143,7 @@ class _SignalRuleEditSheetState extends State<SignalRuleEditSheet> {
           // Condition selector
           Text(
             '条件',
-            style: AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+            style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
           ),
           const SizedBox(height: 4),
           _buildDropdown(
@@ -155,7 +156,7 @@ class _SignalRuleEditSheetState extends State<SignalRuleEditSheet> {
           // Threshold input
           Text(
             _condition == 'in_range' ? '下限值' : '阈值',
-            style: AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+            style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
           ),
           const SizedBox(height: 4),
           TextField(
@@ -174,7 +175,7 @@ class _SignalRuleEditSheetState extends State<SignalRuleEditSheet> {
             Text(
               '上限值',
               style:
-                  AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+                  AppTextStyles.body.copyWith(color: context.sc.textSecondary),
             ),
             const SizedBox(height: 4),
             TextField(
@@ -225,7 +226,7 @@ class _SignalRuleEditSheetState extends State<SignalRuleEditSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        border: Border.all(color: StockColors.border),
+        border: Border.all(color: context.sc.border),
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: DropdownButtonHideUnderline(

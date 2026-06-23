@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:stockpilot/core/theme/app_colors.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:stockpilot/core/theme/app_text_styles.dart';
 import '../providers/hit_rate_trend_provider.dart';
 
@@ -31,20 +32,20 @@ class HitRateTrendChart extends StatelessWidget {
               Icon(
                 Icons.show_chart,
                 size: 40,
-                color: StockColors.gray400,
+                color: context.sc.gray400,
               ),
               const SizedBox(height: 8),
               Text(
                 '数据积累中',
                 style: AppTextStyles.body.copyWith(
-                  color: StockColors.textTertiary,
+                  color: context.sc.textTertiary,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 '满 5 个交易日后可查看命中率趋势',
                 style: AppTextStyles.caption.copyWith(
-                  color: StockColors.textTertiary,
+                  color: context.sc.textTertiary,
                 ),
               ),
             ],
@@ -56,7 +57,12 @@ class HitRateTrendChart extends StatelessWidget {
     return SizedBox(
       height: height,
       child: CustomPaint(
-        painter: _HitRateTrendPainter(data: data),
+        painter: _HitRateTrendPainter(
+          data: data,
+          gridColor: context.sc.gray200,
+          dashedLineColor: context.sc.gray300,
+          axisTextColor: context.sc.textTertiary,
+        ),
         size: Size.infinite,
       ),
     );
@@ -65,8 +71,17 @@ class HitRateTrendChart extends StatelessWidget {
 
 class _HitRateTrendPainter extends CustomPainter {
   final List<DailyHitRate> data;
+  // Theme-dependent colors passed from build (paint has no BuildContext).
+  final Color gridColor;
+  final Color dashedLineColor;
+  final Color axisTextColor;
 
-  _HitRateTrendPainter({required this.data});
+  _HitRateTrendPainter({
+    required this.data,
+    required this.gridColor,
+    required this.dashedLineColor,
+    required this.axisTextColor,
+  });
 
   // Chart padding
   static const double _leftPadding = 36;
@@ -94,7 +109,7 @@ class _HitRateTrendPainter extends CustomPainter {
       canvas,
       Offset(chartLeft, chartTop + chartHeight * 0.5),
       Offset(chartLeft + chartWidth, chartTop + chartHeight * 0.5),
-      StockColors.gray300,
+      dashedLineColor,
       dashWidth: 4,
       dashGap: 3,
     );
@@ -153,7 +168,7 @@ class _HitRateTrendPainter extends CustomPainter {
     final positions = [0.0, 0.5, 1.0];
 
     final textStyle = TextStyle(
-      color: StockColors.textTertiary,
+      color: axisTextColor,
       fontSize: 10,
     );
 
@@ -162,7 +177,7 @@ class _HitRateTrendPainter extends CustomPainter {
 
       // Grid line
       final gridPaint = Paint()
-        ..color = StockColors.gray200
+        ..color = gridColor
         ..strokeWidth = 0.5;
       canvas.drawLine(
         Offset(chartLeft, y),
@@ -187,7 +202,7 @@ class _HitRateTrendPainter extends CustomPainter {
     if (data.isEmpty) return;
 
     final textStyle = TextStyle(
-      color: StockColors.textTertiary,
+      color: axisTextColor,
       fontSize: 10,
     );
 

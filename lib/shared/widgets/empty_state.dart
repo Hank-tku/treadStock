@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
@@ -31,7 +32,7 @@ class EmptyState extends StatelessWidget {
             Icon(
               icon,
               size: 64,
-              color: StockColors.gray400,
+              color: context.sc.gray400,
             ),
             const SizedBox(height: 16),
             Text(
@@ -45,7 +46,7 @@ class EmptyState extends StatelessWidget {
             Text(
               subtitle,
               style: AppTextStyles.body.copyWith(
-                color: StockColors.gray500,
+                color: context.sc.gray500,
               ),
               textAlign: TextAlign.center,
             ),

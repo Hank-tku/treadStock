@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -177,7 +178,7 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
             const SizedBox(height: AppTheme.space6),
             Text(
               '正在遍历参数组合，请稍候…',
-              style: AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+              style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
             ),
             const SizedBox(height: AppTheme.space4),
             const StockListSkeleton(count: 5),
@@ -197,7 +198,7 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
               const SizedBox(height: AppTheme.space3),
               Text(
                 _errorMessage!,
-                style: AppTextStyles.body.copyWith(color: StockColors.textSecondary),
+                style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppTheme.space5),
@@ -223,10 +224,10 @@ class _StrategyTunerPageState extends ConsumerState<StrategyTunerPage> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(AppTheme.pagePadding),
-          color: StockColors.bgSecondary,
+          color: context.sc.bgSecondary,
           child: Text(
             '共测试 ${results.length} 种参数组合，按收益率降序排列',
-            style: AppTextStyles.caption.copyWith(color: StockColors.textSecondary),
+            style: AppTextStyles.caption.copyWith(color: context.sc.textSecondary),
           ),
         ),
         // Results list
@@ -274,7 +275,7 @@ class _TunerResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bt = result.backtestResult;
     final highlightColor =
-        _isBetter ? StockColors.up : StockColors.textSecondary;
+        _isBetter ? StockColors.up : context.sc.textSecondary;
 
     return Container(
       margin: const EdgeInsets.symmetric(
@@ -283,14 +284,14 @@ class _TunerResultCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: _isBetter ? StockColors.upBg : StockColors.bgPrimary,
+        color: _isBetter ? StockColors.upBg : context.sc.bgPrimary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
           color: result.isBaseline
               ? StockColors.brand
               : _isBetter
                   ? StockColors.up.withValues(alpha: 0.3)
-                  : StockColors.border,
+                  : context.sc.border,
         ),
       ),
       child: Column(
@@ -311,7 +312,7 @@ class _TunerResultCard extends StatelessWidget {
                         ? StockColors.brand
                         : _isBetter
                             ? StockColors.up
-                            : StockColors.textPrimary,
+                            : context.sc.textPrimary,
                   ),
                 ),
               ),
@@ -361,7 +362,7 @@ class _TunerResultCard extends StatelessWidget {
               _MetricChip(
                 label: '最大回撤',
                 value: '${bt.maxDrawdownPct.toStringAsFixed(2)}%',
-                color: StockColors.textTertiary,
+                color: context.sc.textTertiary,
               ),
             ],
           ),
@@ -403,7 +404,7 @@ class _MetricChip extends StatelessWidget {
         Text(
           label,
           style: AppTextStyles.caption.copyWith(
-            color: StockColors.textTertiary,
+            color: context.sc.textTertiary,
           ),
         ),
         const SizedBox(height: 2),
@@ -437,7 +438,7 @@ class _ApplyButton extends StatelessWidget {
         side: BorderSide(
           color: isBetter
               ? StockColors.up
-              : StockColors.borderActive,
+              : context.sc.borderActive,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -454,7 +455,7 @@ class _ApplyButton extends StatelessWidget {
               style: AppTextStyles.body.copyWith(
                 color: isBetter
                     ? StockColors.up
-                    : StockColors.borderActive,
+                    : context.sc.borderActive,
                 fontWeight: FontWeight.w500,
               ),
             ),

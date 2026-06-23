@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -47,7 +48,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
     final state = ref.watch(strategyDetailProvider);
 
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: RefreshIndicator(
         color: StockColors.brand,
         onRefresh: () => ref
@@ -152,14 +153,14 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                 Text(
                   summary.conclusion,
                   style: AppTextStyles.body.copyWith(
-                    color: StockColors.textSecondary,
+                    color: context.sc.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   summary.nextStep,
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textTertiary,
+                    color: context.sc.textTertiary,
                   ),
                 ),
               ],
@@ -182,10 +183,10 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
               children: [
                 IconButton(
                   onPressed: () => context.pop(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_ios,
                     size: 20,
-                    color: StockColors.gray700,
+                    color: context.sc.gray700,
                   ),
                   constraints: const BoxConstraints(
                     minWidth: 44,
@@ -375,7 +376,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                 Text(
                   totalCount == 0 ? message : '$message 当前累计推荐 $totalCount 条。',
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textSecondary,
+                    color: context.sc.textSecondary,
                   ),
                 ),
               ],
@@ -420,7 +421,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                 Text(
                   detail,
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textSecondary,
+                    color: context.sc.textSecondary,
                   ),
                 ),
               ],
@@ -440,7 +441,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
       margin: const EdgeInsets.all(AppTheme.pagePadding),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgWarning,
+        color: context.sc.bgWarning,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Row(
@@ -466,7 +467,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
   Widget _buildStatsCards(StrategyDetailState state) {
     final stats = state.stats;
     final avgChangeColor = stats.evaluatedCount == 0
-        ? StockColors.textPrimary
+        ? context.sc.textPrimary
         : (stats.avgChange >= 0 ? StockColors.up : StockColors.down);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding),
@@ -481,7 +482,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           _buildStatCard(
             '极限涨跌',
             stats.extremeScoreDisplay,
-            StockColors.textPrimary,
+            context.sc.textPrimary,
           ),
           const SizedBox(width: 8),
           _buildStatCard('平均差', stats.avgChangeDisplay, avgChangeColor),
@@ -501,7 +502,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: StockColors.bgSecondary,
+          color: context.sc.bgSecondary,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Column(
@@ -538,7 +539,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
       ),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -549,14 +550,14 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           Text(
             '观察阈值 ${strategy.recommendThreshold} 分，${strategy.maShortPeriod}/${strategy.maLongPeriod} 日均线，布林带 ${strategy.bollPeriod} 日。',
             style: AppTextStyles.body.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             weights,
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textTertiary,
+              color: context.sc.textTertiary,
             ),
           ),
         ],
@@ -584,7 +585,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           ),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: StockColors.bgSecondary,
+            color: context.sc.bgSecondary,
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           ),
           child: trendAsync.when(
@@ -599,10 +600,10 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                 ),
               ),
             ),
-            error: (_, _) => const SizedBox(
+            error: (_, _) => SizedBox(
               height: 200,
               child: Center(
-                child: Text('加载失败', style: TextStyle(fontSize: 13, color: StockColors.gray500)),
+                child: Text('加载失败', style: TextStyle(fontSize: 13, color: context.sc.gray500)),
               ),
             ),
           ),
@@ -639,7 +640,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
             padding: const EdgeInsets.all(AppTheme.pagePadding),
             child: Text(
               isAccumulating ? '数据积累中，满 5 个交易日后再查看命中率和平均差。' : '暂无推荐记录',
-              style: const TextStyle(fontSize: 13, color: StockColors.gray500),
+              style: TextStyle(fontSize: 13, color: context.sc.gray500),
             ),
           )
         else
@@ -653,7 +654,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
   Widget _buildHitRecordItem(StrategyHitRecord record) {
     final changeColor = record.actualChange5d != null
         ? getPriceColor(record.actualChange5d!)
-        : StockColors.textTertiary;
+        : context.sc.textTertiary;
     return InkWell(
       onTap: () => context.push(
         '/stock/${record.stockCode}',
@@ -668,8 +669,8 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           horizontal: AppTheme.pagePadding,
           vertical: 10,
         ),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: StockColors.border)),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: context.sc.border)),
         ),
         child: Row(
           children: [
@@ -718,7 +719,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
             ),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: StockColors.bgSecondary,
+              color: context.sc.bgSecondary,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
             child: Column(
@@ -779,11 +780,11 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           ),
         ),
         if (state.reviewHistory.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(AppTheme.pagePadding),
             child: Text(
               '暂无复盘记录',
-              style: TextStyle(fontSize: 13, color: StockColors.gray500),
+              style: TextStyle(fontSize: 13, color: context.sc.gray500),
             ),
           )
         else
@@ -800,7 +801,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
         vertical: 4,
       ),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Material(
@@ -1122,7 +1123,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -1133,7 +1134,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
           Text(
             '数据周期：${period.dataLabel}，样本 ${period.evaluatedCount} 条',
             style: AppTextStyles.caption.copyWith(
-              color: StockColors.textSecondary,
+              color: context.sc.textSecondary,
             ),
           ),
           if (period.sourceNote.isNotEmpty) ...[
@@ -1143,7 +1144,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
               style: AppTextStyles.caption.copyWith(
                 color: period.usedFallback
                     ? StockColors.warning
-                    : StockColors.textTertiary,
+                    : context.sc.textTertiary,
               ),
             ),
           ],
@@ -1177,7 +1178,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
       ),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: StockColors.bgSecondary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
       child: Column(
@@ -1250,7 +1251,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                 child: Text(
                   'OR',
                   style: AppTextStyles.caption.copyWith(
-                    color: StockColors.textTertiary,
+                    color: context.sc.textTertiary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1302,7 +1303,7 @@ class _StrategyDetailPageState extends ConsumerState<StrategyDetailPage> {
                   '  AND',
                   style: TextStyle(
                     fontSize: 10,
-                    color: StockColors.textTertiary,
+                    color: context.sc.textTertiary,
                   ),
                 ),
               ),

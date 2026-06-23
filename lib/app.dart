@@ -250,6 +250,13 @@ class _StockPilotAppState extends ConsumerState<StockPilotApp>
     // the app, in addition to the periodic foreground timer below.
     WidgetsBinding.instance.addObserver(this);
 
+    // Load the persisted theme mode (defaults to system). Done after first
+    // frame so the MaterialApp builds with the correct themeMode immediately
+    // rather than flashing the default.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(themeModeProvider.notifier).init();
+    });
+
     // Periodic foreground alert scan. The background workmanager task is the
     // primary mechanism; this timer ensures alerts still fire reasonably
     // promptly while the app is in the foreground.
@@ -287,10 +294,13 @@ class _StockPilotAppState extends ConsumerState<StockPilotApp>
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: '股势 TrendStock',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       routerConfig: AppRouter.router,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -142,7 +143,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     final watchedCodes = ref.watch(watchedCodesProvider);
 
     return Scaffold(
-      backgroundColor: StockColors.bgPrimary,
+      backgroundColor: context.sc.bgPrimary,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -193,7 +194,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
               Text(
                 Formatters.formatDate(DateTime.now()),
                 style: AppTextStyles.caption.copyWith(
-                  color: StockColors.textTertiary,
+                  color: context.sc.textTertiary,
                 ),
               ),
             ],
@@ -239,12 +240,12 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                   decoration: BoxDecoration(
                     color: active
                         ? StockColors.brand
-                        : StockColors.bgSecondary,
+                        : context.sc.bgSecondary,
                     borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     border: active
                         ? null
                         : Border.all(
-                            color: StockColors.borderLight,
+                            color: context.sc.borderLight,
                             width: 0.5,
                           ),
                   ),
@@ -259,7 +260,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                               active ? FontWeight.w600 : FontWeight.w400,
                           color: active
                               ? Colors.white
-                              : StockColors.textSecondary,
+                              : context.sc.textSecondary,
                         ),
                       ),
                       if (count > 0) ...[
@@ -271,7 +272,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                           decoration: BoxDecoration(
                             color: active
                                 ? Colors.white.withValues(alpha: 0.25)
-                                : StockColors.bgTertiary,
+                                : context.sc.bgTertiary,
                             borderRadius:
                                 BorderRadius.circular(AppTheme.radiusFull),
                           ),
@@ -282,7 +283,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                               fontWeight: FontWeight.w500,
                               color: active
                                   ? Colors.white
-                                  : StockColors.textTertiary,
+                                  : context.sc.textTertiary,
                             ),
                           ),
                         ),
@@ -329,7 +330,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: StockColors.bgTertiary,
+        color: context.sc.bgTertiary,
         borderRadius: BorderRadius.circular(2),
       ),
     );
