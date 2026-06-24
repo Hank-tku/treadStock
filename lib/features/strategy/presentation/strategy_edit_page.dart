@@ -52,8 +52,6 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
   bool _isSaving = false;
   bool _isEdit = false;
   bool _showAdvancedSettings = false;
-  String? _selectedTemplateId;
-  String? _selectedGoalId;
 
   @override
   void initState() {
@@ -147,11 +145,13 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
         padding: const EdgeInsets.all(AppTheme.pagePadding),
         children: [
           if (!_isEdit) ...[
-            _buildLearningGoalSection(),
-            const SizedBox(height: 24),
+            // Quick-create shortcuts. Template browsing lives in the dedicated
+            // StrategyTemplatePage (opened via "从模板创建" below) to avoid
+            // duplicating the template cards here. AI/JSON assist stays inline
+            // because it is a paste-and-go flow tightly coupled to this form.
+            _buildQuickCreateEntry(),
+            const SizedBox(height: 16),
             _buildAiAssistSection(),
-            const SizedBox(height: 24),
-            _buildApiTemplateSection(),
             const SizedBox(height: 24),
           ],
           _buildSection('基本信息'),
@@ -418,112 +418,40 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
     );
   }
 
-  Widget _buildApiTemplateSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSection('API 生成基础策略'),
-        Text(
-          '根据当前可用行情与日K字段生成策略草稿，生成后可继续编辑参数。',
-          style: AppTextStyles.caption.copyWith(
-            color: context.sc.textTertiary,
-          ),
+  Widget _buildQuickCreateEntry() {
+    return InkWell(
+      onTap: () => context.push('/strategy/templates'),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.sc.brandLight,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: StockColors.brand.withValues(alpha: 0.3)),
         ),
-        const SizedBox(height: 12),
-        ...ApiStrategyTemplates.all.map(_buildTemplateCard),
-      ],
-    );
-  }
-
-  Widget _buildLearningGoalSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSection('新手策略向导'),
-        Text(
-          '先选择一个你能理解的观察目标，系统会生成可编辑的策略草稿。',
-          style: AppTextStyles.caption.copyWith(
-            color: context.sc.textTertiary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...StrategyLearningGoals.all.map(_buildLearningGoalCard),
-      ],
-    );
-  }
-
-  Widget _buildLearningGoalCard(StrategyLearningGoal goal) {
-    final isSelected = _selectedGoalId == goal.id;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? StockColors.brand.withValues(alpha: 0.06)
-            : context.sc.bgSecondary,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(
-          color: isSelected ? StockColors.brand : context.sc.border,
-          width: isSelected ? 1.5 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: 20,
-                color: isSelected ? StockColors.brand : context.sc.gray400,
+        child: Row(
+          children: [
+            const Icon(Icons.inventory_2_outlined, size: 22, color: StockColors.brand),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '从模板创建',
+                    style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '波段低位、趋势跟随、量价反转等现成策略，一键应用',
+                    style: AppTextStyles.caption.copyWith(color: context.sc.textTertiary),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(goal.title, style: AppTextStyles.h3),
-                    const SizedBox(height: 4),
-                    Text(
-                      goal.subtitle,
-                      style: AppTextStyles.body.copyWith(
-                        color: context.sc.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              TextButton(
-                onPressed: () => _applyLearningGoal(goal),
-                child: Text(isSelected ? '已选择' : '选择'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildGuideLine(Icons.school_outlined, goal.learningPoint),
-          const SizedBox(height: 4),
-          _buildGuideLine(Icons.visibility_outlined, goal.watchPoint),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGuideLine(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 15, color: context.sc.textTertiary),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            style: AppTextStyles.caption.copyWith(
-              color: context.sc.textTertiary,
             ),
-          ),
+            const Icon(Icons.chevron_right, color: StockColors.brand),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -573,106 +501,6 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
     );
   }
 
-  Widget _buildTemplateCard(ApiStrategyTemplate template) {
-    final isSelected = _selectedTemplateId == template.id;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.sc.bgSecondary,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(
-          color: isSelected ? StockColors.brand : context.sc.border,
-          width: isSelected ? 1.5 : 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(template.name, style: AppTextStyles.h3),
-                    const SizedBox(height: 4),
-                    Text(
-                      template.description,
-                      style: AppTextStyles.body.copyWith(
-                        color: context.sc.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () => _applyTemplate(template),
-                child: Text(isSelected ? '已生成' : '生成'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final capability in template.apiCapabilities)
-                _buildMiniTag(capability),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '字段：${template.requiredFields.join(' / ')}',
-            style: AppTextStyles.caption.copyWith(
-              color: context.sc.textTertiary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            template.apiSource,
-            style: AppTextStyles.caption.copyWith(
-              color: context.sc.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniTag(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: StockColors.brand.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: AppTextStyles.caption.copyWith(color: StockColors.brand),
-      ),
-    );
-  }
-
-  void _applyTemplate(ApiStrategyTemplate template) {
-    setState(() {
-      _form = StrategyFormData.fromTemplate(template);
-      _selectedTemplateId = template.id;
-      _selectedGoalId = null;
-    });
-    ToastHelper.showSuccess(context, '已生成${template.name}策略草稿');
-  }
-
-  void _applyLearningGoal(StrategyLearningGoal goal) {
-    setState(() {
-      _form = StrategyFormData.fromLearningGoal(goal);
-      _selectedGoalId = goal.id;
-      _selectedTemplateId = null;
-    });
-    ToastHelper.showSuccess(context, '已生成${goal.formData.name}策略草稿');
-  }
 
   Future<void> _copyGenerationRules() async {
     await Clipboard.setData(
@@ -689,7 +517,6 @@ class _StrategyEditPageState extends ConsumerState<StrategyEditPage> {
       );
       setState(() {
         _form = imported;
-        _selectedTemplateId = null;
       });
       ToastHelper.showSuccess(context, '已导入策略草稿，请确认后保存');
     } on FormatException catch (e) {

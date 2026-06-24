@@ -506,22 +506,40 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
 
   // ── Error / Empty ─────────────────────────────────────────────
 
+  /// Wrap any child in a pull-to-refresh container so empty/error states can
+  /// also be refreshed (not just the data ListView). RefreshIndicator requires
+  /// a scrollable child, so we use a always-scrollable SingleChildScrollView.
+  Widget _refreshable(Widget child) {
+    return RefreshIndicator(
+      color: StockColors.brand,
+      onRefresh: () =>
+          ref.read(strategyRecommendationProvider.notifier).refresh(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: child,
+        ),
+      ),
+    );
+  }
+
   Widget _buildErrorState(StrategyRecommendationState state) {
     // Distinguish quote-source-empty from a real load/network error.
     // isEmptyData  → 行情源返回空（非网络问题）
     // hasError     → 请求异常（通常是网络或服务端问题）
     if (state.isEmptyData) {
-      return EmptyState(
+      return _refreshable(const EmptyState(
         icon: Icons.cloud_off,
         title: '暂无行情数据',
         subtitle: '行情源暂未返回数据，请稍后下拉刷新',
-      );
+      ));
     }
-    return EmptyState(
+    return _refreshable(const EmptyState(
       icon: Icons.signal_wifi_off,
       title: '数据更新失败',
       subtitle: '检查网络后下拉刷新，或稍后再试',
-    );
+    ));
   }
 
   // ── Main content ──────────────────────────────────────────────
@@ -531,22 +549,22 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     Set<String> watchedCodes,
   ) {
     if (state.groups.isEmpty) {
-      return EmptyState(
+      return _refreshable(EmptyState(
         icon: Icons.inbox_outlined,
         title: state.hasEnabledStrategies ? '暂无匹配标的' : '暂无启用策略',
         subtitle: state.hasEnabledStrategies
             ? '当前策略可能较严格，或行情数据暂不可用。\n可下拉刷新，或前往策略页降低阈值。'
             : '请前往策略管理启用至少一个策略',
-      );
+      ));
     }
 
     final allItems = _buildFlatItems(state);
     if (allItems.isEmpty) {
-      return EmptyState(
+      return _refreshable(const EmptyState(
         icon: Icons.inbox_outlined,
         title: '暂无匹配标的',
         subtitle: '可下拉刷新，或前往策略页调整参数',
-      );
+      ));
     }
 
     final counts = _countByFilter(allItems);
