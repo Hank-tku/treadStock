@@ -72,6 +72,13 @@ Future<void> _bootApp(WidgetTester tester) async {
   await tester.pumpAndSettle(const Duration(seconds: 2));
 }
 
+/// 用于路由回归测试的字面量子路由断言对。
+class _RouteCase {
+  final String path;
+  final String expectedTitle;
+  const _RouteCase(this.path, this.expectedTitle);
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -100,8 +107,6 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       // 关注 tab 至少应渲染搜索框（无论列表是否为空，搜索框常驻）。
-      // 之所以不断言「暂无关注的股票」文案：空态标题可能在后续帧才出现，
-      // 且文案属产品细节，不在冒烟测试的稳定断言范围内。
       expect(find.byType(TextField), findsWidgets);
     });
 
@@ -132,6 +137,38 @@ void main() {
 
       // 回到推荐后仍可正常渲染
       expect(find.text('推荐'), findsWidgets);
+    });
+
+    // 回归：GoRouter 路由顺序曾导致 /strategy/templates、/strategy/compare、
+    // /strategy/knowledge 被 /strategy/:id 吞掉，进入这些页面时显示
+    // 「未找到该策略」。这里直接 router.push 到每条路由，断言 AppBar 标题
+    // 正确渲染、而不是错误页。
+    testWidgets('策略模板/对比/知识 三条字面量路由不被 :id 吞掉',
+        (tester) async {
+      await _bootApp(tester);
+
+      for (final target in const [
+        _RouteCase('/strategy/templates', '策略模板'),
+        _RouteCase('/strategy/compare', '策略对比'),
+        _RouteCase('/strategy/knowledge', '策略知识'),
+      ]) {
+        AppRouter.router.push(target.path);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+
+        // 期望命中 AppBar 标题（说明进对了页面）
+        expect(
+          find.text(target.expectedTitle),
+          findsOneWidget,
+          reason: '${target.path} 应渲染「${target.expectedTitle}」页',
+        );
+        // 并且绝不能落到「未找到该策略」错误页（防回归）
+        expect(find.text('未找到该策略'), findsNothing,
+            reason: '${target.path} 被 /strategy/:id 吞掉了');
+
+        AppRouter.router.pop();
+        await tester.pumpAndSettle(const Duration(seconds: 1));
+      }
     });
   });
 }

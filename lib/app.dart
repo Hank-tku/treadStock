@@ -93,6 +93,11 @@ class AppRouter {
           );
         },
       ),
+      // 注意：GoRouter 按声明顺序匹配，字面量子路由（new/create/knowledge/
+      // compare/templates）必须声明在 /strategy/:id 之前；否则 :id 会先吞掉
+      // 这些字面值（例如把 "templates" 当作策略 id），导致 StrategyDetailPage
+      // 报「未找到该策略」。带二级段的路由（:id/edit、:id/backtest、:id/tuner）
+      // 不受影响，因为 :id 不会匹配带 "/" 的多段路径。
       GoRoute(
         path: '/strategy/new',
         parentNavigatorKey: _rootNavigatorKey,
@@ -109,6 +114,16 @@ class AppRouter {
         builder: (context, state) => const StrategyKnowledgePage(),
       ),
       GoRoute(
+        path: '/strategy/compare',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const StrategyComparePage(),
+      ),
+      GoRoute(
+        path: '/strategy/templates',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const StrategyTemplatePage(),
+      ),
+      GoRoute(
         path: '/strategy/:id/edit',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
@@ -116,15 +131,6 @@ class AppRouter {
           return StrategyEditPage(
             strategyId: state.pathParameters['id'],
             suggestion: extra?['suggestion'] as StrategySuggestion?,
-          );
-        },
-      ),
-      GoRoute(
-        path: '/strategy/:id',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
-          return StrategyDetailPage(
-            strategyId: state.pathParameters['id'] ?? '',
           );
         },
       ),
@@ -140,16 +146,6 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: '/strategy/compare',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const StrategyComparePage(),
-      ),
-      GoRoute(
-        path: '/strategy/templates',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const StrategyTemplatePage(),
-      ),
-      GoRoute(
         path: '/strategy/:id/tuner',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
@@ -157,6 +153,16 @@ class AppRouter {
           return StrategyTunerPage(
             strategyId: state.pathParameters['id'] ?? '',
             stockCode: extra?['stockCode'] as String? ?? '',
+          );
+        },
+      ),
+      // :id 必须放在所有 /strategy/<literal> 子路由之后。
+      GoRoute(
+        path: '/strategy/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          return StrategyDetailPage(
+            strategyId: state.pathParameters['id'] ?? '',
           );
         },
       ),
