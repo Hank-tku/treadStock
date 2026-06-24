@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stockpilot/core/theme/app_semantic_colors.dart';
+import 'package:stockpilot/shared/widgets/app_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -84,6 +85,7 @@ class _StrategyTabState extends ConsumerState<StrategyTab> {
             icon: const Icon(Icons.school_outlined, size: 18),
             label: const Text('关于策略'),
           ),
+          const AppMenuButton(),
         ],
       ),
     );

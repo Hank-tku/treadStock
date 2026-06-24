@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:stockpilot/core/theme/app_semantic_colors.dart';
-import 'package:stockpilot/features/settings/presentation/theme_switcher_sheet.dart';
+import 'package:stockpilot/shared/widgets/app_menu_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -108,20 +108,7 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
               children: [
                 Text('关注', style: AppTextStyles.h1),
                 const Spacer(),
-                IconButton(
-                  onPressed: () => showThemeSwitcherSheet(context),
-                  icon: Icon(
-                    Icons.dark_mode_outlined,
-                    size: 22,
-                    color: context.sc.textTertiary,
-                  ),
-                  tooltip: '主题',
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
-                  padding: EdgeInsets.zero,
-                ),
+                const AppMenuButton(),
               ],
             ),
           ),

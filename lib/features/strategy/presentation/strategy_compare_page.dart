@@ -29,6 +29,18 @@ class _StrategyComparePageState extends ConsumerState<StrategyComparePage> {
   static const int _maxSelect = 4;
 
   @override
+  void initState() {
+    super.initState();
+    // Ensure the strategy list is fresh when entering the compare page.
+    // strategyListProvider auto-loads on first creation, but if the user
+    // navigates here without first visiting the Strategy tab (e.g. from a
+    // strategy detail page), we refresh explicitly.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(strategyListProvider.notifier).loadStrategies();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final listState = ref.watch(strategyListProvider);
 

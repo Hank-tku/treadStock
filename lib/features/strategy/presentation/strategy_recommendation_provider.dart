@@ -105,7 +105,17 @@ class StrategyRecommendationNotifier
         return;
       }
 
-      final quotes = await _apiService.fetchRecommendationCandidates();
+      // ── Parallel fetch: candidates + market index ─────────────
+      // Fetch recommendation candidates and the market-index K-line in
+      // parallel to shave one RTT off the critical path.
+      final candidatesFuture = _apiService.fetchRecommendationCandidates();
+      final indexKlineFuture = _apiService
+          .fetchStockKline('000001', market: 'SH')
+          .catchError((_) => <DailyKline>[]);
+      final results = await Future.wait([candidatesFuture, indexKlineFuture]);
+      final quotes = results[0] as List<StockQuote>;
+      final indexKlines = results[1] as List<DailyKline>;
+
       if (quotes.isEmpty) {
         // Quote source returned empty — distinct from a real load error so the
         // UI can show a data-source message rather than a network error.
@@ -120,18 +130,15 @@ class StrategyRecommendationNotifier
 
       // ── Fetch market environment for E502 ──────────────────────
       MarketEnvironment? env;
-      try {
-        final indexKlines = await _apiService.fetchStockKline(
-          '000001',
-          market: 'SH',
-        );
-        env = MarketEnvironmentCalculator.calculate(
-          quotes: quotes,
-          indexKlines: indexKlines,
-        );
-      } catch (_) {
-        // Environment fetch failure should not block recommendations
-        env = null;
+      if (indexKlines.isNotEmpty) {
+        try {
+          env = MarketEnvironmentCalculator.calculate(
+            quotes: quotes,
+            indexKlines: indexKlines,
+          );
+        } catch (_) {
+          env = null;
+        }
       }
 
       await _strategyService.backfillActualChanges({
@@ -140,6 +147,14 @@ class StrategyRecommendationNotifier
 
       final topStocks = quotes.take(50).toList();
       final groups = <StrategyRecommendation>[];
+
+      // ── Cross-strategy K-line cache ─────────────────────────────
+      // Multiple strategies score the same candidate stocks. Cache K-line
+      // results by stock code so each code is fetched at most once per run,
+      // cutting total K-line requests from (strategies × stocks) to just
+      // (stocks). This is the single biggest performance win for multi-
+      // strategy setups.
+      final klineCache = <String, List<DailyKline>>{};
 
       for (final strategy in enabledStrategies) {
         // Apply strategy-specific stock filter if configured
@@ -166,7 +181,11 @@ class StrategyRecommendationNotifier
                 .ceil()
             : strategy.recommendThreshold;
 
-        final scored = await _fetchAndScoreForStrategy(candidates, strategy);
+        final scored = await _fetchAndScoreForStrategy(
+          candidates,
+          strategy,
+          klineCache,
+        );
         final recs =
             scored
                 .where(
@@ -338,6 +357,7 @@ class StrategyRecommendationNotifier
   Future<List<DailyRecommendation>> _fetchAndScoreForStrategy(
     List<StockQuote> stocks,
     Strategy strategy,
+    Map<String, List<DailyKline>> klineCache,
   ) async {
     final results = <DailyRecommendation>[];
     const concurrency = 8;
@@ -348,7 +368,7 @@ class StrategyRecommendationNotifier
         (i + concurrency).clamp(0, stocks.length),
       );
       final batchResults = await Future.wait(
-        batch.map((q) => _scoreOne(q, strategy)),
+        batch.map((q) => _scoreOne(q, strategy, klineCache)),
       );
       for (final r in batchResults) {
         if (r != null) results.add(r);
@@ -361,12 +381,20 @@ class StrategyRecommendationNotifier
   Future<DailyRecommendation?> _scoreOne(
     StockQuote quote,
     Strategy strategy,
+    Map<String, List<DailyKline>> klineCache,
   ) async {
     try {
-      final klines = await _apiService.fetchStockKline(
-        quote.code,
-        market: quote.market,
-      );
+      // Cross-strategy K-line cache: avoid re-fetching the same stock's K-line
+      // when multiple strategies score it. First strategy to touch a code
+      // fetches; subsequent strategies hit the cache.
+      var klines = klineCache[quote.code];
+      if (klines == null) {
+        klines = await _apiService.fetchStockKline(
+          quote.code,
+          market: quote.market,
+        );
+        klineCache[quote.code] = klines;
+      }
       if (klines.length < strategy.maLongPeriod) return null;
 
       final scoreResult = _scoringService.scoreStock(

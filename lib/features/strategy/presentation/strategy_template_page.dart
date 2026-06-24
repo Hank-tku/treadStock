@@ -144,7 +144,7 @@ class _LearningGoalCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppTheme.space3),
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: context.sc.bgPrimary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: context.sc.border),
       ),
@@ -247,7 +247,7 @@ class _ClassicTemplateCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppTheme.space3),
       padding: const EdgeInsets.all(AppTheme.space4),
       decoration: BoxDecoration(
-        color: context.sc.bgPrimary,
+        color: context.sc.bgSecondary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(color: context.sc.border),
       ),

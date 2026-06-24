@@ -359,7 +359,10 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           Stack(
             children: [
               if (_klines != null && _klines!.isNotEmpty)
-                StockKlineChart(klines: _klines!)
+                StockKlineChart(
+                  key: ValueKey('${_klineDays}_${_klines!.length}_${_klines!.last.close}'),
+                  klines: _klines!,
+                )
               else
                 const SizedBox(height: StockKlineChart.defaultHeight),
               if (_klineLoading)
@@ -388,7 +391,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
     if (url.isEmpty) return;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
     }
   }
 

@@ -60,6 +60,10 @@ class AppConstants {
   // Background task interval
   static const int backgroundTaskIntervalMinutes = 30;
 
+  // A-share market close hour (15:00). Used to switch prediction wording:
+  // before 15:00 → "今日盘中预测", after 15:00 → "收盘预测(下一交易日)".
+  static const int marketCloseHour = 15;
+
   // Hit-rate definition: a recommendation counts as a "hit" only if the
   // actual 5-day change exceeds this threshold (percent). 0.5% roughly
   // covers A-share round-trip costs (commission + stamp duty ~0.15%) plus a

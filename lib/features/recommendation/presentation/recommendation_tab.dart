@@ -3,10 +3,12 @@ import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/stock_list_item.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
+import '../../../shared/widgets/app_menu_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/cache_banner.dart';
 import '../../../shared/widgets/disclaimer_label.dart';
@@ -155,7 +157,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
     return Scaffold(
       backgroundColor: context.sc.bgPrimary,
       body: SafeArea(
-        bottom: false,
+        bottom: true,
         child: Column(
           children: [
             // Title bar
@@ -206,11 +208,16 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('推荐', style: AppTextStyles.h1),
-              Text(
-                Formatters.formatDate(DateTime.now()),
-                style: AppTextStyles.caption.copyWith(
-                  color: context.sc.textTertiary,
-                ),
+              Row(
+                children: [
+                  Text(
+                    Formatters.formatDate(DateTime.now()),
+                    style: AppTextStyles.caption.copyWith(
+                      color: context.sc.textTertiary,
+                    ),
+                  ),
+                  const AppMenuButton(),
+                ],
               ),
             ],
           ),
@@ -218,7 +225,7 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                '15:00前预测 · ${Formatters.formatTime(predictionTime)}',
+                '${DateTime.now().hour < AppConstants.marketCloseHour ? "今日盘中预测" : "收盘预测(下一交易日)"} · ${Formatters.formatTime(predictionTime)}',
                 style: AppTextStyles.caption.copyWith(
                   color: StockColors.brand,
                   fontSize: 11,
