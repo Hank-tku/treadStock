@@ -43,6 +43,8 @@ class AppRouter {
       return null;
     },
     routes: [
+      GoRoute(path: '/', redirect: (context, state) => '/recommend'),
+      GoRoute(path: '/dashboard', redirect: (context, state) => '/recommend'),
       GoRoute(
         path: '/onboarding',
         parentNavigatorKey: _rootNavigatorKey,

@@ -67,25 +67,35 @@ class _StrategyTabState extends ConsumerState<StrategyTab> {
         AppTheme.pagePadding,
         8,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Expanded(child: Text('策略', style: AppTextStyles.h1)),
-          TextButton.icon(
-            onPressed: () => context.push('/strategy/compare'),
-            icon: const Icon(Icons.compare_arrows, size: 18),
-            label: const Text('对比'),
+          Row(
+            children: [
+              const Expanded(child: Text('策略', style: AppTextStyles.h1)),
+              const AppMenuButton(),
+            ],
           ),
-          TextButton.icon(
-            onPressed: () => context.push('/strategy/templates'),
-            icon: const Icon(Icons.inventory_2_outlined, size: 18),
-            label: const Text('模板'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _HeaderActionButton(
+                  icon: Icons.compare_arrows,
+                  label: '对比',
+                  onPressed: () => context.push('/strategy/compare'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeaderActionButton(
+                  icon: Icons.school_outlined,
+                  label: '关于策略',
+                  onPressed: () => context.push('/strategy/knowledge'),
+                ),
+              ),
+            ],
           ),
-          TextButton.icon(
-            onPressed: () => context.push('/strategy/knowledge'),
-            icon: const Icon(Icons.school_outlined, size: 18),
-            label: const Text('关于策略'),
-          ),
-          const AppMenuButton(),
         ],
       ),
     );
@@ -150,6 +160,39 @@ class _StrategyTabState extends ConsumerState<StrategyTab> {
         strategy.isEnabled ? '已停用${strategy.name}' : '已启用${strategy.name}',
       );
     }
+  }
+}
+
+class _HeaderActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _HeaderActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 17),
+        label: Text(label, overflow: TextOverflow.ellipsis),
+        style: TextButton.styleFrom(
+          foregroundColor: StockColors.brand,
+          backgroundColor: StockColors.brandLight,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+        ),
+      ),
+    );
   }
 }
 

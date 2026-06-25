@@ -94,37 +94,40 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
 
     return Scaffold(
       backgroundColor: context.sc.bgPrimary,
-      body: Column(
-        children: [
-          // Title + theme switcher
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppTheme.pagePadding,
-              12,
-              AppTheme.pagePadding,
-              8,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Title + theme switcher
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.pagePadding,
+                12,
+                AppTheme.pagePadding,
+                8,
+              ),
+              child: Row(
+                children: [
+                  Text('关注', style: AppTextStyles.h1),
+                  const Spacer(),
+                  const AppMenuButton(),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Text('关注', style: AppTextStyles.h1),
-                const Spacer(),
-                const AppMenuButton(),
-              ],
+
+            // Search bar
+            _buildSearchBar(state, notifier),
+
+            // Watchlist
+            Expanded(
+              child: showSearchPanel
+                  ? _buildSearchResults(state, notifier, watchedCodes)
+                  : state.isEmpty
+                  ? _buildEmptyState()
+                  : _buildWatchList(state, notifier),
             ),
-          ),
-
-          // Search bar
-          _buildSearchBar(state, notifier),
-
-          // Watchlist
-          Expanded(
-            child: showSearchPanel
-                ? _buildSearchResults(state, notifier, watchedCodes)
-                : state.isEmpty
-                ? _buildEmptyState()
-                : _buildWatchList(state, notifier),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -163,16 +166,10 @@ class _WatchlistTabState extends ConsumerState<WatchlistTab> {
                 autocorrect: false,
                 enableSuggestions: false,
                 keyboardType: TextInputType.text,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: context.sc.textPrimary,
-                ),
+                style: TextStyle(fontSize: 14, color: context.sc.textPrimary),
                 decoration: InputDecoration(
                   hintText: '搜索股票代码或名称',
-                  hintStyle: TextStyle(
-                    fontSize: 14,
-                    color: context.sc.gray400,
-                  ),
+                  hintStyle: TextStyle(fontSize: 14, color: context.sc.gray400),
                   prefixIcon: Icon(
                     Icons.search,
                     size: 20,

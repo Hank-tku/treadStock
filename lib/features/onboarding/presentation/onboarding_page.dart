@@ -10,14 +10,16 @@ import '../providers/onboarding_provider.dart';
 
 /// Descriptions mapped to each investment style key.
 class _StyleInfo {
-  final String emoji;
+  final IconData icon;
+  final Color iconColor;
   final String title;
   final String subtitle;
   final String strategyName;
   final String description;
 
   const _StyleInfo({
-    required this.emoji,
+    required this.icon,
+    required this.iconColor,
     required this.title,
     required this.subtitle,
     required this.strategyName,
@@ -27,25 +29,28 @@ class _StyleInfo {
 
 const _styleMap = <String, _StyleInfo>{
   'conservative': _StyleInfo(
-    emoji: '\u{1F6E1}\uFE0F',
+    icon: Icons.shield_outlined,
+    iconColor: StockColors.success,
     title: '保守型',
-    subtitle: '防御保值策略',
+    subtitle: '控制回撤，低频观察',
     strategyName: '防御保值策略',
-    description: '侧重低估值和抗跌能力，精选安全边际较高的标的，适合追求稳健的投资者。',
+    description: '偏向低波动、回撤控制和稳定观察，帮助你先看风险，再看机会，仅供复盘参考。',
   ),
   'balanced': _StyleInfo(
-    emoji: '\u{2696}\uFE0F',
+    icon: Icons.balance_outlined,
+    iconColor: StockColors.brand,
     title: '稳健型',
-    subtitle: '均衡波段策略',
+    subtitle: '趋势与低位并重',
     strategyName: '均衡波段策略',
-    description: '平衡趋势和均值回归信号，捕捉波段行情中的机会，适合中短期投资者。',
+    description: '同时观察趋势、均线和波段位置，用更均衡的线索辅助日常跟踪，不构成买卖建议。',
   ),
   'aggressive': _StyleInfo(
-    emoji: '\u{1F680}',
+    icon: Icons.rocket_launch_outlined,
+    iconColor: StockColors.warning,
     title: '激进型',
-    subtitle: '短线突破策略',
+    subtitle: '关注强势突破',
     strategyName: '短线突破策略',
-    description: '追踪强势股突破信号，快进快出，适合有丰富短线经验的投资者。',
+    description: '更关注量价放大和短线突破信号，波动也更高，适合作为高风险观察线索。',
   ),
 };
 
@@ -82,7 +87,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       await service.saveStyle(style);
     }
     if (mounted) {
-      context.go('/dashboard');
+      context.go('/recommend');
     }
   }
 
@@ -103,7 +108,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             Align(
               alignment: Alignment.centerRight,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, AppTheme.space4, AppTheme.pagePadding, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  0,
+                  AppTheme.space4,
+                  AppTheme.pagePadding,
+                  0,
+                ),
                 child: TextButton(
                   onPressed: _onSkip,
                   child: Text(
@@ -180,15 +190,17 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             ),
           ),
           const SizedBox(height: AppTheme.space8),
-          ..._styleMap.entries.map((e) => _StyleCard(
-                info: e.value,
-                styleKey: e.key,
-                isSelected: ref.watch(investmentStyleProvider) == e.key,
-                onTap: () {
-                  ref.read(investmentStyleProvider.notifier).state = e.key;
-                  _goToPage(1);
-                },
-              )),
+          ..._styleMap.entries.map(
+            (e) => _StyleCard(
+              info: e.value,
+              styleKey: e.key,
+              isSelected: ref.watch(investmentStyleProvider) == e.key,
+              onTap: () {
+                ref.read(investmentStyleProvider.notifier).state = e.key;
+                _goToPage(1);
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -213,10 +225,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       child: Column(
         children: [
           const SizedBox(height: AppTheme.space10),
-          Text(
-            '\u{2728}',
-            style: const TextStyle(fontSize: 56),
-          ),
+          Icon(Icons.check_circle_outline, size: 56, color: StockColors.brand),
           const SizedBox(height: AppTheme.space6),
           Text(
             '准备就绪！',
@@ -248,7 +257,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${info.emoji} ${info.strategyName}',
+                    info.strategyName,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -330,7 +339,15 @@ class _StyleCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Text(info.emoji, style: const TextStyle(fontSize: 32)),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: info.iconColor.withAlpha(28),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  ),
+                  child: Icon(info.icon, color: info.iconColor, size: 26),
+                ),
                 const SizedBox(width: AppTheme.space4),
                 Expanded(
                   child: Column(
@@ -341,7 +358,9 @@ class _StyleCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? StockColors.brand : context.sc.textPrimary,
+                          color: isSelected
+                              ? StockColors.brand
+                              : context.sc.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -396,9 +415,10 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward().then((_) {
       if (mounted) setState(() => _showButton = true);
     });
@@ -419,9 +439,10 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
       child: Column(
         children: [
           const SizedBox(height: AppTheme.space10),
-          Text(
-            '\u{1F3AF}',
-            style: const TextStyle(fontSize: 56),
+          Icon(
+            Icons.center_focus_strong_outlined,
+            size: 56,
+            color: StockColors.brand,
           ),
           const SizedBox(height: AppTheme.space6),
           Text(
@@ -452,10 +473,7 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
                     ),
                     child: Column(
                       children: [
-                        Text(
-                          info.emoji,
-                          style: const TextStyle(fontSize: 40),
-                        ),
+                        Icon(info.icon, color: info.iconColor, size: 42),
                         const SizedBox(height: AppTheme.space3),
                         Text(
                           info.strategyName,
@@ -488,7 +506,9 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: widget.styleKey != null ? widget.onNext : widget.onBack,
+                onPressed: widget.styleKey != null
+                    ? widget.onNext
+                    : widget.onBack,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: StockColors.brand,
                   foregroundColor: Colors.white,
@@ -498,7 +518,10 @@ class _MatchedStrategyPageState extends State<_MatchedStrategyPage>
                 ),
                 child: Text(
                   widget.styleKey != null ? '下一步' : '返回选择',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
