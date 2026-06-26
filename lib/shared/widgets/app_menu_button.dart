@@ -1,14 +1,14 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stockpilot/core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
-import '../../features/settings/presentation/theme_switcher_sheet.dart';
+import '../providers.dart';
+import 'toast_helper.dart';
 
 /// A reusable hamburger menu button for app headers.
-/// Opens a right-side app drawer with product info and shared settings.
+/// Opens a compact settings-style side panel.
 class AppMenuButton extends StatefulWidget {
   const AppMenuButton({super.key});
 
@@ -61,8 +61,8 @@ class _AppMenuButtonState extends State<AppMenuButton>
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
             child: IconButton(
-              onPressed: () => _openSidebar(context),
-              tooltip: '功能菜单',
+              onPressed: () => _openSettings(context),
+              tooltip: '设置',
               icon: Icon(
                 Icons.menu,
                 size: 25,
@@ -80,29 +80,18 @@ class _AppMenuButtonState extends State<AppMenuButton>
     );
   }
 
-  Future<void> _openSidebar(BuildContext context) async {
-    final parentContext = context;
+  Future<void> _openSettings(BuildContext context) async {
     _controller.forward();
     await showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierLabel: '关闭菜单',
-      barrierColor: Colors.black.withAlpha(72),
+      barrierLabel: '关闭设置',
+      barrierColor: Colors.black.withAlpha(84),
       transitionDuration: AppTheme.normalDuration,
       pageBuilder: (context, animation, secondaryAnimation) {
         return Align(
           alignment: Alignment.centerRight,
-          child: _AppSideDrawer(
-            onClose: () => Navigator.of(context).pop(),
-            onThemeTap: () {
-              Navigator.of(context).pop();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (parentContext.mounted) {
-                  showThemeSwitcherSheet(parentContext);
-                }
-              });
-            },
-          ),
+          child: _SettingsPanel(onClose: () => Navigator.of(context).pop()),
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -129,86 +118,104 @@ class _AppMenuButtonState extends State<AppMenuButton>
   }
 }
 
-class _AppSideDrawer extends StatelessWidget {
+class _SettingsPanel extends ConsumerStatefulWidget {
   final VoidCallback onClose;
-  final VoidCallback onThemeTap;
 
-  const _AppSideDrawer({required this.onClose, required this.onThemeTap});
+  const _SettingsPanel({required this.onClose});
+
+  @override
+  ConsumerState<_SettingsPanel> createState() => _SettingsPanelState();
+}
+
+class _SettingsPanelState extends ConsumerState<_SettingsPanel> {
+  String? _expandedSection = 'about';
+  bool _isClearingCache = false;
 
   @override
   Widget build(BuildContext context) {
-    final width = math.min(MediaQuery.sizeOf(context).width * 0.86, 340.0);
+    final themeMode = ref.watch(themeModeProvider);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 600;
+
     return Material(
       color: Colors.transparent,
       child: SafeArea(
         left: false,
+        right: false,
+        bottom: false,
         child: Container(
-          width: width,
+          width: isCompact ? double.infinity : 380,
           height: double.infinity,
           decoration: BoxDecoration(
-            color: context.sc.bgPrimary,
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(AppTheme.radiusXl),
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: StockColors.shadowLg,
-                blurRadius: 24,
-                offset: Offset(-8, 0),
-              ),
-            ],
+            color: context.sc.bgSecondary,
+            borderRadius: isCompact
+                ? BorderRadius.zero
+                : const BorderRadius.horizontal(
+                    left: Radius.circular(AppTheme.radiusXl),
+                  ),
+            boxShadow: isCompact
+                ? null
+                : const [
+                    BoxShadow(
+                      color: StockColors.shadowLg,
+                      blurRadius: 24,
+                      offset: Offset(-8, 0),
+                    ),
+                  ],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 12, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '股势 TrendStock',
-                        style: AppTextStyles.h2.copyWith(
-                          color: context.sc.textPrimary,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: onClose,
-                      tooltip: '关闭菜单',
-                      icon: const Icon(Icons.close),
-                      color: context.sc.textTertiary,
-                    ),
-                  ],
-                ),
-              ),
+              _DrawerHandleHeader(onClose: widget.onClose),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    isCompact ? 16 : 18,
+                    8,
+                    isCompact ? 16 : 18,
+                    32 + MediaQuery.paddingOf(context).bottom,
+                  ),
                   children: [
-                    _AboutCard(),
-                    const SizedBox(height: 18),
-                    Text(
-                      '设置',
-                      style: AppTextStyles.caption.copyWith(
-                        color: context.sc.textTertiary,
-                        fontWeight: FontWeight.w600,
+                    _AccordionItem(
+                      id: 'about',
+                      title: '关于应用',
+                      icon: Icons.info_outline,
+                      expanded: _expandedSection == 'about',
+                      onTap: _toggleSection,
+                      child: const _AboutContent(),
+                    ),
+                    _AccordionItem(
+                      id: 'theme',
+                      title: '主题',
+                      icon: Icons.dark_mode_outlined,
+                      trailingText: _themeLabel(themeMode),
+                      expanded: _expandedSection == 'theme',
+                      onTap: _toggleSection,
+                      child: _ThemeContent(
+                        current: themeMode,
+                        onSelect: (mode) =>
+                            ref.read(themeModeProvider.notifier).set(mode),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    _DrawerActionTile(
-                      icon: Icons.dark_mode_outlined,
-                      title: '主题切换',
-                      subtitle: '跟随系统、浅色或深色',
-                      onTap: onThemeTap,
+                    _AccordionItem(
+                      id: 'cache',
+                      title: '清理缓存',
+                      icon: Icons.cleaning_services_outlined,
+                      trailingText: _isClearingCache ? '清理中' : null,
+                      expanded: _expandedSection == 'cache',
+                      onTap: _toggleSection,
+                      child: _CacheContent(
+                        isClearing: _isClearingCache,
+                        onClear: _isClearingCache ? null : _clearCache,
+                      ),
                     ),
                   ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
                 child: Text(
                   '以上分析仅供参考，不构成任何投资建议。',
+                  textAlign: TextAlign.center,
                   style: AppTextStyles.caption.copyWith(
                     color: context.sc.textTertiary,
                   ),
@@ -220,81 +227,77 @@ class _AppSideDrawer extends StatelessWidget {
       ),
     );
   }
-}
 
-class _AboutCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.sc.brandLight,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: context.sc.borderLight),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: StockColors.brand,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: const Icon(Icons.trending_up, color: Colors.white, size: 24),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            '关于股势',
-            style: AppTextStyles.h2.copyWith(color: context.sc.textPrimary),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '股势是面向 A 股观察与策略复盘的本地工具，帮助你把行情、关注列表和策略线索放在一起看。',
-            style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
-          ),
-          const SizedBox(height: 14),
-          const _FeaturePoint(
-            icon: Icons.shield_outlined,
-            text: '无账号、无云同步，关注和策略配置保存在本机',
-          ),
-          const _FeaturePoint(
-            icon: Icons.insights_outlined,
-            text: '用均线、布林带、量比和趋势评分辅助复盘',
-          ),
-          const _FeaturePoint(
-            icon: Icons.school_outlined,
-            text: '策略用于观察和学习，不替代你的独立判断',
-          ),
-        ],
-      ),
-    );
+  void _toggleSection(String id) {
+    setState(() {
+      _expandedSection = _expandedSection == id ? null : id;
+    });
+  }
+
+  String _themeLabel(ThemeMode mode) {
+    return switch (mode) {
+      ThemeMode.light => '浅色',
+      ThemeMode.dark => '深色',
+      ThemeMode.system => '跟随系统',
+    };
+  }
+
+  Future<void> _clearCache() async {
+    setState(() => _isClearingCache = true);
+    try {
+      await ref.read(cachedStockApiServiceProvider).clearCache();
+      if (!mounted) return;
+      ToastHelper.showSuccess(context, '缓存已清理');
+    } catch (_) {
+      if (!mounted) return;
+      ToastHelper.showError(context, '清理失败，请重试');
+    } finally {
+      if (mounted) {
+        setState(() => _isClearingCache = false);
+      }
+    }
   }
 }
 
-class _FeaturePoint extends StatelessWidget {
-  final IconData icon;
-  final String text;
+class _DrawerHandleHeader extends StatelessWidget {
+  final VoidCallback onClose;
 
-  const _FeaturePoint({required this.icon, required this.text});
+  const _DrawerHandleHeader({required this.onClose});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: StockColors.brand),
-          const SizedBox(width: 8),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: StockColors.brand,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: const Icon(Icons.trending_up, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              text,
-              style: AppTextStyles.caption.copyWith(
-                color: context.sc.textSecondary,
-                height: 1.45,
+              '设置',
+              style: AppTextStyles.bodyLg.copyWith(
+                color: context.sc.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
+            ),
+          ),
+          IconButton(
+            onPressed: onClose,
+            tooltip: '关闭',
+            icon: const Icon(Icons.close),
+            iconSize: 22,
+            color: context.sc.textTertiary,
+            style: IconButton.styleFrom(
+              backgroundColor: context.sc.bgPrimary,
+              fixedSize: const Size(38, 38),
             ),
           ),
         ],
@@ -303,58 +306,283 @@ class _FeaturePoint extends StatelessWidget {
   }
 }
 
-class _DrawerActionTile extends StatelessWidget {
-  final IconData icon;
+class _AccordionItem extends StatelessWidget {
+  final String id;
   final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+  final IconData icon;
+  final String? trailingText;
+  final bool expanded;
+  final ValueChanged<String> onTap;
+  final Widget child;
 
-  const _DrawerActionTile({
-    required this.icon,
+  const _AccordionItem({
+    required this.id,
     required this.title,
-    required this.subtitle,
+    required this.icon,
+    required this.expanded,
     required this.onTap,
+    required this.child,
+    this.trailingText,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: context.sc.bgSecondary,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: InkWell(
-        onTap: onTap,
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      decoration: BoxDecoration(
+        color: context.sc.bgPrimary,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Icon(icon, color: StockColors.brand, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.body.copyWith(
-                        color: context.sc.textPrimary,
-                        fontWeight: FontWeight.w600,
+        border: Border.all(color: context.sc.borderLight),
+      ),
+      child: Column(
+        children: [
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            child: InkWell(
+              onTap: () => onTap(id),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              child: SizedBox(
+                height: 62,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: expanded
+                              ? context.sc.brandLight
+                              : context.sc.bgSecondary,
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSm,
+                          ),
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 19,
+                          color: expanded
+                              ? StockColors.brand
+                              : context.sc.textTertiary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.caption.copyWith(
-                        color: context.sc.textTertiary,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: AppTextStyles.body.copyWith(
+                            color: context.sc.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      if (trailingText != null) ...[
+                        Text(
+                          trailingText!,
+                          style: AppTextStyles.caption.copyWith(
+                            color: context.sc.textTertiary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      AnimatedRotation(
+                        turns: expanded ? 0.5 : 0,
+                        duration: AppTheme.fastDuration,
+                        curve: Curves.easeOutCubic,
+                        child: Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 24,
+                          color: context.sc.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              Icon(Icons.chevron_right, color: context.sc.textTertiary),
-            ],
+            ),
           ),
-        ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: child,
+            ),
+            crossFadeState: expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: AppTheme.normalDuration,
+            firstCurve: Curves.easeOutCubic,
+            secondCurve: Curves.easeOutCubic,
+            sizeCurve: Curves.easeOutCubic,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutContent extends StatelessWidget {
+  const _AboutContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      decoration: BoxDecoration(
+        color: context.sc.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '股势',
+            style: AppTextStyles.bodyLg.copyWith(
+              color: context.sc.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '面向 A 股观察与策略复盘的本地工具。关注列表、策略配置和缓存数据保存在本机，用公开行情和技术指标提供观察线索。',
+            style: AppTextStyles.caption.copyWith(
+              color: context.sc.textSecondary,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeContent extends StatelessWidget {
+  final ThemeMode current;
+  final ValueChanged<ThemeMode> onSelect;
+
+  const _ThemeContent({required this.current, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final options = <(ThemeMode, String)>[
+      (ThemeMode.system, '跟随系统'),
+      (ThemeMode.light, '浅色'),
+      (ThemeMode.dark, '深色'),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: context.sc.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
+      child: Column(
+        children: options.map((option) {
+          final selected = current == option.$1;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Material(
+              color: selected ? context.sc.bgPrimary : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              child: InkWell(
+                onTap: () => onSelect(option.$1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          option.$2,
+                          style: AppTextStyles.body.copyWith(
+                            color: selected
+                                ? StockColors.brand
+                                : context.sc.textPrimary,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        selected
+                            ? Icons.check_circle
+                            : Icons.radio_button_unchecked,
+                        size: 20,
+                        color: selected
+                            ? StockColors.brand
+                            : context.sc.textTertiary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _CacheContent extends StatelessWidget {
+  final bool isClearing;
+  final VoidCallback? onClear;
+
+  const _CacheContent({required this.isClearing, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.sc.bgSecondary,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '清理本地 K 线缓存，不会删除关注列表和策略配置。',
+            style: AppTextStyles.caption.copyWith(
+              color: context.sc.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: ElevatedButton.icon(
+              onPressed: onClear,
+              icon: isClearing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.delete_sweep_outlined, size: 18),
+              label: Text(isClearing ? '清理中...' : '清理缓存'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: StockColors.brand,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

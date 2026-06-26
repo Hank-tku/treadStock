@@ -40,15 +40,25 @@ class FakeStockApiService implements StockApiService {
   @override
   Future<List<StockQuote>> fetchAllMarketQuotes() async => [];
   @override
-  Future<List<StockQuote>> fetchRecommendationCandidates({int limit = 50}) async => [];
+  Future<List<StockQuote>> fetchRecommendationCandidates({
+    int limit = 50,
+  }) async => [];
   @override
-  Future<StockQuote?> fetchStockQuote(String stockCode, {String market = 'SH'}) async => null;
+  Future<StockQuote?> fetchStockQuote(
+    String stockCode, {
+    String market = 'SH',
+  }) async => null;
   @override
   Future<List<StockSearchResult>> searchStock(String keyword) async => [];
   @override
-  Future<List<StockNews>> fetchStockNews(String stockCode, {int page = 1, int pageSize = 10}) async => [];
+  Future<List<StockNews>> fetchStockNews(
+    String stockCode, {
+    int page = 1,
+    int pageSize = 10,
+  }) async => [];
   @override
-  String getSecid(String code, String market) => '${market == "SH" ? 1 : 0}.$code';
+  String getSecid(String code, String market) =>
+      '${market == "SH" ? 1 : 0}.$code';
 }
 
 void main() {
@@ -99,12 +109,20 @@ void main() {
     fakeApi.setResponse(testKlines);
 
     // 第一次调用：缓存未命中，调 API
-    final result1 = await service.fetchStockKline('600519', market: 'SH', days: 120);
+    final result1 = await service.fetchStockKline(
+      '600519',
+      market: 'SH',
+      days: 120,
+    );
     _expectKlinesEqual(result1, testKlines);
     expect(fakeApi.fetchStockKlineCallCount, 1);
 
     // 第二次调用：缓存命中，不调 API
-    final result2 = await service.fetchStockKline('600519', market: 'SH', days: 120);
+    final result2 = await service.fetchStockKline(
+      '600519',
+      market: 'SH',
+      days: 120,
+    );
     _expectKlinesEqual(result2, testKlines);
     expect(fakeApi.fetchStockKlineCallCount, 1); // 仍然为 1
   });
@@ -115,7 +133,11 @@ void main() {
   test('缓存未命中时调 API 并返回结果', () async {
     fakeApi.setResponse(testKlines);
 
-    final result = await service.fetchStockKline('600519', market: 'SH', days: 120);
+    final result = await service.fetchStockKline(
+      '600519',
+      market: 'SH',
+      days: 120,
+    );
 
     _expectKlinesEqual(result, testKlines);
     expect(fakeApi.fetchStockKlineCallCount, 1);
@@ -130,13 +152,21 @@ void main() {
   test('缓存未命中且 API 返回空列表时也缓存', () async {
     fakeApi.setResponse([]);
 
-    final result = await service.fetchStockKline('000001', market: 'SZ', days: 60);
+    final result = await service.fetchStockKline(
+      '000001',
+      market: 'SZ',
+      days: 60,
+    );
 
     expect(result, isEmpty);
     expect(fakeApi.fetchStockKlineCallCount, 1);
 
     // 第二次调用不应调 API
-    final result2 = await service.fetchStockKline('000001', market: 'SZ', days: 60);
+    final result2 = await service.fetchStockKline(
+      '000001',
+      market: 'SZ',
+      days: 60,
+    );
     expect(result2, isEmpty);
     expect(fakeApi.fetchStockKlineCallCount, 1);
   });
@@ -175,6 +205,20 @@ void main() {
     await service.fetchStockKline('600519', market: 'SH');
     await service.fetchStockKline('000001', market: 'SZ');
     expect(fakeApi.fetchStockKlineCallCount, 2); // 不增加
+  });
+
+  test('同一股票不同周期独立缓存', () async {
+    fakeApi.setResponse(testKlines);
+
+    await service.fetchStockKline('600519', market: 'SH', days: 60);
+    expect(fakeApi.fetchStockKlineCallCount, 1);
+
+    await service.fetchStockKline('600519', market: 'SH', days: 120);
+    expect(fakeApi.fetchStockKlineCallCount, 2);
+
+    await service.fetchStockKline('600519', market: 'SH', days: 60);
+    await service.fetchStockKline('600519', market: 'SH', days: 120);
+    expect(fakeApi.fetchStockKlineCallCount, 2);
   });
 
   // ---------------------------------------------------------------------------

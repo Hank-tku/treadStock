@@ -15,12 +15,13 @@ part 'kline_cache.g.dart';
 class KlineCaches extends Table {
   TextColumn get stockCode => text()();
   TextColumn get market => text().withDefault(const Constant('SH'))();
+  IntColumn get days => integer().withDefault(const Constant(120))();
   TextColumn get klinesJson => text()();
   IntColumn get fetchedAt => integer()(); // Unix timestamp ms
   IntColumn get expiresAt => integer()(); // Unix timestamp ms
 
   @override
-  Set<Column> get primaryKey => {stockCode};
+  Set<Column> get primaryKey => {stockCode, market, days};
 }
 
 /// Drift database for K-line cache storage.
@@ -31,21 +32,40 @@ class KlineCacheDatabase extends _$KlineCacheDatabase {
   KlineCacheDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (Migrator m) async {
-          await m.createAll();
-        },
-      );
+    onCreate: (Migrator m) async {
+      await m.createAll();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        // This database only stores rebuildable market-data cache. SQLite
+        // cannot alter an existing primary key in-place, so schema v2 drops the
+        // old stock-code-only cache table and recreates it with market/days in
+        // the key.
+        await customStatement('DROP TABLE IF EXISTS kline_caches');
+        await m.createAll();
+      }
+    },
+  );
 
   /// Retrieve cached K-lines for [code] if they haven't expired.
   /// Returns null on cache miss or if the entry has expired.
-  Future<List<DailyKline>?> getCachedKlines(String code) async {
-    final row = await (select(klineCaches)
-          ..where((t) => t.stockCode.equals(code)))
-        .getSingleOrNull();
+  Future<List<DailyKline>?> getCachedKlines(
+    String code, {
+    String market = 'SH',
+    int days = 120,
+  }) async {
+    final row =
+        await (select(klineCaches)..where(
+              (t) =>
+                  t.stockCode.equals(code) &
+                  t.market.equals(market) &
+                  t.days.equals(days),
+            ))
+            .getSingleOrNull();
     if (row == null) return null;
 
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -59,6 +79,7 @@ class KlineCacheDatabase extends _$KlineCacheDatabase {
     String code,
     String market,
     List<DailyKline> klines, {
+    int days = 120,
     Duration ttl = const Duration(minutes: 5),
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -67,6 +88,7 @@ class KlineCacheDatabase extends _$KlineCacheDatabase {
       KlineCachesCompanion.insert(
         stockCode: code,
         market: Value(market),
+        days: Value(days),
         klinesJson: jsonStr,
         fetchedAt: now,
         expiresAt: now + ttl.inMilliseconds,
@@ -77,8 +99,9 @@ class KlineCacheDatabase extends _$KlineCacheDatabase {
   /// Remove all expired cache entries.
   Future<void> clearExpired() async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await (delete(klineCaches)..where((t) => t.expiresAt.isSmallerThanValue(now)))
-        .go();
+    await (delete(
+      klineCaches,
+    )..where((t) => t.expiresAt.isSmallerThanValue(now))).go();
   }
 
   /// Remove all cache entries.
@@ -97,9 +120,7 @@ class KlineCacheDatabase extends _$KlineCacheDatabase {
 
   static List<DailyKline> _parseKlinesJson(String jsonStr) {
     final List<dynamic> list = jsonDecode(jsonStr) as List<dynamic>;
-    return list
-        .map((e) => _klineFromMap(e as Map<String, dynamic>))
-        .toList();
+    return list.map((e) => _klineFromMap(e as Map<String, dynamic>)).toList();
   }
 
   static Map<String, dynamic> _klineToMap(DailyKline k) {

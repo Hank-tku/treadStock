@@ -52,8 +52,13 @@ void main() {
       makeKline(date: DateTime(2026, 1, 3), close: 11.5),
     ];
 
-    await db.saveKlines('600519', 'SH', klines, ttl: const Duration(minutes: 5));
-    final result = await db.getCachedKlines('600519');
+    await db.saveKlines(
+      '600519',
+      'SH',
+      klines,
+      ttl: const Duration(minutes: 5),
+    );
+    final result = await db.getCachedKlines('600519', market: 'SH');
 
     expect(result, isNotNull);
     expect(result!, hasLength(3));
@@ -66,7 +71,7 @@ void main() {
   test('save + get: 缓存未命中返回 null', () async {
     final klines = [makeKline()];
     await db.saveKlines('600519', 'SH', klines);
-    final result = await db.getCachedKlines('000001');
+    final result = await db.getCachedKlines('000001', market: 'SZ');
     expect(result, isNull);
   });
 
@@ -81,7 +86,7 @@ void main() {
     // 给过期留一点时间余量
     await Future<void>.delayed(const Duration(milliseconds: 10));
 
-    final result = await db.getCachedKlines('600519');
+    final result = await db.getCachedKlines('600519', market: 'SH');
     expect(result, isNull);
   });
 
@@ -92,12 +97,61 @@ void main() {
     final klines1 = [makeKline(close: 10.0)];
     final klines2 = [makeKline(close: 20.0)];
 
-    await db.saveKlines('600519', 'SH', klines1, ttl: const Duration(minutes: 5));
-    await db.saveKlines('600519', 'SH', klines2, ttl: const Duration(minutes: 5));
+    await db.saveKlines(
+      '600519',
+      'SH',
+      klines1,
+      ttl: const Duration(minutes: 5),
+    );
+    await db.saveKlines(
+      '600519',
+      'SH',
+      klines2,
+      ttl: const Duration(minutes: 5),
+    );
 
-    final result = await db.getCachedKlines('600519');
+    final result = await db.getCachedKlines('600519', market: 'SH');
     expect(result, isNotNull);
     expect(result!.first.close, 20.0);
+  });
+
+  test('同一股票不同周期独立缓存', () async {
+    final shortKlines = [makeKline(close: 10.0)];
+    final longKlines = [
+      makeKline(date: DateTime(2026, 1, 1), close: 10.0),
+      makeKline(date: DateTime(2026, 1, 2), close: 20.0),
+    ];
+
+    await db.saveKlines(
+      '600519',
+      'SH',
+      shortKlines,
+      days: 60,
+      ttl: const Duration(minutes: 5),
+    );
+    await db.saveKlines(
+      '600519',
+      'SH',
+      longKlines,
+      days: 120,
+      ttl: const Duration(minutes: 5),
+    );
+
+    final shortResult = await db.getCachedKlines(
+      '600519',
+      market: 'SH',
+      days: 60,
+    );
+    final longResult = await db.getCachedKlines(
+      '600519',
+      market: 'SH',
+      days: 120,
+    );
+
+    expect(shortResult, hasLength(1));
+    expect(shortResult!.first.close, 10.0);
+    expect(longResult, hasLength(2));
+    expect(longResult!.last.close, 20.0);
   });
 
   // ---------------------------------------------------------------------------
@@ -114,8 +168,8 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
     await db.clearExpired();
 
-    expect(await db.getCachedKlines('000001'), isNull);
-    expect(await db.getCachedKlines('600519'), isNotNull);
+    expect(await db.getCachedKlines('000001', market: 'SZ'), isNull);
+    expect(await db.getCachedKlines('600519', market: 'SH'), isNotNull);
   });
 
   // ---------------------------------------------------------------------------
@@ -129,8 +183,8 @@ void main() {
 
     await db.clearAll();
 
-    expect(await db.getCachedKlines('600519'), isNull);
-    expect(await db.getCachedKlines('000001'), isNull);
+    expect(await db.getCachedKlines('600519', market: 'SH'), isNull);
+    expect(await db.getCachedKlines('000001', market: 'SZ'), isNull);
   });
 
   // ---------------------------------------------------------------------------
@@ -148,8 +202,10 @@ void main() {
       preClose: 44.00,
     );
 
-    await db.saveKlines('601318', 'SH', [kline], ttl: const Duration(minutes: 5));
-    final result = await db.getCachedKlines('601318');
+    await db.saveKlines('601318', 'SH', [
+      kline,
+    ], ttl: const Duration(minutes: 5));
+    final result = await db.getCachedKlines('601318', market: 'SH');
 
     expect(result, isNotNull);
     final restored = result!.first;

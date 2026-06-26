@@ -92,8 +92,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   }
 
   void _syncThresholdController(double? threshold) {
-    _alertThresholdController.text =
-        threshold == null ? '' : threshold.toStringAsFixed(2);
+    _alertThresholdController.text = threshold == null
+        ? ''
+        : threshold.toStringAsFixed(2);
   }
 
   /// Save the price-threshold field. Empty / invalid input clears the
@@ -152,7 +153,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   }
 
   Future<void> _loadData() async {
-    final apiService = ref.read(stockApiServiceProvider);
+    final apiService = ref.read(cachedStockApiServiceProvider);
     final engine = ref.read(analysisEngineProvider);
     final strategyService = ref.read(strategyServiceProvider);
     final scoringService = ref.read(strategyScoringServiceProvider);
@@ -162,7 +163,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
       _loadError = false;
     });
     try {
-      // Fetch kline data
+      // P0/P1: price, chart and score should use cached K-lines first.
       final klines = await apiService.fetchStockKline(
         widget.code,
         market: widget.market,
@@ -222,7 +223,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
 
         final signalCards = DecisionSignalEngine.evaluateMultiple(
           klines: klines,
-          strategies: selectedStrategy != null ? [selectedStrategy] : strategies,
+          strategies: selectedStrategy != null
+              ? [selectedStrategy]
+              : strategies,
           stockCode: widget.code,
           stockName: widget.name,
           currentPrice: lastKline.close,
@@ -248,8 +251,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
 
     if (mounted) setState(() => _isLoading = false);
 
-    // Fetch news in parallel
-    _loadNews();
+    // P3: news is useful context, but it should never block the decision
+    // surface. Schedule it after the primary chart/score path has settled.
+    Future.microtask(_loadNews);
   }
 
   Future<void> _loadNews() async {
@@ -276,7 +280,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   /// data stays visible.
   Future<void> _fetchKlines(int days) async {
     if (_klineLoading) return;
-    final apiService = ref.read(stockApiServiceProvider);
+    final apiService = ref.read(cachedStockApiServiceProvider);
     setState(() => _klineLoading = true);
     try {
       final klines = await apiService.fetchStockKline(
@@ -299,11 +303,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   }
 
   Widget _buildKlineSection() {
-    const periods = [
-      (60, '60天'),
-      (120, '120天'),
-      (250, '250天'),
-    ];
+    const periods = [(60, '60天'), (120, '120天'), (250, '250天')];
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTheme.pagePadding,
@@ -319,9 +319,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
-                  onTap: _klineLoading
-                      ? null
-                      : () => _fetchKlines(p.$1),
+                  onTap: _klineLoading ? null : () => _fetchKlines(p.$1),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -333,9 +331,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                           : context.sc.bgSecondary,
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                       border: Border.all(
-                        color: selected
-                            ? StockColors.brand
-                            : context.sc.border,
+                        color: selected ? StockColors.brand : context.sc.border,
                       ),
                     ),
                     child: Text(
@@ -344,7 +340,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                         color: selected
                             ? Colors.white
                             : context.sc.textSecondary,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -360,7 +358,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             children: [
               if (_klines != null && _klines!.isNotEmpty)
                 StockKlineChart(
-                  key: ValueKey('${_klineDays}_${_klines!.length}_${_klines!.last.close}'),
+                  key: ValueKey(
+                    '${_klineDays}_${_klines!.length}_${_klines!.last.close}',
+                  ),
                   klines: _klines!,
                 )
               else
@@ -427,7 +427,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
 
               // K-line chart section (candles + MA + BOLL + volume).
               _isLoading
-                  ? const DetailSectionSkeleton(height: StockKlineChart.defaultHeight)
+                  ? const DetailSectionSkeleton(
+                      height: StockKlineChart.defaultHeight,
+                    )
                   : _buildKlineSection(),
 
               // Score + indicators section
@@ -435,19 +437,25 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                   ? const DetailSectionSkeleton(height: 80)
                   : _buildScoreSection(),
 
-              _isLoading ? const SizedBox.shrink() : _buildStrategyScoreSection(),
+              _isLoading
+                  ? const SizedBox.shrink()
+                  : _buildStrategyScoreSection(),
 
               // Signal cards
               _isLoading ? const SizedBox.shrink() : _buildSignalCardsSection(),
 
               // Decision signal card
-              _isLoading ? const SizedBox.shrink() : _buildDecisionSignalOverviewSection(),
+              _isLoading
+                  ? const SizedBox.shrink()
+                  : _buildDecisionSignalOverviewSection(),
 
               // Decision bubble for signal explanation
               _isLoading ? const SizedBox.shrink() : _buildDecisionBubble(),
 
               // Decision labels
-              _isLoading ? const SizedBox.shrink() : DecisionLabelsPanel(score: _score),
+              _isLoading
+                  ? const SizedBox.shrink()
+                  : DecisionLabelsPanel(score: _score),
 
               // Company info section
               _isLoading
@@ -501,9 +509,13 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                 IconButton(
                   onPressed: _toggleWatch,
                   icon: Icon(
-                    _isWatched ? Icons.star_rounded : Icons.star_outline_rounded,
+                    _isWatched
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
                     size: 26,
-                    color: _isWatched ? const Color(0xFFF5A623) : context.sc.gray700,
+                    color: _isWatched
+                        ? const Color(0xFFF5A623)
+                        : context.sc.gray700,
                   ),
                   constraints: const BoxConstraints(
                     minWidth: 44,
@@ -525,10 +537,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
                     if (item == null) {
                       if (!mounted) return;
                       setState(() => _alertEnabled = false);
-                      ToastHelper.showError(
-                        context,
-                        '请先加入关注后再开启提醒',
-                      );
+                      ToastHelper.showError(context, '请先加入关注后再开启提醒');
                       return;
                     }
 
@@ -587,8 +596,9 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
           Expanded(
             child: TextField(
               controller: _alertThresholdController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
@@ -618,10 +628,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
             ),
           ),
           const SizedBox(width: 8),
-          TextButton(
-            onPressed: _saveAlertThreshold,
-            child: const Text('保存'),
-          ),
+          TextButton(onPressed: _saveAlertThreshold, child: const Text('保存')),
         ],
       ),
     );
@@ -816,7 +823,6 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
     );
   }
 
-
   Widget _buildSignalCardsSection() {
     final cards = _signalCards;
     if (cards == null || cards.isEmpty) {
@@ -975,9 +981,7 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
         children: [
           Text(
             label,
-            style: AppTextStyles.body.copyWith(
-              color: context.sc.textSecondary,
-            ),
+            style: AppTextStyles.body.copyWith(color: context.sc.textSecondary),
           ),
           const Spacer(),
           Text(value, style: AppTextStyles.body),

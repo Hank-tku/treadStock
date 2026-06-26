@@ -30,6 +30,16 @@ class $KlineCachesTable extends KlineCaches
     requiredDuringInsert: false,
     defaultValue: const Constant('SH'),
   );
+  static const VerificationMeta _daysMeta = const VerificationMeta('days');
+  @override
+  late final GeneratedColumn<int> days = GeneratedColumn<int>(
+    'days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(120),
+  );
   static const VerificationMeta _klinesJsonMeta = const VerificationMeta(
     'klinesJson',
   );
@@ -67,6 +77,7 @@ class $KlineCachesTable extends KlineCaches
   List<GeneratedColumn> get $columns => [
     stockCode,
     market,
+    days,
     klinesJson,
     fetchedAt,
     expiresAt,
@@ -97,6 +108,12 @@ class $KlineCachesTable extends KlineCaches
         market.isAcceptableOrUnknown(data['market']!, _marketMeta),
       );
     }
+    if (data.containsKey('days')) {
+      context.handle(
+        _daysMeta,
+        days.isAcceptableOrUnknown(data['days']!, _daysMeta),
+      );
+    }
     if (data.containsKey('klines_json')) {
       context.handle(
         _klinesJsonMeta,
@@ -125,7 +142,7 @@ class $KlineCachesTable extends KlineCaches
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {stockCode};
+  Set<GeneratedColumn> get $primaryKey => {stockCode, market, days};
   @override
   KlineCacheRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -137,6 +154,10 @@ class $KlineCachesTable extends KlineCaches
       market: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}market'],
+      )!,
+      days: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}days'],
       )!,
       klinesJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -162,12 +183,14 @@ class $KlineCachesTable extends KlineCaches
 class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
   final String stockCode;
   final String market;
+  final int days;
   final String klinesJson;
   final int fetchedAt;
   final int expiresAt;
   const KlineCacheRow({
     required this.stockCode,
     required this.market,
+    required this.days,
     required this.klinesJson,
     required this.fetchedAt,
     required this.expiresAt,
@@ -177,6 +200,7 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
     final map = <String, Expression>{};
     map['stock_code'] = Variable<String>(stockCode);
     map['market'] = Variable<String>(market);
+    map['days'] = Variable<int>(days);
     map['klines_json'] = Variable<String>(klinesJson);
     map['fetched_at'] = Variable<int>(fetchedAt);
     map['expires_at'] = Variable<int>(expiresAt);
@@ -187,6 +211,7 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
     return KlineCachesCompanion(
       stockCode: Value(stockCode),
       market: Value(market),
+      days: Value(days),
       klinesJson: Value(klinesJson),
       fetchedAt: Value(fetchedAt),
       expiresAt: Value(expiresAt),
@@ -201,6 +226,7 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
     return KlineCacheRow(
       stockCode: serializer.fromJson<String>(json['stockCode']),
       market: serializer.fromJson<String>(json['market']),
+      days: serializer.fromJson<int>(json['days']),
       klinesJson: serializer.fromJson<String>(json['klinesJson']),
       fetchedAt: serializer.fromJson<int>(json['fetchedAt']),
       expiresAt: serializer.fromJson<int>(json['expiresAt']),
@@ -212,6 +238,7 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
     return <String, dynamic>{
       'stockCode': serializer.toJson<String>(stockCode),
       'market': serializer.toJson<String>(market),
+      'days': serializer.toJson<int>(days),
       'klinesJson': serializer.toJson<String>(klinesJson),
       'fetchedAt': serializer.toJson<int>(fetchedAt),
       'expiresAt': serializer.toJson<int>(expiresAt),
@@ -221,12 +248,14 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
   KlineCacheRow copyWith({
     String? stockCode,
     String? market,
+    int? days,
     String? klinesJson,
     int? fetchedAt,
     int? expiresAt,
   }) => KlineCacheRow(
     stockCode: stockCode ?? this.stockCode,
     market: market ?? this.market,
+    days: days ?? this.days,
     klinesJson: klinesJson ?? this.klinesJson,
     fetchedAt: fetchedAt ?? this.fetchedAt,
     expiresAt: expiresAt ?? this.expiresAt,
@@ -235,6 +264,7 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
     return KlineCacheRow(
       stockCode: data.stockCode.present ? data.stockCode.value : this.stockCode,
       market: data.market.present ? data.market.value : this.market,
+      days: data.days.present ? data.days.value : this.days,
       klinesJson: data.klinesJson.present
           ? data.klinesJson.value
           : this.klinesJson,
@@ -248,6 +278,7 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
     return (StringBuffer('KlineCacheRow(')
           ..write('stockCode: $stockCode, ')
           ..write('market: $market, ')
+          ..write('days: $days, ')
           ..write('klinesJson: $klinesJson, ')
           ..write('fetchedAt: $fetchedAt, ')
           ..write('expiresAt: $expiresAt')
@@ -257,13 +288,14 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
 
   @override
   int get hashCode =>
-      Object.hash(stockCode, market, klinesJson, fetchedAt, expiresAt);
+      Object.hash(stockCode, market, days, klinesJson, fetchedAt, expiresAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is KlineCacheRow &&
           other.stockCode == this.stockCode &&
           other.market == this.market &&
+          other.days == this.days &&
           other.klinesJson == this.klinesJson &&
           other.fetchedAt == this.fetchedAt &&
           other.expiresAt == this.expiresAt);
@@ -272,6 +304,7 @@ class KlineCacheRow extends DataClass implements Insertable<KlineCacheRow> {
 class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
   final Value<String> stockCode;
   final Value<String> market;
+  final Value<int> days;
   final Value<String> klinesJson;
   final Value<int> fetchedAt;
   final Value<int> expiresAt;
@@ -279,6 +312,7 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
   const KlineCachesCompanion({
     this.stockCode = const Value.absent(),
     this.market = const Value.absent(),
+    this.days = const Value.absent(),
     this.klinesJson = const Value.absent(),
     this.fetchedAt = const Value.absent(),
     this.expiresAt = const Value.absent(),
@@ -287,6 +321,7 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
   KlineCachesCompanion.insert({
     required String stockCode,
     this.market = const Value.absent(),
+    this.days = const Value.absent(),
     required String klinesJson,
     required int fetchedAt,
     required int expiresAt,
@@ -298,6 +333,7 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
   static Insertable<KlineCacheRow> custom({
     Expression<String>? stockCode,
     Expression<String>? market,
+    Expression<int>? days,
     Expression<String>? klinesJson,
     Expression<int>? fetchedAt,
     Expression<int>? expiresAt,
@@ -306,6 +342,7 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
     return RawValuesInsertable({
       if (stockCode != null) 'stock_code': stockCode,
       if (market != null) 'market': market,
+      if (days != null) 'days': days,
       if (klinesJson != null) 'klines_json': klinesJson,
       if (fetchedAt != null) 'fetched_at': fetchedAt,
       if (expiresAt != null) 'expires_at': expiresAt,
@@ -316,6 +353,7 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
   KlineCachesCompanion copyWith({
     Value<String>? stockCode,
     Value<String>? market,
+    Value<int>? days,
     Value<String>? klinesJson,
     Value<int>? fetchedAt,
     Value<int>? expiresAt,
@@ -324,6 +362,7 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
     return KlineCachesCompanion(
       stockCode: stockCode ?? this.stockCode,
       market: market ?? this.market,
+      days: days ?? this.days,
       klinesJson: klinesJson ?? this.klinesJson,
       fetchedAt: fetchedAt ?? this.fetchedAt,
       expiresAt: expiresAt ?? this.expiresAt,
@@ -339,6 +378,9 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
     }
     if (market.present) {
       map['market'] = Variable<String>(market.value);
+    }
+    if (days.present) {
+      map['days'] = Variable<int>(days.value);
     }
     if (klinesJson.present) {
       map['klines_json'] = Variable<String>(klinesJson.value);
@@ -360,6 +402,7 @@ class KlineCachesCompanion extends UpdateCompanion<KlineCacheRow> {
     return (StringBuffer('KlineCachesCompanion(')
           ..write('stockCode: $stockCode, ')
           ..write('market: $market, ')
+          ..write('days: $days, ')
           ..write('klinesJson: $klinesJson, ')
           ..write('fetchedAt: $fetchedAt, ')
           ..write('expiresAt: $expiresAt, ')
@@ -384,6 +427,7 @@ typedef $$KlineCachesTableCreateCompanionBuilder =
     KlineCachesCompanion Function({
       required String stockCode,
       Value<String> market,
+      Value<int> days,
       required String klinesJson,
       required int fetchedAt,
       required int expiresAt,
@@ -393,6 +437,7 @@ typedef $$KlineCachesTableUpdateCompanionBuilder =
     KlineCachesCompanion Function({
       Value<String> stockCode,
       Value<String> market,
+      Value<int> days,
       Value<String> klinesJson,
       Value<int> fetchedAt,
       Value<int> expiresAt,
@@ -415,6 +460,11 @@ class $$KlineCachesTableFilterComposer
 
   ColumnFilters<String> get market => $composableBuilder(
     column: $table.market,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get days => $composableBuilder(
+    column: $table.days,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -453,6 +503,11 @@ class $$KlineCachesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get days => $composableBuilder(
+    column: $table.days,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get klinesJson => $composableBuilder(
     column: $table.klinesJson,
     builder: (column) => ColumnOrderings(column),
@@ -483,6 +538,9 @@ class $$KlineCachesTableAnnotationComposer
 
   GeneratedColumn<String> get market =>
       $composableBuilder(column: $table.market, builder: (column) => column);
+
+  GeneratedColumn<int> get days =>
+      $composableBuilder(column: $table.days, builder: (column) => column);
 
   GeneratedColumn<String> get klinesJson => $composableBuilder(
     column: $table.klinesJson,
@@ -535,6 +593,7 @@ class $$KlineCachesTableTableManager
               ({
                 Value<String> stockCode = const Value.absent(),
                 Value<String> market = const Value.absent(),
+                Value<int> days = const Value.absent(),
                 Value<String> klinesJson = const Value.absent(),
                 Value<int> fetchedAt = const Value.absent(),
                 Value<int> expiresAt = const Value.absent(),
@@ -542,6 +601,7 @@ class $$KlineCachesTableTableManager
               }) => KlineCachesCompanion(
                 stockCode: stockCode,
                 market: market,
+                days: days,
                 klinesJson: klinesJson,
                 fetchedAt: fetchedAt,
                 expiresAt: expiresAt,
@@ -551,6 +611,7 @@ class $$KlineCachesTableTableManager
               ({
                 required String stockCode,
                 Value<String> market = const Value.absent(),
+                Value<int> days = const Value.absent(),
                 required String klinesJson,
                 required int fetchedAt,
                 required int expiresAt,
@@ -558,6 +619,7 @@ class $$KlineCachesTableTableManager
               }) => KlineCachesCompanion.insert(
                 stockCode: stockCode,
                 market: market,
+                days: days,
                 klinesJson: klinesJson,
                 fetchedAt: fetchedAt,
                 expiresAt: expiresAt,

@@ -37,12 +37,11 @@ class MarketEnvironmentState {
   }
 }
 
-class MarketEnvironmentNotifier
-    extends StateNotifier<MarketEnvironmentState> {
+class MarketEnvironmentNotifier extends StateNotifier<MarketEnvironmentState> {
   final StockApiService _apiService;
 
   MarketEnvironmentNotifier(this._apiService)
-      : super(const MarketEnvironmentState());
+    : super(const MarketEnvironmentState());
 
   /// Fetch market data and compute the environment.
   Future<void> loadEnvironment() async {
@@ -86,8 +85,10 @@ class MarketEnvironmentNotifier
 }
 
 /// Provider for the market environment.
-final marketEnvironmentProvider = StateNotifierProvider<
-    MarketEnvironmentNotifier, MarketEnvironmentState>((ref) {
-  final apiService = ref.read(stockApiServiceProvider);
-  return MarketEnvironmentNotifier(apiService);
-});
+final marketEnvironmentProvider =
+    StateNotifierProvider<MarketEnvironmentNotifier, MarketEnvironmentState>((
+      ref,
+    ) {
+      final apiService = ref.read(cachedStockApiServiceProvider);
+      return MarketEnvironmentNotifier(apiService);
+    });

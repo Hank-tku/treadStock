@@ -225,7 +225,8 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
         final item = _watchlistService.findByCode(code);
         if (item != null && item.alertEnabled) {
           final alertResult = _analysisEngine.evaluateDownsideAlert(klines);
-          final priceHit = item.alertPriceThreshold != null &&
+          final priceHit =
+              item.alertPriceThreshold != null &&
               quote.price <= item.alertPriceThreshold!;
           _watchlistService.setAlertTriggered(
             code,
@@ -263,7 +264,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
 final watchlistProvider =
     StateNotifierProvider<WatchlistNotifier, WatchlistState>((ref) {
       final watchlistService = ref.read(watchlistServiceProvider);
-      final apiService = ref.read(stockApiServiceProvider);
+      final apiService = ref.read(cachedStockApiServiceProvider);
       final analysisEngine = ref.read(analysisEngineProvider);
       final strategyService = ref.read(strategyServiceProvider);
       final scoringService = ref.read(strategyScoringServiceProvider);

@@ -10,6 +10,9 @@ import '../domain/stock_filter.dart';
 import '../../analysis/domain/market_environment.dart';
 import '../../../shared/providers.dart';
 
+@visibleForTesting
+const int initialRecommendationCandidateLimit = 16;
+
 // ── Recommendation by Strategy ─────────────────────────────────
 
 /// A recommendation result grouped by strategy.
@@ -145,7 +148,9 @@ class StrategyRecommendationNotifier
         for (final quote in quotes) quote.code: quote.price,
       });
 
-      final topStocks = quotes.take(50).toList();
+      final topStocks = quotes
+          .take(initialRecommendationCandidateLimit)
+          .toList();
       final groups = <StrategyRecommendation>[];
 
       // ── Cross-strategy K-line cache ─────────────────────────────
@@ -158,9 +163,12 @@ class StrategyRecommendationNotifier
 
       for (final strategy in enabledStrategies) {
         // Apply strategy-specific stock filter if configured
-        final candidates = strategy.stockFilter != null &&
-                strategy.stockFilter!.isActive
-            ? _applyStockFilter(quotes, strategy.stockFilter!)
+        final candidates =
+            strategy.stockFilter != null && strategy.stockFilter!.isActive
+            ? _applyStockFilter(
+                quotes,
+                strategy.stockFilter!,
+              ).take(initialRecommendationCandidateLimit).toList()
             : topStocks;
 
         // ── Compute environment match for this strategy ───────────
@@ -176,9 +184,7 @@ class StrategyRecommendationNotifier
 
         // When environment is unfavourable, lower the effective threshold
         final effectiveThreshold = envMatch != null && !envMatch.isFavourable
-            ? (strategy.recommendThreshold *
-                    envMatch.weightMultiplier)
-                .ceil()
+            ? (strategy.recommendThreshold * envMatch.weightMultiplier).ceil()
             : strategy.recommendThreshold;
 
         final scored = await _fetchAndScoreForStrategy(
@@ -203,33 +209,31 @@ class StrategyRecommendationNotifier
         if (envMatch != null &&
             envMatch.weightMultiplier < 1.0 &&
             recs.isNotEmpty) {
-          adjustedRecs = recs
-              .map((rec) {
-                final adjusted =
-                    (rec.score!.score * envMatch.weightMultiplier).round();
-                return DailyRecommendation(
-                  code: rec.code,
-                  name: rec.name,
-                  market: rec.market,
-                  category: rec.category,
-                  closePrice: rec.closePrice,
-                  changePct: rec.changePct,
-                  isBandLow: rec.isBandLow,
-                  prediction: rec.prediction,
-                  score: StockScore(
-                    score: adjusted,
-                    maScore: rec.score!.maScore,
-                    bollScore: rec.score!.bollScore,
-                    volScore: rec.score!.volScore,
-                    trendScore: rec.score!.trendScore,
-                    isBandLow: rec.score!.isBandLow,
-                    reason: rec.score!.reason != null
-                        ? '${rec.score!.reason}（环境降权 ×${envMatch.weightMultiplier.toStringAsFixed(2)}）'
-                        : null,
-                  ),
-                );
-              })
-              .toList();
+          adjustedRecs = recs.map((rec) {
+            final adjusted = (rec.score!.score * envMatch.weightMultiplier)
+                .round();
+            return DailyRecommendation(
+              code: rec.code,
+              name: rec.name,
+              market: rec.market,
+              category: rec.category,
+              closePrice: rec.closePrice,
+              changePct: rec.changePct,
+              isBandLow: rec.isBandLow,
+              prediction: rec.prediction,
+              score: StockScore(
+                score: adjusted,
+                maScore: rec.score!.maScore,
+                bollScore: rec.score!.bollScore,
+                volScore: rec.score!.volScore,
+                trendScore: rec.score!.trendScore,
+                isBandLow: rec.score!.isBandLow,
+                reason: rec.score!.reason != null
+                    ? '${rec.score!.reason}（环境降权 ×${envMatch.weightMultiplier.toStringAsFixed(2)}）'
+                    : null,
+              ),
+            );
+          }).toList();
         }
 
         groups.add(
@@ -301,13 +305,17 @@ class StrategyRecommendationNotifier
     // Change % range
     if (filter.changeRange != null) {
       final (lo, hi) = filter.changeRange!;
-      result = result.where((q) => q.changePct >= lo && q.changePct <= hi).toList();
+      result = result
+          .where((q) => q.changePct >= lo && q.changePct <= hi)
+          .toList();
     }
 
     // Turnover range
     if (filter.turnoverRange != null) {
       final (lo, hi) = filter.turnoverRange!;
-      result = result.where((q) => q.turnover >= lo && q.turnover <= hi).toList();
+      result = result
+          .where((q) => q.turnover >= lo && q.turnover <= hi)
+          .toList();
     }
 
     // Market cap range (in 亿元). When the quote has no market cap data (e.g.
@@ -449,7 +457,7 @@ final strategyRecommendationProvider =
       StrategyRecommendationState
     >((ref) {
       final strategyService = ref.read(strategyServiceProvider);
-      final apiService = ref.read(stockApiServiceProvider);
+      final apiService = ref.read(cachedStockApiServiceProvider);
       final scoringService = ref.read(strategyScoringServiceProvider);
       return StrategyRecommendationNotifier(
         strategyService,
