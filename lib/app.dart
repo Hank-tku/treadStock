@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
 import 'shared/providers.dart';
+import 'features/alert/data/notification_service.dart';
 import 'features/onboarding/data/onboarding_service.dart';
 import 'features/onboarding/presentation/onboarding_page.dart';
 import 'features/recommendation/presentation/recommendation_tab.dart';
@@ -236,6 +237,7 @@ class _StockPilotAppState extends ConsumerState<StockPilotApp>
     with WidgetsBindingObserver {
   Timer? _foregroundAlertTimer;
   Timer? _startupAlertTimer;
+  StreamSubscription<String>? _notificationTapSub;
 
   @override
   void initState() {
@@ -261,14 +263,47 @@ class _StockPilotAppState extends ConsumerState<StockPilotApp>
     // Kick off one scan shortly after startup so a recently-triggered
     // condition surfaces quickly.
     _startupAlertTimer = Timer(const Duration(seconds: 15), _runAlertScan);
+
+    // Hot-tap notifications: route the payload to the right screen as the
+    // user taps while the app is running.
+    _notificationTapSub =
+        NotificationService.instance.onTapPayload.listen(_routeFromPayload);
+    // Cold-start tap: consume the launch payload once the router is mounted
+    // (post-frame so GoRouter has a context to navigate with).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final payload = NotificationService.instance.consumeLaunchPayload();
+      if (payload != null) _routeFromPayload(payload);
+    });
   }
 
   @override
   void dispose() {
     _foregroundAlertTimer?.cancel();
     _startupAlertTimer?.cancel();
+    _notificationTapSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Decode a notification payload and navigate to the matching screen.
+  /// Payload contract (set in AlertScheduler):
+  ///   `stock:<code>`  → stock detail page
+  ///   `page:watchlist`→ watchlist tab
+  ///   `page:recommend`→ recommend tab
+  /// Unknown / malformed payloads are ignored (no-op) — never crash on tap.
+  void _routeFromPayload(String payload) {
+    final ctx = _rootNavigatorKey.currentContext;
+    if (ctx == null) return;
+    if (payload.startsWith('stock:')) {
+      final code = payload.substring('stock:'.length);
+      if (code.isNotEmpty) {
+        AppRouter.router.go('/stock/$code');
+      }
+    } else if (payload == 'page:watchlist') {
+      AppRouter.router.go('/watchlist');
+    } else if (payload == 'page:recommend') {
+      AppRouter.router.go('/recommend');
+    }
   }
 
   @override

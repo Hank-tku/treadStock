@@ -607,6 +607,9 @@ class _RecommendationTabState extends ConsumerState<RecommendationTab> {
                 isBandLow: item.isBandLow,
                 prediction: item.prediction,
                 expectedRange: item.prediction?.rangeText,
+                // 需求 2：标识当前推荐的标的是哪个策略选出来的，让用户一眼
+                // 看清来源（StockListItem 已内置 strategyName 渲染为「策略 X」摘要行）。
+                strategyName: item.strategy.name,
                 isWatched: isWatched,
                 onWatchToggle: isWatched
                     ? null

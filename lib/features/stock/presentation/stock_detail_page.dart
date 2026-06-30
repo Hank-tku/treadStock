@@ -390,8 +390,22 @@ class _StockDetailPageState extends ConsumerState<StockDetailPage> {
   Future<void> _launchUrl(String url) async {
     if (url.isEmpty) return;
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    // NOTE: deliberately not gating on canLaunchUrl — on Android it returns
+    // false for http(s):// without the (deprecated) query-all-packages
+    // permission, which made news items silently un-clickable. Just try to
+    // launch; surface an error toast only if it actually fails.
+    try {
+      final ok = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!ok && mounted) {
+        ToastHelper.showError(context, '无法打开链接');
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastHelper.showError(context, '无法打开链接');
+      }
     }
   }
 

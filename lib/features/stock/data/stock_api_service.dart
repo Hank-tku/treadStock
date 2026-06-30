@@ -4,6 +4,22 @@ import 'package:flutter/foundation.dart';
 import '../domain/stock_models.dart';
 import '../../../core/constants/api_constants.dart';
 
+/// Strips HTML/XML tags (e.g. Eastmoney wraps matched keywords in `<em>`)
+/// and decodes basic entities so titles display as plain text. Conservative:
+/// it removes anything between < >, then unescapes &amp;/&lt;/&gt;/&quot;.
+String _stripHtml(String input) {
+  if (!input.contains('<')) return input;
+  var out = input.replaceAll(RegExp(r'<[^>]*>'), '');
+  out = out
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&nbsp;', ' ');
+  return out;
+}
+
 /// HTTP client service for fetching stock data from East Money and Sina Finance APIs.
 class StockApiService {
   static const int _marketQuotePageSize = 500;
@@ -491,7 +507,9 @@ class StockApiService {
         return StockNews(
           id: (map['id'] ?? map['url'] ?? '').toString(),
           stockCode: stockCode,
-          title: map['title'] as String? ?? '',
+          // Eastmoney wraps the matched keyword in <em>...</em>; strip so the
+          // title shows as clean plain text instead of literal "<em>" tags.
+          title: _stripHtml(map['title'] as String? ?? ''),
           source: map['mediaName'] as String? ?? '',
           sourceUrl: map['url'] as String? ?? '',
           publishedAt: parseDate(),

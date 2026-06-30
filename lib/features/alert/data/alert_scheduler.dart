@@ -70,12 +70,18 @@ class AlertScheduler {
       final detail = triggered
           .map((h) => '${h.name}：${h.reason}（现价 ${h.price.toStringAsFixed(2)}）')
           .join('\n');
+      // Payload drives in-app deep-link on tap: single hit → that stock's
+      // detail page; multi-hit summary → the watchlist where alerts live.
+      final payload = triggered.length == 1
+          ? 'stock:${triggered.first.code}'
+          : 'page:watchlist';
       await _notificationService.showAlert(
         id: _summaryNotificationId,
         title: triggered.length == 1
             ? '${triggered.first.name} 提醒'
             : '${triggered.length} 只股票触发提醒',
         body: triggered.length == 1 ? detail : '$names 触发提醒\n$detail',
+        payload: payload,
       );
     } catch (e, st) {
       debugPrint('[AlertScheduler] runScan failed: $e\n$st');
@@ -127,6 +133,7 @@ class AlertScheduler {
       await _watchlistService.markAlertTriggered(item.stockCode, today);
 
       return _AlertHit(
+        code: item.stockCode,
         name: item.stockName,
         reason: reasons.join('；'),
         price: lastPrice,
@@ -161,11 +168,13 @@ class AlertScheduler {
 
 /// A single triggered alert hit, collected for batch summary notification.
 class _AlertHit {
+  final String code;
   final String name;
   final String reason;
   final double price;
 
   const _AlertHit({
+    required this.code,
     required this.name,
     required this.reason,
     required this.price,
